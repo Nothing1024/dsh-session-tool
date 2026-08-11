@@ -65,3 +65,7 @@ DSH_SNAPSHOT=record npx vitest run packages/session-tool-cli/tests/e2e.spec.ts  
 - **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根，调用者须为根或祖先）、`all`（Config 门槛：`allowAllScope: top-level|any|none` + `cliAllowAll`）；全部默认应用 hiddenPrefixes 过滤；
 - **重命名**：`session/title`（user 源 pin 标题、停自动生成）+ `session/tags`（last-wins）；hiddenPrefixes 规则与 GUI 工作区浏览器共用同一套（session-tags 的 `filterVisibleByRules`）；
 - **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid`（HarnessError code，工具失败结果与 CLI stderr 均携带）。
+
+## 注意事项
+
+- **同一会话请勿并发写**：DSH 的会话是单主模型（一个会话同时只由一个进程写入，协调器的串行化锁是进程内的）。并行执行多条写命令到**同一个** `session_id` 属于未定义行为，竞态窗口下可能产生重复 seq 导致会话损坏。读可以任意并发（`session_read`/`session_list` 天然跨进程）。
