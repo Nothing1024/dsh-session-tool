@@ -290,7 +290,9 @@ function reportError(error: unknown): void {
   } else if (error instanceof SessionToolError) {
     process.stderr.write(`${NAME}: [${error.code}] ${error.message}\n`)
   } else {
-    process.stderr.write(`${NAME}: ${error instanceof Error ? error.message : String(error)}\n`)
+    // Some failures (profile boot) already carry the `${NAME}: ` prefix.
+    const message = error instanceof Error ? error.message : String(error)
+    process.stderr.write(`${message.startsWith(`${NAME}: `) ? '' : `${NAME}: `}${message}\n`)
   }
   process.exitCode = 1
 }

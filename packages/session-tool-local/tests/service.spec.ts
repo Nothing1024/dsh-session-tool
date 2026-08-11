@@ -248,6 +248,23 @@ describe('SessionToolLocalService', () => {
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId(sessionId), { tags: [' ', ''] }))
         .rejects.toMatchObject({ code: 'tag-invalid' })
     })
+
+    it('pre-validates before committing: a rejected tag set leaves the title untouched', async () => {
+      callerSession('caller')
+      const { sessionId } = await ctx.sessionTool.create(agent('caller'), {})
+      await expect(ctx.sessionTool.rename(agent('caller'), SessionId(sessionId), {
+        title: 'would-commit',
+        tags: [' ', ''],
+      })).rejects.toMatchObject({ code: 'tag-invalid' })
+      const session = ctx.sessions.get(SessionId(sessionId))!
+      expect(ctx.sessionTitle.get(session)?.title).toBeUndefined()
+      // And a rejected title leaves the tag set untouched.
+      await expect(ctx.sessionTool.rename(agent('caller'), SessionId(sessionId), {
+        title: ' ',
+        tags: ['valid'],
+      })).rejects.toMatchObject({ code: 'title-invalid' })
+      expect(ctx.sessionTags.get(session)?.tags).toBeUndefined()
+    })
   })
 
   describe('list', () => {
@@ -329,6 +346,11 @@ describe('SessionToolLocalService', () => {
     it('denies the own scope to the CLI', async () => {
       await expect(ctx.sessionTool.list(CLI, { scope: 'own' }))
         .rejects.toThrow(SessionScopeDeniedError)
+    })
+
+    it('rejects a missing tree root for the CLI too (no silent empty listing)', async () => {
+      await expect(ctx.sessionTool.list(CLI, { scope: 'tree', sessionId: SessionId('missing-root') }))
+        .rejects.toThrow(SessionNotFoundError)
     })
 
     it('rejects an unknown cursor', async () => {

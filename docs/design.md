@@ -240,3 +240,22 @@ session-tool-local:
 10. **测试**：服务层 20 例（fence/冷恢复/隐藏/分页/scope 门槛）、工具层 10 例（schema/render/参数映射）、CLI e2e 1 例（真实 headless profile + bundle 安装 + 12 步全流程，fixture 回放，`DSH_SNAPSHOT=record` 重录）。
 
 验证：`pnpm -r run typecheck`、`pnpm -r run build`、`npx vitest run`（31/31）全绿；e2e 在临时 `$DSH_HOME` 上跑通 create → write → read → rename → list（含隐藏规则、tree scope、错误码 `session-not-found`/`scope-denied`）。
+
+### 13. 第二轮全场景测试（2026-08-11）与修复
+
+补充测试矩阵（真实环境，T1-T17 + 2 次 LLM agent 场景）：
+
+| 场景 | 结果 |
+|---|---|
+| T1-T3 空 store / 空 tag / 超长 tag | ✅ `(no sessions)` / `[tag-invalid]` |
+| T4-T7 三代血缘 + tree 各层视角 | ✅ |
+| **T8 tree 根不存在（CLI）** | 🐛 修复：原来静默返回空列表 → 现在 `[session-not-found]`（agent 路径原本正确；CLI 的 fence 豁免跳过了存在性检查，已补 `index.has` 前置校验 + 单测） |
+| T9-T10 since_seq 超界 / 组合 | ✅ 空 / 正确 |
+| T11 无标题 + write 自动标题跨进程 | ✅ fallback 标题生成并可见 |
+| **T12-T13 rename 部分提交** | 🐛 修复：空 title/空 tags 原来会部分提交（title 已改但 tags 失败）→ 现在提交前 `assertValidTitleTags` 预检（normalizeSessionTitle/normalizeTags），空输入零提交；超限类仍可能部分提交（事件溯源无回滚，文档化）+ 单测 |
+| T14 `--profile` 自定义 profile | ✅ 共享同一 store |
+| T15 `--patch` overlay | ✅ 按 DSH patch 语义整体替换 config（缺必填字段 fail loud）；**顺带修复 CLI 错误输出双前缀** `dsh-session: dsh-session:` |
+| T16 agent 三代血缘（own/create parent 链/tree） | ✅ 真实 LLM |
+| **T17 并发写同一冷会话** | ⚠️ **发现 DSH 核心边界**：两个进程并发 resume+append 同一会话 → 磁盘重复 seq（end-seed 6×2、消息 7×2），静默损坏。根因：协调器 `serialize` 锁是**进程内**的（`this.chains`），`appendCore` 的 seq 校验基于加载时的内存 cursor——check-then-act 跨进程竞态。DSH 设计上会话单进程单主，并发写同一会话是未定义行为。插件层不绕过（不动 DSH 核心）；**上游化建议**：协调器做跨进程原子 append（文件锁/期望位置校验）。CLI 用户应避免并发写同一会话。 |
+
+已提交 `fa1ac1d`（CLI json 同构）+ 本轮三处修复（T8 存在性校验、T12/T13 输入预检、双前缀）+ 对应单测（服务层 20→22 例）。

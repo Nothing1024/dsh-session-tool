@@ -14,8 +14,8 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { SessionTagsInvalidError, foldSessionTags } from '@deepseek-ai/dsh-session-tags'
-import { SessionTitleInvalidError, foldSessionTitle } from '@deepseek-ai/dsh-session-title'
+import { SessionTagsInvalidError, foldSessionTags, normalizeTags } from '@deepseek-ai/dsh-session-tags'
+import { SessionTitleInvalidError, foldSessionTitle, normalizeSessionTitle } from '@deepseek-ai/dsh-session-title'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
@@ -89,6 +89,9 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (caller.kind === 'agent' && !index.has(caller.sessionId)) {
       throw new SessionNotFoundError(`caller session "${caller.sessionId}" is not in the session store`)
     }
+    // Validate title/tags BEFORE the session exists, so a rejection leaves no
+    // partially-initialized session behind (even in-memory).
+    this.assertValidTitleTags(options.title, options.tags)
     if (options.parentSessionId !== undefined) {
       const parent = index.get(options.parentSessionId)
       if (parent === undefined) {
@@ -171,6 +174,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       if (filter.sessionId === undefined) {
         throw new SessionEmptyContentError('scope "tree" requires session_id')
       }
+      // The tree root must exist for EVERY caller identity: the CLI fence
+      // exemption must not turn a missing root into a silent empty listing.
+      if (!index.has(filter.sessionId)) {
+        throw new SessionNotFoundError(`session "${filter.sessionId}" does not exist`)
+      }
       await this.assertAccess(caller, filter.sessionId, index)
       candidates = descendantsOf(index, children, [filter.sessionId])
     } else if (scope === 'all') {
@@ -244,6 +252,9 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (options.title === undefined && options.tags === undefined) {
       throw new SessionEmptyContentError('rename requires at least one of title or tags')
     }
+    // Pre-validate BOTH inputs before committing either, so an empty-title or
+    // empty-tags rejection leaves the session untouched (no partial commit).
+    this.assertValidTitleTags(options.title, options.tags)
     const session = await this.materializeLive(caller, sessionId)
     let title: string | undefined
     let tags: string[] | undefined
@@ -420,6 +431,29 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   }
 
   // ---- owned-service adapters --------------------------------------------
+
+  /**
+   * Pre-validate title and tags input before ANY commit, so empty-title or
+   * empty-tags rejections leave the target session untouched (no partial
+   * commit). Limit-exceeded tags still fail inside the owned services, which
+   * may leave an already-committed sibling (event sourcing has no rollback).
+   */
+  private assertValidTitleTags(title: string | undefined, tags: readonly string[] | undefined): void {
+    if (title !== undefined && normalizeSessionTitle(title, Number.MAX_SAFE_INTEGER).length === 0) {
+      throw new SessionToolError('session title must contain visible characters', TITLE_INVALID_CODE)
+    }
+    if (tags !== undefined) {
+      try {
+        normalizeTags(tags, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
+      } catch (error: unknown) {
+        throw new SessionToolError(
+          error instanceof Error ? error.message : 'invalid tag set',
+          TAG_INVALID_CODE,
+          { cause: error },
+        )
+      }
+    }
+  }
 
   /** Rename through session-title, mapping its validation failure onto the wire. */
   private renameTitle(session: Session, title: string): { title: string } {
