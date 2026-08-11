@@ -1,0 +1,20 @@
+{
+  // Type-check plane: extends the linked worktree's base for its strict
+  // compiler options, then overrides `paths` (child configs win per key) with
+  // the generated artifact-plane map — every @deepseek-ai/dsh-* and vendored
+  // framework import resolves to the worktree's BUILT lib/types declarations,
+  // so tsc never descends into worktree sources (whose own tsconfigs differ).
+  // Regenerate the paths map with: node scripts/generate-tsconfig-paths.mjs
+  "extends": [
+    "../dsh-worktree-profiles/tsconfig.base.json",
+    "./tsconfig.paths.json"
+  ],
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["node"]
+  }
+}

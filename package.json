@@ -1,0 +1,22 @@
+{
+  "name": "session-tool",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH session management plugin project: create/read/write/list/rename sessions via agent tools and a dsh-session CLI (independent project, mounted through the DSH bundle mechanism)",
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "pnpm -r run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "tsdown": "^0.22.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8"
+  }
+}
