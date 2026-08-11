@@ -37,9 +37,11 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import { SessionToolError } from 'session-tool'
 import type {
   SessionToolCaller,
+  SessionToolCreateResult,
   SessionToolListResult,
   SessionToolReadResult,
   SessionToolRenameResult,
+  SessionToolWriteResult,
 } from 'session-tool'
 
 const NAME = 'dsh-session'
@@ -146,12 +148,72 @@ export async function bootProfile(profileName: string, patchFiles: readonly stri
 /** CLI caller identity: the human operator, exempt from the owner fence. */
 const CLI_CALLER: SessionToolCaller = { kind: 'cli' }
 
-/** Print one service result, either as plain text or as tool-shaped JSON. */
-function printResult(format: string, renderText: () => string, value: unknown): void {
+/**
+ * Print one service result: plain text by default, or the tool-shaped JSON
+ * projection (`--format json` mirrors the session_* tool output schemas, so
+ * CLI and tool outputs are interchangeable — one shared service layer, no
+ * schema rewrite).
+ */
+function printResult(
+  format: string,
+  renderText: () => string,
+  toToolShape: () => unknown,
+): void {
   if (format === 'json') {
-    process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
+    process.stdout.write(`${JSON.stringify(toToolShape(), null, 2)}\n`)
   } else {
     process.stdout.write(`${renderText()}\n`)
+  }
+}
+
+/** Tool-shaped create result (session_create schema). */
+function createToolShape(value: SessionToolCreateResult): { session_id: string } {
+  return { session_id: value.sessionId }
+}
+
+/** Tool-shaped write result (session_write schema). */
+function writeToolShape(value: SessionToolWriteResult): { session_id: string; seq: number } {
+  return { session_id: value.sessionId, seq: value.seq }
+}
+
+/** Tool-shaped read result (session_read schema). */
+function readToolShape(value: SessionToolReadResult): {
+  session_id: string
+  messages: { seq: number; role: 'user' | 'assistant' | 'tool'; blocks: unknown[] }[]
+} {
+  return {
+    session_id: value.sessionId,
+    messages: value.messages.map(row => ({ seq: row.seq, role: row.role, blocks: [...row.blocks] })),
+  }
+}
+
+/** Tool-shaped list result (session_list schema). */
+function listToolShape(value: SessionToolListResult): {
+  sessions: { session_id: string; title?: string; tags: string[]; status: 'live' | 'idle'; created_at: number }[]
+  next_cursor?: string
+} {
+  return {
+    sessions: value.sessions.map(row => ({
+      session_id: row.sessionId,
+      ...row.title === undefined ? {} : { title: row.title },
+      tags: [...row.tags],
+      status: row.status,
+      created_at: row.createdAt,
+    })),
+    ...value.nextCursor === undefined ? {} : { next_cursor: value.nextCursor },
+  }
+}
+
+/** Tool-shaped rename result (session_rename schema). */
+function renameToolShape(value: SessionToolRenameResult): {
+  session_id: string
+  title?: string
+  tags?: string[]
+} {
+  return {
+    session_id: value.sessionId,
+    ...value.title === undefined ? {} : { title: value.title },
+    ...value.tags === undefined ? {} : { tags: [...value.tags] },
   }
 }
 
@@ -265,7 +327,7 @@ function buildProgram(): Command {
           ...opts.parent !== undefined ? { parentSessionId: SessionId(opts.parent) } : {},
           ...opts.tag.length > 0 ? { tags: opts.tag } : {},
         })
-        printResult(opts.format, () => result.sessionId, result)
+        printResult(opts.format, () => result.sessionId, () => createToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -284,7 +346,7 @@ function buildProgram(): Command {
           ...opts.sinceSeq !== undefined ? { sinceSeq: opts.sinceSeq } : {},
           ...opts.maxBlocks !== undefined ? { maxBlocks: opts.maxBlocks } : {},
         })
-        printResult(opts.format, () => renderReadText(result), result)
+        printResult(opts.format, () => renderReadText(result), () => readToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -298,7 +360,7 @@ function buildProgram(): Command {
       const ctx = await bootProfile(opts.profile, opts.patch)
       try {
         const result = await ctx.sessionTool.write(CLI_CALLER, SessionId(sessionId), content.join(' '))
-        printResult(opts.format, () => String(result.seq), result)
+        printResult(opts.format, () => String(result.seq), () => writeToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -329,7 +391,7 @@ function buildProgram(): Command {
           ...opts.cursor !== undefined ? { cursor: opts.cursor } : {},
           ...opts.limit !== undefined ? { limit: opts.limit } : {},
         })
-        printResult(opts.format, () => renderListText(result), result)
+        printResult(opts.format, () => renderListText(result), () => listToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -348,7 +410,7 @@ function buildProgram(): Command {
           ...opts.title !== undefined ? { title: opts.title } : {},
           ...opts.tag.length > 0 ? { tags: opts.tag } : {},
         })
-        printResult(opts.format, () => renderRenameText(result), result)
+        printResult(opts.format, () => renderRenameText(result), () => renameToolShape(result),)
       } finally {
         await disposeTree()
       }
