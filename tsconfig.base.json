@@ -6,7 +6,7 @@
   // so tsc never descends into worktree sources (whose own tsconfigs differ).
   // Regenerate the paths map with: node scripts/generate-tsconfig-paths.mjs
   "extends": [
-    "../dsh-worktree-profiles/tsconfig.base.json",
+    "../plugin-dev/session-tool-env/tsconfig.base.json",
     "./tsconfig.paths.json"
   ],
   "compilerOptions": {

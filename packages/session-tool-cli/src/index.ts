@@ -67,7 +67,7 @@ let liveCtx: Context | undefined
  * @returns the worktree root, or the `DSH_SESSION_ANCHOR` override.
  */
 export function dshWorktreeRoot(): string {
-  return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL('../../../../dsh-worktree-profiles', import.meta.url))
+  return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL('../../../../plugin-dev/session-tool-env', import.meta.url))
 }
 
 /**

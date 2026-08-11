@@ -1,6 +1,6 @@
 # DSH Session Tool —— 设计文档
 
-> 状态：设计已收敛（2026-08-11）；实施完成（2026-08-11，见 §12 实施记录），核心 4 包 + CLI 已在 dsh-worktree-profiles 环境全链路验证。
+> 状态：设计已收敛（2026-08-11）；实施完成（2026-08-11，见 §12 实施记录），核心 4 包 + CLI 已在 plugin-dev/session-tool-env 环境全链路验证。
 > 形态：**独立插件项目**，通过 DSH bundle 机制挂载；不修改 DSH 核心仓库（dev-dsh）。
 
 ## 1. 背景与目标
@@ -17,7 +17,7 @@ DSH（DeepSeek Harness）的 subagent 目前是**单次运行、不可交互**�
 
 **已确认的决策**：
 - 独立插件项目（本仓库），bundle 挂载进 DSH profile；
-- 依赖 `@deepseek-ai/dsh-*` 通过 pnpm `link:` 协议指向 `../dsh-worktree-profiles` checkout（dev-dsh 的专用 worktree，见 §12）；
+- 依赖 `@deepseek-ai/dsh-*` 通过 pnpm `link:` 协议指向 `../plugin-dev/session-tool-env` checkout（dev-dsh 的专用 worktree，见 §12）；
 - CLI 为项目自带 bin（不动 DSH 的 `apps/cli`）；
 - 工具命名统一 `session_*`（避开 DSH 已有 `task_*` 后台任务语义）；
 - `session_write` 写入 `user/message` 事件（= 输入 prompt），不唤醒、不投递，投递仍归 `send_message`；
@@ -224,7 +224,7 @@ session-tool-local:
 
 ## 12. 实施记录（2026-08-11）
 
-开发环境：`dsh-worktree-profiles` —— dev-dsh 仓库的新 git worktree（分支 `dsh-worktree-profiles`，基于 dev-dsh HEAD）。主 checkout 未动；`packages/session/session-tags`（未提交 WIP）原样复制进 worktree 并加入 `tsconfig.host.json` references。
+开发环境：`plugin-dev/session-tool-env` —— dev-dsh 仓库的新 git worktree（分支 `plugin-dev/session-tool-env`，基于 dev-dsh HEAD）。主 checkout 未动；`packages/session/session-tags`（未提交 WIP）原样复制进 worktree 并加入 `tsconfig.host.json` references。
 
 实施中确认/修正的设计点：
 

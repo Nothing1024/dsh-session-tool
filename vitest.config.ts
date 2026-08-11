@@ -14,7 +14,7 @@ import { defineConfig } from 'vitest/config'
  *   (file: installs of the vendor dirs fight peer-resolution; the alias keeps
  *   the test lane on the sources).
  */
-const WORKTREE = fileURLToPath(new URL('../dsh-worktree-profiles', import.meta.url))
+const WORKTREE = fileURLToPath(new URL('../plugin-dev/session-tool-env', import.meta.url))
 
 export default defineConfig({
   resolve: {

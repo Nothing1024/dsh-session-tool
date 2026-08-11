@@ -22,13 +22,13 @@ session-tool/
 
 ```sh
 # 1. 先构建本项目与 worktree 依赖
-(cd ../dsh-worktree-profiles && pnpm install && pnpm run build:lib:host && pnpm run build:lib:client)
+(cd ../plugin-dev/session-tool-env && pnpm install && pnpm run build:lib:host && pnpm run build:lib:client)
 pnpm -r run build
 
 # 2. 把 bundle 装进 profile（headless 或任意 profile）
 dsh plugin --profile headless add \
   packages/tool-session packages/session-tool-local packages/session-tool \
-  ../dsh-worktree-profiles/packages/session/session-tags
+  ../plugin-dev/session-tool-env/packages/session/session-tags
 ```
 
 之后 `dsh run`（agent）即可用 `session_create` / `session_read` / `session_write` / `session_list` / `session_rename` 五个工具；hiddenPrefixes 等配置在 profile 的 `cordis.patch.yml`（bundle 默认 `~` 前缀隐藏）。
@@ -43,7 +43,7 @@ dsh-session session list [--scope own|tree|all] [--root ID] [--tag T] [--title T
 dsh-session session rename <session_id> [--title T] [--tag T]
 ```
 
-- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点默认指向 `../dsh-worktree-profiles`（`DSH_SESSION_ANCHOR` 可覆盖）；
+- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点默认指向 `../plugin-dev/session-tool-env`（`DSH_SESSION_ANCHOR` 可覆盖）；
 - 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON；
 - CLI 是人工身份（`kind: cli`），豁免 owner fence；`own` scope 仅 agent 可用。
 

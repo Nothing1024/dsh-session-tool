@@ -34,13 +34,13 @@
     "schemastery": "^3.18.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-llm": "link:../../../dsh-worktree-profiles/packages/llm/llm",
-    "@deepseek-ai/dsh-session": "link:../../../dsh-worktree-profiles/packages/core/session",
-    "@deepseek-ai/dsh-session-persistence": "link:../../../dsh-worktree-profiles/packages/session/session-persistence",
-    "@deepseek-ai/dsh-session-persistence-jsonl": "link:../../../dsh-worktree-profiles/packages/session/session-persistence-jsonl",
-    "@deepseek-ai/dsh-session-tags": "link:../../../dsh-worktree-profiles/packages/session/session-tags",
-    "@deepseek-ai/dsh-session-title": "link:../../../dsh-worktree-profiles/packages/session/session-title",
-    "cordis": "link:../../../dsh-worktree-profiles/vendor/cordis",
-    "schemastery": "link:../../../dsh-worktree-profiles/vendor/schemastery"
+    "@deepseek-ai/dsh-llm": "link:../../../plugin-dev/session-tool-env/packages/llm/llm",
+    "@deepseek-ai/dsh-session": "link:../../../plugin-dev/session-tool-env/packages/core/session",
+    "@deepseek-ai/dsh-session-persistence": "link:../../../plugin-dev/session-tool-env/packages/session/session-persistence",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "link:../../../plugin-dev/session-tool-env/packages/session/session-persistence-jsonl",
+    "@deepseek-ai/dsh-session-tags": "link:../../../plugin-dev/session-tool-env/packages/session/session-tags",
+    "@deepseek-ai/dsh-session-title": "link:../../../plugin-dev/session-tool-env/packages/session/session-title",
+    "cordis": "link:../../../plugin-dev/session-tool-env/vendor/cordis",
+    "schemastery": "link:../../../plugin-dev/session-tool-env/vendor/schemastery"
   }
 }
