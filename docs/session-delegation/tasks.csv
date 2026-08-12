@@ -2,10 +2,10 @@
 1,P0:基线与决策,校准上游与插件基线,spec.md#task-1,无,pnpm test(两处) 与基线记录一致,已完成,env HEAD 534eb84 / plugin 3765918;apiproxy 344 例+plugin 67 例全绿;4 项待勘察已补全
 2,P0:基线与决策,定案开放决策并更新 spec 假设,spec.md#task-2,1,validate_package.py 0 FAIL,已完成,6 项全部拍板(选项A/workspace/单session idle/三件套/JSON约定/report保留);decisions.md 已落盘
 3,P0:基线与决策,执行 Phase 0 回归验证,spec.md#task-3,1;2,pnpm test(两处) 全绿,待开始,
-4,P1:上游核心小改,durableCreate 补 delegationDepth 写入,spec.md#task-4,3,pnpm test(env) 新增用例通过,待开始,
-5,P1:上游核心小改,MessageSource 增加 coordinator 归因,spec.md#task-5,3,pnpm test(env) 归因用例通过,待开始,
-6,P1:上游核心小改,新增 session.wait 端点,spec.md#task-6,4,pnpm test(env)+headless wait 冒烟,待开始,
-7,P1:上游核心小改,执行 Phase 1 回归验证,spec.md#task-7,4;5;6,pnpm test(env 全量 344+ 例) 全绿,待开始,
+4,P1:上游核心小改,durableCreate 补 delegationDepth 写入,spec.md#task-4,3,pnpm test(env) 新增用例通过,已完成,delegationDepth 可选字段+深度准入(父深度+1)+delegation-depth 错误码;3 新用例
+5,P1:上游核心小改,MessageSource 增加 coordinator 归因,spec.md#task-5,3,pnpm test(env) 归因用例通过,已完成,复用既有 CoordinatorMessageSource;prompt sourceKind/senderSessionId;2 新用例
+6,P1:上游核心小改,新增 session.wait 端点,spec.md#task-6,4,pnpm test(env)+headless wait 冒烟,已完成,wait 端点(until/timeoutMs/caller-signal-only)+插件客户端;11+2 新用例
+7,P1:上游核心小改,执行 Phase 1 回归验证,spec.md#task-7,4;5;6,pnpm test(env 全量 344+ 例) 全绿,已完成,apiproxy 359/359 全绿;零新增事件类型;plugin 69/69
 8,P2:插件元数据设施,注册 delegation 投影 unit,spec.md#task-8,7,pnpm test(plugin) 投影用例通过,待开始,
 9,P2:插件元数据设施,session_list 扩展投影血缘过滤,spec.md#task-9,8,pnpm test(plugin) 过滤用例通过,待开始,
 10,P2:插件元数据设施,session_wait 工具与 create 传参,spec.md#task-10,8,pnpm test(plugin)+headless 冒烟,待开始,

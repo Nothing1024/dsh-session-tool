@@ -102,6 +102,29 @@ describe('SessionHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it('wait posts the settle options and echoes the terminal status', async () => {
+    const fetchMock = stubFetch((url, body) => {
+      expect(url.pathname).toBe('/api/session.wait')
+      expect(body.payload).toEqual({ sessionId: 'session-1', until: 'idle', timeoutMs: 5000 })
+      return okResponse(body.rpcId, { status: 'completed', lastTurnEndReason: { kind: 'completed' } })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1', { until: 'idle', timeoutMs: 5000 })
+    expect(result).toEqual({ status: 'completed', lastTurnEndReason: { kind: 'completed' } })
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('wait defaults the options and maps a timeout status through', async () => {
+    const fetchMock = stubFetch((_url, body) => {
+      expect(body.payload).toEqual({ sessionId: 'session-1' })
+      return okResponse(body.rpcId, { status: 'timeout' })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'timeout' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it('list folds title/tags projections onto the rows', async () => {
     stubFetch((_url, body) => okResponse(body.rpcId, {
       items: [

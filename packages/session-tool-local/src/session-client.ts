@@ -130,6 +130,38 @@ export class SessionHttpClient extends AbstractApiClient {
     })
   }
 
+  /**
+   * Wait for a session's agent to settle, then report its terminal status.
+   * Single-session semantics: the wait never follows descendants. `until`
+   * selects the settle point (`idle` by default); `timeoutMs` bounds the wait
+   * and reports `timeout` without error. A cold session (no live agent) is
+   * reported from its log and settles immediately.
+   * @param sessionId - target session.
+   * @param options - optional settle point and deadline.
+   * @returns the terminal status and the last turn-end reason kind, when one
+   *   has ended.
+   */
+  async wait(sessionId: string, options: {
+    until?: 'idle' | 'turn-end'
+    timeoutMs?: number
+  } = {}): Promise<{
+    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
+    lastTurnEndReason?: { kind: string }
+  }> {
+    return await this.invoke('session.wait', async () => {
+      const response = await this.sessions.wait({
+        sessionId: sessionId as never,
+        ...options.until === undefined ? {} : { until: options.until },
+        ...options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs },
+      })
+      const value = this.unwrap(response)
+      return {
+        status: value.status,
+        ...value.lastTurnEndReason === undefined ? {} : { lastTurnEndReason: value.lastTurnEndReason },
+      }
+    })
+  }
+
   /** List every served session (web view: cwd-bearing sessions) with title/tags projections. */
   async list(): Promise<readonly SessionListRow[]> {
     return await this.invoke('session.list', async () => {
