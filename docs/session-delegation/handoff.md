@@ -24,6 +24,8 @@
 - ASM-003: 等待语义 = 单 session idle（不等子树），需 T-002 拍板
 - ASM-005: 清理策略 = 标记+手动+超时三件套，超时任务可后置，需 T-002 拍板
 - ASM-007: 收集约束边界 = 只做完成条件求值（wait-all/any/n），不做依赖图/调度/重试编排
+- ASM-008: provider 桥接落点 = 上游新包 subagent-session（bundle/base 装配行指向它；插件不注册 provider）
+- ASM-009: 约束路径边界 = creator/anyone 只作用于插件工具路径，subagent 工具路径保持 workspace 级
 
 ## 3. 开工上下文
 
@@ -35,8 +37,9 @@ Before:
       （Activation 三态 / ownedChildren / descriptor / drain / 精确父授权）─▶ 受控子会话
 
 After:
-模型 ─▶ tool-subagent ─▶ ctx.subagents ─▶ session provider（薄桥接）
-      ─▶ durableCreate + prompt + wait + read ─▶ 平级持久会话
+模型 ─▶ tool-subagent ─▶ ctx.subagents ─▶ subagent-session 包（上游新 provider）
+      ─▶ InProcessApiClient(apiProxy) → durableCreate + prompt + wait + read
+      ─▶ 平级持久会话
       （header 血缘/深度 + tags 分类 + delegation 投影状态 + 工具层约束）
 生态契约全部不变；编排层 workflow 不动
 ```
@@ -60,6 +63,7 @@ P5 真实场景验收 ◀──────┘
 - BR-005: 约束（授权强度/深度上限/可见性）在插件工具层执行，Config 决定
 - BR-006: 上游改动零新增事件类型（归因走 MessageSource 合并扩展）
 - BR-007: 收集约束声明式求值（wait-all/any/n + 失败策略 + 超时 + 聚合），不做依赖图/调度
+- ASM-008/009: provider 落点 = 上游 subagent-session；约束路径边界（creator 只覆盖插件工具路径）
 - INV-001: 会话日志 append-only、session/* 事件词汇不变
 - INV-002/003: subagent 工具名/schema 与 RPC 响应形状不变
 - INV-004: 旧 subagent 会话（含 subagent/descriptor 事件）只读兼容
