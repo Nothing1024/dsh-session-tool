@@ -259,3 +259,46 @@ session-tool-local:
 | **T17 并发写同一冷会话** | ⚠️ **发现 DSH 核心边界**：两个进程并发 resume+append 同一会话 → 磁盘重复 seq（end-seed 6×2、消息 7×2），静默损坏。根因：协调器 `serialize` 锁是**进程内**的（`this.chains`），`appendCore` 的 seq 校验基于加载时的内存 cursor——check-then-act 跨进程竞态。DSH 设计上会话单进程单主，并发写同一会话是未定义行为。插件层不绕过（不动 DSH 核心）；**上游化建议**：协调器做跨进程原子 append（文件锁/期望位置校验）。CLI 用户应避免并发写同一会话。 |
 
 已提交 `fa1ac1d`（CLI json 同构）+ 本轮三处修复（T8 存在性校验、T12/T13 输入预检、双前缀）+ 对应单测（服务层 20→22 例）。
+
+### 14. 第三轮：workspace 注册/绑定（2026-08-12，围绕 web 进程）
+
+**决策**（用户拍板）：workspace 注册表归 **web 进程**（`dsh web`）所有，插件经其 HTTP 网关操作；绑定用 header `cwd` 归属机制（持久化按 canonical cwd 分目录、跨进程可访问；但 **workspace 账 / GUI 分组只由 attachSession 写入**——bootstrap 仅在 workspace 域**首次初始化**时按 cwd 建账，此后重启只重建缓存、不入账；web 的 `session.create` adopt 已持久化 session 会走 `agents.resume()` 启动 agent，不可用作轻量补账——要运行中即时入账需上游化给核心加 `workspace.attachSession` RPC）；操作面 = `dsh-session workspace` 子命令 + `session_create` 的 `workspace_path` 隐式注册（不加独立 agent 工具）；网关地址 `Config.webUrl` 可配置（默认 `http://127.0.0.1:3080`）。
+
+**实施**：
+
+1. **`session-tool` 契约**：`SessionToolCreateOptions.workspacePath` / 结果回显 `workspaceId`+`workspacePath`；新增 4 个 workspace 方法（add/list/rename/delete）+ 行类型；错误码加 `web-unreachable`、`workspace-not-found`、`workspace-name-conflict`、`workspace-invalid-path`；
+2. **`session-tool-local`**：`Config.webUrl`；新模块 `src/workspace-client.ts`——`WorkspaceHttpClient extends AbstractApiClient`（**import 走 `@deepseek-ai/dsh-host-apiproxy/client` 子路径**，避开主入口连带加载 api-proxy 及全部 host 服务注入，headless 进程安全）；`create` 的 workspacePath 分支：**先**经网关幂等注册（canonical path 复用），**再**以返回的 canonical path 作 `meta.cwd` 建会话——注册失败零本地副作用；wire 业务错误透传，传输层错误统一 `web-unreachable`；
+3. **`tool-session`**：`session_create` 加 `workspace_path` 参数与输出回显；
+4. **`session-tool-cli`**：`session create --workspace`；新 `workspace` 子命令组（add/list/rename/delete，`--format json` 为 CLI 自有投影）；
+5. **bundle patch**：显式 `webUrl: 'http://127.0.0.1:3080'`（可改）；
+6. **环境修复**：worktree 迁移后遗留的 `plugin-dev` 旧路径全部改为 `env/session-tool-env`（4 包 package.json link、CLI 锚点、tsconfig.base、vitest WORKTREE、重跑 paths 生成器 434 条）；`session-tool-local` 新增 `@deepseek-ai/dsh-host-apiproxy` peer + link 依赖。
+
+**验证**：单测 58/58 全绿（workspace-client 11：envelope 全链路/错误映射/不可达；provider workspace 12：create 绑定/header cwd/失败零副作用/4 动词；工具 3：参数映射与 schema）；typecheck/build 全过；**真实冒烟**（临时 home + 真实 headless profile + 运行中的 `dsh web` 网关）：`workspace add --title` → `session create --workspace`（回显 canonical workspace_id/path）→ `session read` → `workspace list` 可见 → `workspace delete` 清理，全链路通过。
+
+**独立环境 Chrome DevTools 实测**（2026-08-12，临时 `$DSH_HOME` + 独立 `dsh web --port 3180` + headless bundle + `--patch webUrl`）：API key 加载（复制 `~/.dsh/.env` 后重启 web 进程）；`dsh-session workspace add` 注册的 workspace 在 GUI 侧边栏**即时可见**；`workspace rename` GUI 即时更新；`workspace delete` 即时消失；`session create --workspace` 的 session 持久化在 `sessions/--private-tmp-...-workspace-demo--/session-1`（按 cwd 分目录）；GUI 的"未分组"列出该 session（未入账，见边界）；web 进程关闭后 `workspace list` 报 `[web-unreachable]`。另确认 GUI 自身在 workspace 下新建会话走 attachSession 正常入账（账内出现 GUI blank session）。
+
+**已知边界**（文档化）：跨进程创建的绑定 session **不进 workspace 账**（GUI 显示在"未分组"）——cwd 归属只保证持久化按目录组织与跨进程可访问；入账仅发生在 workspace 域首次初始化 bootstrap 或 GUI/宿主进程内 attachSession；`workspace add --title` 仅新建时生效（复用保留既有标题）；workspace 会话并发写同 session 的 T17 边界不变。上游化建议：给 `host/apiproxy` 增加 `workspace.attachSession` RPC（纯账写入，不触碰 agents），即可实现跨进程即时入账。
+
+### 15. 第四轮：全转 web 进程（2026-08-12，session 对话闭环）
+
+**决策**（用户拍板，在 §14 的 GUI 割裂实测后）：**session 操作也全部围绕 web 进程**——创建/写入/改名/列表经网关 HTTP carrier，`session_write` 直接升级为**对话**（prompt 投递 + 模型回复）；接受改 DSH 核心 worktree（生态根 README 的"平台补丁模式"）。
+
+**上游化（env/session-tool-env）**：
+
+1. **`session.durableCreate` 端点**：`{sessionId?, title?, parentSessionId?, tags?, workspaceId?, cwd?}` → 组成会话 + **agent 待命**（DSH 的会话/agent 生命周期绑定，live session 必须配 live agent；不跑模型直到 prompt）→ title/tags → flush → workspace attachSession（**账即时写入**）→ 返回 `{sessionId, title?, tags?}`；错误码 `workspace-not-found` / `title-invalid` / `tag-invalid` / `workspace-attach-failed`；
+2. **`session.rename` 扩展 tags**：`{sessionId, title?, tags?}`（至少一个），**提交前预检**（normalizeSessionTitle/normalizeTags），避免 title 已提交 tags 拒绝的部分提交；`RpcErrorDetailsMap` + `rpc.schema.ts` 加 `tag-invalid`；
+3. **web-app bundle 挂 `session-tags` 行**（hiddenPrefixes `~`）+ package.json 依赖；
+4. 波及修正：connection fixture（durableCreate stub + rename tags）、runtime `ISession.rename` 契约（title optional）、两个 fake-api。
+
+**插件侧（session-tool）**：
+
+1. 新 `SessionHttpClient`（`session.durableCreate/prompt/list/rename`，`./client` 子路径、错误透传同 workspace-client 模式）；
+2. provider 转远程：`create→durableCreate`（先 workspace 注册后绑定）、`write→prompt`（对话，契约去 seq 只回 `sessionId`）、`rename→rename`、`list→session.list`（web 视图 + 本地 scope/血缘/隐藏/标签/标题/状态/分页过滤，`all` 不经本地交集）；**read 保留本地**（persistence.inspect，不 acquire agent、离线可用）；fence/own/tree/all 门槛/隐藏规则全部保留在插件层（基于只读 header 索引）；
+3. `Config.hiddenPrefixes`（默认 `['~']`，与 web 组合同步）；CLI/工具 create 传 `cwd`（调用者工作目录），保证 session 进 web 视图；
+4. 工具 `session_write` 语义：发 prompt（对话），输出 `{session_id}`。
+
+**验证**：上游 344 例（含 durable/rename-tags 新增 13 例）+ 插件 67 例全绿（session-client 10 / service 21 / workspace 12 / 工具 12 / e2e 1——e2e 改为**无网关 fail-loud fixture**：create/write/rename/list/workspace 全部 `[web-unreachable]`，read 本地 `[session-not-found]`，own scope `[scope-denied]`；webUrl 钉死不可达端口 3999，杜绝开发机正在运行的 GUI 泄漏进 fixture）；typecheck/build 全过。
+
+**独立环境 Chrome DevTools 最终实测**（临时 `$DSH_HOME` + 独立 `dsh web --port 3180` + key + bundle）：`session create --workspace`（durableCreate）→ **GUI 不刷新即时出现 workspace + 会话**（workspace-changed / host/session-added 帧）；`session write`（对话）→ **GUI 会话视图实时显示完整对话流**（用户消息 + 模型回复 + token 统计：LLM 1.9s / 124 tok/s / 9.4K 输入 / 73 输出）；`session rename` → **GUI 标题即时更新**（页面标题 + 侧边栏同步，未刷新）；workspace 账正确（1 个会话）。
+
+**修正后的已知边界**：§14 的"跨进程 session 不入账"已消除（durableCreate 直接 attach）；"运行中不即时刷新"已消除（web 进程内操作全推送）；`session_write` 依赖 web 网关 + 模型 key（`web-unreachable` / `model-unavailable` fail loud）；无 cwd 的会话不出现在 web 视图（工具/CLI create 默认带 cwd，无 cwd 仅"纯日志"场景）；`workspace add --title` 仅新建时生效；T17 并发写边界不变。

@@ -36,16 +36,29 @@ dsh plugin --profile headless add \
 ## CLI 用法
 
 ```sh
-dsh-session session create [--title T] [--tag T] [--parent ID] [--profile <name>]
+dsh-session session create [--title T] [--tag T] [--parent ID] [--workspace PATH] [--profile <name>]
 dsh-session session read <session_id> [--since-seq N] [--max-blocks N]
 dsh-session session write <session_id> <text...>
 dsh-session session list [--scope own|tree|all] [--root ID] [--tag T] [--title T] [--status live|idle] [--include-hidden] [--cursor C] [--limit N]
 dsh-session session rename <session_id> [--title T] [--tag T]
+dsh-session workspace add <path> [--title T] [--profile <name>]
+dsh-session workspace list [--profile <name>]
+dsh-session workspace rename <workspace_id> --title <title> [--profile <name>]
+dsh-session workspace delete <workspace_id> [--profile <name>]
 ```
 
-- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点默认指向 `../plugin-dev/session-tool-env`（`DSH_SESSION_ANCHOR` 可覆盖）；
-- 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON；
+- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点默认指向 `../env/session-tool-env`（`DSH_SESSION_ANCHOR` 可覆盖）；
+- 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON（workspace 子命令为 CLI 自有 JSON 投影）；
 - CLI 是人工身份（`kind: cli`），豁免 owner fence；`own` scope 仅 agent 可用。
+
+## Workspace（围绕 web 进程）
+
+workspace 注册表归 **web 进程**（`dsh web`）所有；本插件的 workspace 操作全部走 web 网关的 HTTP carrier（`POST /api/workspace.*`，JSON envelope），插件进程内不持有任何 workspace 状态：
+
+- `session_create` 的 `workspace_path` / CLI `session create --workspace <path>`：先经网关幂等注册（同 canonical path 复用），再以网关返回的 **canonical path 作为新会话 header 的 `cwd`** 建会话——持久化按 cwd 分目录、跨进程可访问；**workspace 账（GUI 分组）只由 attachSession 写入**（bootstrap 仅在 workspace 域首次初始化建账），跨进程 session 在 GUI 显示于"未分组"（详见 docs/design.md §14 边界与上游化建议）；
+- `dsh-session workspace add/list/rename/delete`：注册 / 列表 / 改名 / 删除（保留目录与会话日志）；
+- 网关不可达或拒绝时 fail loud：`[web-unreachable]` / 透传网关 wire 错误码（`workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`）；
+- 网关地址 = `session-tool-local` 的 `Config.webUrl`（bundle patch 可配置，默认 `http://127.0.0.1:3080`）。
 
 ## 开发
 
@@ -54,7 +67,7 @@ pnpm install
 node scripts/generate-tsconfig-paths.mjs   # worktree 构建产物变动后重生成
 pnpm -r run typecheck
 pnpm -r run build
-npx vitest run                             # 31 例（服务 20 + 工具 10 + CLI e2e 1）
+npx vitest run                             # 58 例（服务 34 + 工具 12 + HTTP 客户端 11 + CLI e2e 1）
 DSH_SNAPSHOT=record npx vitest run packages/session-tool-cli/tests/e2e.spec.ts   # 重录 e2e fixture
 ```
 
@@ -64,7 +77,8 @@ DSH_SNAPSHOT=record npx vitest run packages/session-tool-cli/tests/e2e.spec.ts  
 - **owner fence**：agent 调用者必须是目标会话自身或其祖先（沿 header `parentSession` 链）；CLI 豁免；
 - **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根，调用者须为根或祖先）、`all`（Config 门槛：`allowAllScope: top-level|any|none` + `cliAllowAll`）；全部默认应用 hiddenPrefixes 过滤；
 - **重命名**：`session/title`（user 源 pin 标题、停自动生成）+ `session/tags`（last-wins）；hiddenPrefixes 规则与 GUI 工作区浏览器共用同一套（session-tags 的 `filterVisibleByRules`）；
-- **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid`（HarnessError code，工具失败结果与 CLI stderr 均携带）。
+- **workspace 注册/绑定走 web 网关**：`session_create --workspace_path` 先经网关幂等注册 workspace，再以 canonical path 作为会话 header `cwd`（归属机制）；workspace 管理经 `dsh-session workspace` 子命令；网关地址 `Config.webUrl` 可配置（默认 `http://127.0.0.1:3080`）；不可达 fail loud（`web-unreachable`）；
+- **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid` / `web-unreachable` / `workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`（HarnessError code，工具失败结果与 CLI stderr 均携带）。
 
 ## 注意事项
 
