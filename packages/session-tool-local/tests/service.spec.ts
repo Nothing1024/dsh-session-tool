@@ -10,7 +10,7 @@ import { Context } from 'cordis'
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
-import { CallId, createAssistantMessage, createToolResultMessage } from '@deepseek-ai/dsh-llm'
+import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionToolLocalService from 'session-tool-local'
 import type { Config as ToolConfig } from 'session-tool-local'
 import {
@@ -798,6 +798,50 @@ describe('SessionToolLocalService (remote)', () => {
       sessionClient().list.mockResolvedValue([listRow('one', { parentSessionId: 'root' })])
       await expect(ctx.sessionTool.list(agent('root'), { cursor: 'nope' }))
         .rejects.toThrow(SessionNotFoundError)
+    })
+  })
+
+  describe('restart recovery (BR-004 / EVD-008)', () => {
+    it('rebuilds delegation statuses from persisted logs after a process restart', async () => {
+      // First "process": create a delegated session with a completed turn and
+      // one that is still running, then dispose the context (process exit).
+      callerSession('root')
+      const completed = ctx.sessions.create(SessionId('restart-completed'), {
+        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+      })
+      completed.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      completed.append('user/message', createUserMessage({
+        content: [{ type: 'text', text: 'work' }],
+        source: { kind: 'user' },
+      }), { surfaceOp: 'append' })
+      completed.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      const running = ctx.sessions.create(SessionId('restart-running'), {
+        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+      })
+      running.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      await ctx.sessions.flush(completed)
+      await ctx.sessions.flush(running)
+      await ctx.fiber.dispose()
+
+      // Second "process": a fresh context over the SAME persistence root.
+      const ctx2 = await compose(root)
+      try {
+        sessionClient().list.mockResolvedValue([
+          listRow('restart-completed', { parentSessionId: 'root', tags: ['delegated'] }),
+          listRow('restart-running', { parentSessionId: 'root', tags: ['delegated'] }),
+        ])
+        // The header index reads the persisted headers after restart; the
+        // delegation statuses are refolded from the persisted logs. The
+        // crash-orphaned open turn is repaired to `interrupted` on reload,
+        // which the projection maps to `aborted` — the honest log-derived
+        // state, never lost to the restart (BR-004).
+        const all = await ctx2.sessionTool.list(CLI, { scope: 'all', status: 'completed' })
+        expect(all.sessions.map(row => row.sessionId)).toEqual(['restart-completed'])
+        const interrupted = await ctx2.sessionTool.list(CLI, { scope: 'all', status: 'aborted' })
+        expect(interrupted.sessions.map(row => row.sessionId)).toEqual(['restart-running'])
+      } finally {
+        await ctx2.fiber.dispose()
+      }
     })
   })
 
