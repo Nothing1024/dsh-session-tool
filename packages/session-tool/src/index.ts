@@ -108,8 +108,18 @@ export interface SessionToolListFilter {
   readonly tags?: readonly string[]
   /** Case-sensitive substring filter on the durable title. */
   readonly title?: string
-  /** Only live or only idle sessions. */
-  readonly status?: 'live' | 'idle'
+  /**
+   * Only sessions in one lifecycle bucket: `live` / `idle` keep the
+   * store-presence semantics, while the delegation vocabulary
+   * (`running` / `completed` / `failed` / `aborted`) filters by the
+   * log-derived delegation projection.
+   */
+  readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted'
+  /**
+   * Only delegated sessions: those whose tag set includes `delegated` or
+   * whose header records a positive delegation depth.
+   */
+  readonly origin?: 'delegated'
   /** Exemption from the hidden-prefix filter (default `false`: hidden rows are excluded). */
   readonly includeHidden?: boolean
   /** Opaque pagination cursor returned by a previous call. */
@@ -128,6 +138,12 @@ export interface SessionToolListRow {
   readonly tags: readonly string[]
   /** `live` while the session is in this process's store, `idle` otherwise. */
   readonly status: 'live' | 'idle'
+  /**
+   * Log-derived delegation status, when the projection is resolvable:
+   * `running` while a turn is open, then the terminal mapping of its
+   * `turn/end` reason. Absent when no projection support is composed.
+   */
+  readonly delegationStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
   /** Creation timestamp from the session header. */
   readonly createdAt: number
 }

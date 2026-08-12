@@ -174,6 +174,38 @@ describe('tool-session', () => {
     })
   })
 
+  it('session_list forwards the delegation status filter and projects delegation_status', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.list.mockResolvedValue({
+      sessions: [{
+        sessionId: SessionId('session-9'),
+        title: 't',
+        tags: ['delegated'],
+        status: 'idle',
+        delegationStatus: 'running',
+        createdAt: 1,
+      }],
+    })
+    const value = await run(defs.get('session_list')!, {
+      status: 'running',
+      origin: 'delegated',
+    }, sessionTool)
+    expect(sessionTool.list).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent' }),
+      expect.objectContaining({ status: 'running', origin: 'delegated' }),
+    )
+    expect(value).toEqual({
+      sessions: [{
+        session_id: 'session-9',
+        title: 't',
+        tags: ['delegated'],
+        status: 'idle',
+        delegation_status: 'running',
+        created_at: 1,
+      }],
+    })
+  })
+
   it('session_rename forwards title and tags', async () => {
     const { defs, sessionTool } = register()
     sessionTool.rename.mockResolvedValue({

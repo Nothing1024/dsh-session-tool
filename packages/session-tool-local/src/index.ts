@@ -50,6 +50,7 @@ import type {
 import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
 import { delegationProjectionDefinition } from './delegation-projection.ts'
+import type { DelegationStatus } from './delegation-projection.ts'
 
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
@@ -227,25 +228,38 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // projections; own/tree rows are intersected with the scope's id set
     // (the local header index carries the lineage), `all` uses every row.
     const scopeIds = candidates === undefined ? undefined : new Set(candidates)
-    const rows: SessionToolListRow[] = (await this.sessionClient.list())
+    const gatewayRows = (await this.sessionClient.list())
       .filter(row => scopeIds === undefined || scopeIds.has(row.sessionId as SessionId))
-      .map(row => {
-        const header = index.get(row.sessionId as SessionId)
-        return {
-          sessionId: row.sessionId as SessionId,
-          ...row.title === undefined ? {} : { title: row.title },
-          tags: [...(row.tags ?? [])],
-          status: row.running ? 'live' : 'idle',
-          createdAt: header?.createdAt ?? row.updatedAt,
-        }
-      })
+    const rows: SessionToolListRow[] = await Promise.all(gatewayRows.map(async row => {
+      const header = index.get(row.sessionId as SessionId)
+      const delegationStatus = await this.delegationStatusOf(row.sessionId as SessionId)
+      return {
+        sessionId: row.sessionId as SessionId,
+        ...row.title === undefined ? {} : { title: row.title },
+        tags: [...(row.tags ?? [])],
+        status: row.running ? 'live' : 'idle',
+        ...delegationStatus === undefined ? {} : { delegationStatus },
+        createdAt: header?.createdAt ?? row.updatedAt,
+      }
+    }))
 
     let visible = rows
     if (filter.includeHidden !== true) {
       visible = visible.filter(row => !isTitleHidden(row.title, this.config.hiddenPrefixes))
     }
     if (filter.status !== undefined) {
-      visible = visible.filter(row => row.status === filter.status)
+      // The delegation vocabulary (running/completed/failed/aborted) filters
+      // by the log-derived projection; live/idle keep store-presence
+      // semantics. A delegation filter with no projection support degrades
+      // loudly: the row's delegationStatus is absent, so nothing matches.
+      if (filter.status === 'live' || filter.status === 'idle') {
+        visible = visible.filter(row => row.status === filter.status)
+      } else {
+        visible = visible.filter(row => row.delegationStatus === filter.status)
+      }
+    }
+    if (filter.origin === 'delegated') {
+      visible = visible.filter(row => this.isDelegated(row, index))
     }
     const requiredTags = filter.tags
     if (requiredTags !== undefined && requiredTags.length > 0) {
@@ -397,6 +411,37 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
   // ---- session resolution ------------------------------------------------
 
+  /**
+   * Derive a session's delegation status from its log: the projection unit's
+   * pure fold over the live events when the session is attached, or the
+   * persisted log tail otherwise (the documented degradation when the
+   * projection registry is not composed). `undefined` when the session is
+   * neither live nor persisted (the row then carries no delegationStatus).
+   * @param sessionId - target session.
+   * @returns the log-derived status, when the log is resolvable.
+   */
+  private async delegationStatusOf(sessionId: SessionId): Promise<DelegationStatus | undefined> {
+    const live = this.ctx.sessions.get(sessionId)
+    const events = live?.events
+    if (events !== undefined) {
+      return foldDelegationStatus(events)
+    }
+    const inspected = await this.inspectSession(sessionId)
+    return inspected === undefined ? undefined : foldDelegationStatus(inspected.events)
+  }
+
+  /**
+   * Whether a list row is a delegated session: its tag set carries the
+   * `delegated` marker, or its header records a positive delegation depth.
+   * @param row - the gateway row.
+   * @param index - the merged header index.
+   */
+  private isDelegated(row: SessionToolListRow, index: Map<SessionId, SessionHeader>): boolean {
+    if (row.tags.includes('delegated')) return true
+    const header = index.get(row.sessionId)
+    return (header?.delegationDepth ?? 0) > 0
+  }
+
   /** Merge live and persisted headers into one id → header index (live wins). */
   private async headerIndex(): Promise<Map<SessionId, SessionHeader>> {
     const index = new Map<SessionId, SessionHeader>()
@@ -493,4 +538,11 @@ function messageRow(event: SessionEvent): SessionToolMessageRow | undefined {
     default:
       return undefined
   }
+}
+
+/** Fold the delegation projection unit over one event prefix. */
+function foldDelegationStatus(events: readonly SessionEvent[]): DelegationStatus {
+  let state = delegationProjectionDefinition.init()
+  for (const event of events) state = delegationProjectionDefinition.apply(state, event)
+  return delegationProjectionDefinition.view(state).status
 }

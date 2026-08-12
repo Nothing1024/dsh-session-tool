@@ -213,13 +213,19 @@ export function apply(ctx: Context): void {
       'List sessions. Scope "own" (default) lists you and your descendants; scope "tree" lists the subtree rooted '
       + 'at session_id (you must be the root or one of its ancestors); scope "all" lists every materialized session '
       + 'and is gated by deployment policy. Hidden-prefix titles are excluded unless include_hidden is set. '
-      + 'Filter by tag intersection, title substring, and status; paginate with cursor/limit.',
+      + 'Filter by tag intersection, title substring, delegation status (running/completed/failed/aborted), and '
+      + 'origin "delegated"; paginate with cursor/limit.',
     parameters: {
       scope: { type: 'string', enum: ['own', 'tree', 'all'], description: 'Listing scope; defaults to own.' },
       session_id: { type: 'string', description: 'Tree root for scope "tree".' },
       tags: { type: 'array', items: { type: 'string' }, description: 'Rows must carry every listed tag.' },
       title: { type: 'string', description: 'Case-sensitive substring filter on the durable title.' },
-      status: { type: 'string', enum: ['live', 'idle'], description: 'Only live or only idle sessions.' },
+      status: {
+        type: 'string',
+        enum: ['live', 'idle', 'running', 'completed', 'failed', 'aborted'],
+        description: 'live/idle filter store presence; running/completed/failed/aborted filter the log-derived delegation status.',
+      },
+      origin: { type: 'string', enum: ['delegated'], description: 'Only delegated sessions (tag "delegated" or positive delegation depth).' },
       include_hidden: { type: 'boolean', description: 'Include hidden-prefix sessions (default false).' },
       cursor: { type: 'string', description: 'Opaque pagination cursor from a previous result.' },
       limit: { type: 'number', description: 'Row cap; clamped to the configured maximum.' },
@@ -240,6 +246,11 @@ export function apply(ctx: Context): void {
                 title: { type: 'string' },
                 tags: { type: 'array', required: true, items: { type: 'string' } },
                 status: { type: 'string', required: true, enum: ['live', 'idle'] },
+                delegation_status: {
+                  type: 'string',
+                  enum: ['idle', 'running', 'completed', 'failed', 'aborted', 'max-tokens'],
+                  description: 'Log-derived delegation status, when the log is resolvable.',
+                },
                 created_at: { type: 'integer', required: true },
               },
             },
@@ -251,7 +262,7 @@ export function apply(ctx: Context): void {
         type: 'text',
         text: value.sessions.length === 0
           ? '(no sessions)'
-          : value.sessions.map(row => `${row.session_id} [${row.status}]${row.title === undefined ? '' : ` ${row.title}`}`).join('\n')
+          : value.sessions.map(row => `${row.session_id} [${row.status}]${row.delegation_status === undefined ? '' : `/${row.delegation_status}`}${row.title === undefined ? '' : ` ${row.title}`}`).join('\n')
           + (value.next_cursor === undefined ? '' : `\n(next: ${value.next_cursor})`),
       }],
     },
@@ -262,6 +273,7 @@ export function apply(ctx: Context): void {
         ...args.tags !== undefined ? { tags: args.tags } : {},
         ...args.title !== undefined ? { title: args.title } : {},
         ...args.status !== undefined ? { status: args.status } : {},
+        ...args.origin !== undefined ? { origin: args.origin } : {},
         ...args.include_hidden !== undefined ? { includeHidden: args.include_hidden } : {},
         ...args.cursor !== undefined ? { cursor: args.cursor } : {},
         ...args.limit !== undefined ? { limit: args.limit } : {},
@@ -272,6 +284,7 @@ export function apply(ctx: Context): void {
           ...row.title !== undefined ? { title: row.title } : {},
           tags: [...row.tags],
           status: row.status,
+          ...row.delegationStatus === undefined ? {} : { delegation_status: row.delegationStatus },
           created_at: row.createdAt,
         })),
         ...result.nextCursor === undefined ? {} : { next_cursor: result.nextCursor },

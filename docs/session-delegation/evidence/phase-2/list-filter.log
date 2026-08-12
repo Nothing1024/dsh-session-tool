@@ -1,0 +1,12 @@
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/delegation-projection.spec.ts (8 tests) 4ms
+ ✓ packages/tool-session/tests/tools.spec.ts (13 tests) 20ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (23 tests) 194ms
+
+ Test Files  3 passed (3)
+      Tests  44 passed (44)
+   Start at  18:53:19
+   Duration  651ms (transform 544ms, setup 0ms, import 735ms, tests 217ms, environment 0ms)
+

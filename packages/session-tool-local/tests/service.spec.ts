@@ -333,6 +333,68 @@ describe('SessionToolLocalService (remote)', () => {
       expect(idle.sessions.map(row => row.sessionId)).toEqual(['a', 'b'])
     })
 
+    it('derives and filters by the delegation projection status', async () => {
+      callerSession('root')
+      const child = ctx.sessions.create(SessionId('child'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      child.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      child.append('user/message', { content: [{ type: 'text', text: 'work' }] }, { surfaceOp: 'append' })
+      child.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      const failed = ctx.sessions.create(SessionId('failed'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      failed.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      failed.append('turn/end', {
+        turn: 1,
+        reason: { kind: 'error', error: { message: 'boom', code: 'X' } },
+      })
+      const running = ctx.sessions.create(SessionId('running'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      running.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      sessionClient().list.mockResolvedValue([
+        listRow('root', {}),
+        listRow('child', { parentSessionId: 'root' }),
+        listRow('failed', { parentSessionId: 'root' }),
+        listRow('running', { parentSessionId: 'root' }),
+      ])
+
+      const completed = await ctx.sessionTool.list(agent('root'), { scope: 'all', status: 'completed' })
+      expect(completed.sessions.map(row => row.sessionId)).toEqual(['child'])
+      const failedRows = await ctx.sessionTool.list(agent('root'), { scope: 'all', status: 'failed' })
+      expect(failedRows.sessions.map(row => row.sessionId)).toEqual(['failed'])
+      const runningRows = await ctx.sessionTool.list(agent('root'), { scope: 'all', status: 'running' })
+      expect(runningRows.sessions.map(row => row.sessionId)).toEqual(['running'])
+      // The row carries the derived status for model consumption.
+      const row = completed.sessions[0]
+      expect(row?.delegationStatus).toBe('completed')
+    })
+
+    it('filters by the delegated origin (tag or positive delegation depth)', async () => {
+      callerSession('root')
+      const tagged = ctx.sessions.create(SessionId('tagged'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      tagged.append('session/tags', { tags: ['delegated'], source: { kind: 'user' } })
+      const deep = ctx.sessions.create(SessionId('deep'), {
+        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 2 },
+      })
+      const plain = ctx.sessions.create(SessionId('plain'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      sessionClient().list.mockResolvedValue([
+        listRow('root', {}),
+        listRow('tagged', { parentSessionId: 'root', tags: ['delegated'] }),
+        listRow('deep', { parentSessionId: 'root' }),
+        listRow('plain', { parentSessionId: 'root' }),
+      ])
+
+      const delegated = await ctx.sessionTool.list(agent('root'), { scope: 'all', origin: 'delegated' })
+      // Same createdAt, so rows sort by id.
+      expect(delegated.sessions.map(row => row.sessionId)).toEqual(['deep', 'tagged'])
+    })
+
     it('paginates with cursor and limit', async () => {
       callerSession('root')
       sessionClient().list.mockResolvedValue([
