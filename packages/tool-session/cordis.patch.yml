@@ -26,6 +26,10 @@
         cliAllowAll: true
         readMaxBlocks: 500
         listMaxRows: 100
+        # Base URL of the web gateway (`dsh web`), the workspace registry's
+        # authority. Workspace registration and management go over this
+        # gateway's HTTP carrier; point it at the running web process.
+        webUrl: 'http://127.0.0.1:3080'
 
     - id: tool-session
       name: 'tool-session'

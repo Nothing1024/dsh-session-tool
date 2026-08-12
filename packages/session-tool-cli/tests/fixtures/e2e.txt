@@ -1,37 +1,24 @@
-## create
-exit 0
-session-1
-## write
-exit 0
-6
-## read
-exit 0
-[6 user] hello world
-## rename
-exit 0
-title: renamed title
-tags: alpha,beta
-## list default (all)
-exit 0
-session-1 [idle] renamed title
-## hidden rename
-exit 0
-title: ~internal
-## list without hidden
-exit 0
-(no sessions)
-## list include hidden
-exit 0
-session-1 [idle] ~internal
-## create child under parent
-exit 0
-session-2
-## tree scope
-exit 0
-session-2 [idle] child
-## read missing
+## create (web unreachable)
+exit 1
+dsh-session: [web-unreachable] web gateway unreachable for session.durableCreate: fetch failed
+## write (web unreachable)
+exit 1
+dsh-session: [web-unreachable] web gateway unreachable for session.prompt: fetch failed
+## read local (no session)
+exit 1
+dsh-session: [session-not-found] session "session-1" does not exist
+## read local missing
 exit 1
 dsh-session: [session-not-found] session "session-999" does not exist
+## rename (web unreachable)
+exit 1
+dsh-session: [web-unreachable] web gateway unreachable for session.rename: fetch failed
+## list (web unreachable)
+exit 1
+dsh-session: [web-unreachable] web gateway unreachable for session.list: fetch failed
+## workspace list (web unreachable)
+exit 1
+dsh-session: [web-unreachable] web gateway unreachable for workspace.list: fetch failed
 ## own scope from CLI
 exit 1
 dsh-session: [scope-denied] scope "own" requires an agent caller; use --scope tree or --scope all from the CLI

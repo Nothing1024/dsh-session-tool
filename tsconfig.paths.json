@@ -2,1294 +2,1294 @@
   "compilerOptions": {
     "paths": {
       "@deepseek-ai/dsh-acp": [
-        "./../plugin-dev/session-tool-env/packages/acp/acp/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/acp/acp/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-acp/*": [
-        "./../plugin-dev/session-tool-env/packages/acp/acp/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/acp/acp/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-api-gateway": [
-        "./../plugin-dev/session-tool-env/packages/api/gateway/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/api/gateway/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-api-gateway/*": [
-        "./../plugin-dev/session-tool-env/packages/api/gateway/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/api/gateway/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-api-remotes": [
-        "./../plugin-dev/session-tool-env/packages/api/remotes/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/api/remotes/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-api-remotes/*": [
-        "./../plugin-dev/session-tool-env/packages/api/remotes/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/api/remotes/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-attachment": [
-        "./../plugin-dev/session-tool-env/packages/attachment/attachment/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/attachment/attachment/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-attachment/*": [
-        "./../plugin-dev/session-tool-env/packages/attachment/attachment/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/attachment/attachment/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-attachment-local": [
-        "./../plugin-dev/session-tool-env/packages/attachment/attachment-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/attachment/attachment-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-attachment-local/*": [
-        "./../plugin-dev/session-tool-env/packages/attachment/attachment-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/attachment/attachment-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-bash": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/bash/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-bash/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/bash/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-bash-env": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-env/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-env/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-bash-env/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-env/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-env/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-bash-local": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-bash-local/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-bash-sandbox": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-sandbox/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-sandbox/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-bash-sandbox/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/bash-sandbox/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/bash-sandbox/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-pwsh-local": [
-        "./../plugin-dev/session-tool-env/packages/bash/pwsh-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/pwsh-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-pwsh-local/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/pwsh-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/pwsh-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-pwsh-sandbox": [
-        "./../plugin-dev/session-tool-env/packages/bash/pwsh-sandbox/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/pwsh-sandbox/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-pwsh-sandbox/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/pwsh-sandbox/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/pwsh-sandbox/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-bash": [
-        "./../plugin-dev/session-tool-env/packages/bash/tool-bash/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/tool-bash/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-bash/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/tool-bash/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/tool-bash/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-pwsh": [
-        "./../plugin-dev/session-tool-env/packages/bash/tool-pwsh/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bash/tool-pwsh/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-pwsh/*": [
-        "./../plugin-dev/session-tool-env/packages/bash/tool-pwsh/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bash/tool-pwsh/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-app-boot": [
-        "./../plugin-dev/session-tool-env/packages/boot/app-boot/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/boot/app-boot/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-app-boot/*": [
-        "./../plugin-dev/session-tool-env/packages/boot/app-boot/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/boot/app-boot/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-base": [
-        "./../plugin-dev/session-tool-env/packages/bundle/base/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bundle/base/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-base/*": [
-        "./../plugin-dev/session-tool-env/packages/bundle/base/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bundle/base/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-headless": [
-        "./../plugin-dev/session-tool-env/packages/bundle/headless/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bundle/headless/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-headless/*": [
-        "./../plugin-dev/session-tool-env/packages/bundle/headless/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bundle/headless/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web-app": [
-        "./../plugin-dev/session-tool-env/packages/bundle/web-app/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/bundle/web-app/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web-app/*": [
-        "./../plugin-dev/session-tool-env/packages/bundle/web-app/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/bundle/web-app/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-connection": [
-        "./../plugin-dev/session-tool-env/packages/client/connection/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/connection/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-connection/*": [
-        "./../plugin-dev/session-tool-env/packages/client/connection/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/connection/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-hmr": [
-        "./../plugin-dev/session-tool-env/packages/client/hmr/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/hmr/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-hmr/*": [
-        "./../plugin-dev/session-tool-env/packages/client/hmr/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/hmr/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-locale": [
-        "./../plugin-dev/session-tool-env/packages/client/locale/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/locale/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-locale/*": [
-        "./../plugin-dev/session-tool-env/packages/client/locale/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/locale/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-modules": [
-        "./../plugin-dev/session-tool-env/packages/client/modules/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/modules/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-modules/*": [
-        "./../plugin-dev/session-tool-env/packages/client/modules/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/modules/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-runtime": [
-        "./../plugin-dev/session-tool-env/packages/client/runtime/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/runtime/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-runtime/*": [
-        "./../plugin-dev/session-tool-env/packages/client/runtime/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/runtime/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-schema-form": [
-        "./../plugin-dev/session-tool-env/packages/client/schema-form/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/schema-form/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-schema-form/*": [
-        "./../plugin-dev/session-tool-env/packages/client/schema-form/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/schema-form/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-test-runtime": [
-        "./../plugin-dev/session-tool-env/packages/client/test-runtime/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/test-runtime/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-test-runtime/*": [
-        "./../plugin-dev/session-tool-env/packages/client/test-runtime/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/test-runtime/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-agent-preset": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-agent-preset/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-agent-preset/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-agent-preset/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-agent-preset/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-agent-preset/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-command": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-command/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-command/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-command/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-command/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-command/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-conversation": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-conversation/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-conversation/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-conversation/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-conversation/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-conversation/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-deliverables": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-deliverables/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-deliverables/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-deliverables/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-deliverables/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-deliverables/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-goal": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-goal/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-goal/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-goal/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-goal/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-goal/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-layout": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-layout/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-layout/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-layout/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-layout/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-layout/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-model": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-model/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-model/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-model/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-model/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-model/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-models": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-models/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-models/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-models/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-models/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-models/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-permission": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-permission/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-permission/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-permission/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-permission/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-permission/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-plan": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-plan/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-plan/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-plan/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-plan/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-plan/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-primitives": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-primitives/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-primitives/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-primitives/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-primitives/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-primitives/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-question": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-question/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-question/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-question/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-question/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-question/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-settings": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-settings/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-settings/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-settings/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-settings/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-settings/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-settings-general": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-settings-general/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-settings-general/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-settings-general/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-settings-general/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-settings-general/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-sidebar": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-sidebar/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-sidebar/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-sidebar/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-sidebar/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-sidebar/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-skill": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-skill/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-skill/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-skill/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-skill/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-skill/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-slash": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-slash/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-slash/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-slash/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-slash/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-slash/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-slots": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-slots/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-slots/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-slots/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-slots/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-slots/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-subagent": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-subagent/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-subagent/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-subagent/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-subagent/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-subagent/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-theme": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-theme/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-theme/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-theme/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-theme/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-theme/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-tool": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-tool/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-tool/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-tool/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-tool/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-tool/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-trajectory": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-trajectory/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-trajectory/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-trajectory/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-trajectory/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-trajectory/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-workspace": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-workspace/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/ui-workspace/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-ui-workspace/*": [
-        "./../plugin-dev/session-tool-env/packages/client/ui-workspace/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/ui-workspace/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-web": [
-        "./../plugin-dev/session-tool-env/packages/client/web/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/web/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-web/*": [
-        "./../plugin-dev/session-tool-env/packages/client/web/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/web/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-client-web-react": [
-        "./../plugin-dev/session-tool-env/packages/client/web-react/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/client/web-react/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-client-web-react/*": [
-        "./../plugin-dev/session-tool-env/packages/client/web-react/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/client/web-react/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-code-runtime": [
-        "./../plugin-dev/session-tool-env/packages/code-runtime/code-runtime/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/code-runtime/code-runtime/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-code-runtime/*": [
-        "./../plugin-dev/session-tool-env/packages/code-runtime/code-runtime/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/code-runtime/code-runtime/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-code-runtime-worker": [
-        "./../plugin-dev/session-tool-env/packages/code-runtime/code-runtime-worker/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/code-runtime/code-runtime-worker/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-code-runtime-worker/*": [
-        "./../plugin-dev/session-tool-env/packages/code-runtime/code-runtime-worker/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/code-runtime/code-runtime-worker/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-command-compact": [
-        "./../plugin-dev/session-tool-env/packages/compact/command-compact/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/compact/command-compact/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-command-compact/*": [
-        "./../plugin-dev/session-tool-env/packages/compact/command-compact/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/compact/command-compact/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-compact": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/compact/compact/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-compact/*": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/compact/compact/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-compact-basic": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact-basic/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/compact/compact-basic/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-compact-basic/*": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact-basic/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/compact/compact-basic/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-compact-tool-result-prune": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact-tool-result-prune/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/compact/compact-tool-result-prune/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-compact-tool-result-prune/*": [
-        "./../plugin-dev/session-tool-env/packages/compact/compact-tool-result-prune/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/compact/compact-tool-result-prune/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-reference": [
-        "./../plugin-dev/session-tool-env/packages/context/session-reference/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/context/session-reference/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-reference/*": [
-        "./../plugin-dev/session-tool-env/packages/context/session-reference/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/context/session-reference/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-time-context": [
-        "./../plugin-dev/session-tool-env/packages/context/time-context/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/context/time-context/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-time-context/*": [
-        "./../plugin-dev/session-tool-env/packages/context/time-context/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/context/time-context/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tmux-context": [
-        "./../plugin-dev/session-tool-env/packages/context/tmux-context/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/context/tmux-context/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tmux-context/*": [
-        "./../plugin-dev/session-tool-env/packages/context/tmux-context/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/context/tmux-context/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-workspace-context": [
-        "./../plugin-dev/session-tool-env/packages/context/workspace-context/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/context/workspace-context/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-workspace-context/*": [
-        "./../plugin-dev/session-tool-env/packages/context/workspace-context/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/context/workspace-context/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent": [
-        "./../plugin-dev/session-tool-env/packages/core/agent/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/agent/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent/*": [
-        "./../plugin-dev/session-tool-env/packages/core/agent/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/agent/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-default-model": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-default-model/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/agent-default-model/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-default-model/*": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-default-model/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/agent-default-model/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-loop": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-loop/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/agent-loop/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-loop/*": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-loop/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/agent-loop/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-tool-mode": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-tool-mode/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/agent-tool-mode/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-tool-mode/*": [
-        "./../plugin-dev/session-tool-env/packages/core/agent-tool-mode/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/agent-tool-mode/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-scope": [
-        "./../plugin-dev/session-tool-env/packages/core/scope/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/scope/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-scope/*": [
-        "./../plugin-dev/session-tool-env/packages/core/scope/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/scope/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session": [
-        "./../plugin-dev/session-tool-env/packages/core/session/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/session/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session/*": [
-        "./../plugin-dev/session-tool-env/packages/core/session/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/session/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-system-prompt": [
-        "./../plugin-dev/session-tool-env/packages/core/system-prompt/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/system-prompt/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-system-prompt/*": [
-        "./../plugin-dev/session-tool-env/packages/core/system-prompt/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/system-prompt/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tools": [
-        "./../plugin-dev/session-tool-env/packages/core/tools/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/core/tools/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tools/*": [
-        "./../plugin-dev/session-tool-env/packages/core/tools/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/core/tools/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-credentials": [
-        "./../plugin-dev/session-tool-env/packages/credentials/credentials/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/credentials/credentials/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-credentials/*": [
-        "./../plugin-dev/session-tool-env/packages/credentials/credentials/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/credentials/credentials/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-credentials-local": [
-        "./../plugin-dev/session-tool-env/packages/credentials/credentials-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/credentials/credentials-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-credentials-local/*": [
-        "./../plugin-dev/session-tool-env/packages/credentials/credentials-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/credentials/credentials-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-e2b": [
-        "./../plugin-dev/session-tool-env/packages/e2b/e2b/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/e2b/e2b/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-e2b/*": [
-        "./../plugin-dev/session-tool-env/packages/e2b/e2b/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/e2b/e2b/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-fs-e2b": [
-        "./../plugin-dev/session-tool-env/packages/e2b/fs-e2b/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/e2b/fs-e2b/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-fs-e2b/*": [
-        "./../plugin-dev/session-tool-env/packages/e2b/fs-e2b/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/e2b/fs-e2b/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess-e2b": [
-        "./../plugin-dev/session-tool-env/packages/e2b/subprocess-e2b/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/e2b/subprocess-e2b/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess-e2b/*": [
-        "./../plugin-dev/session-tool-env/packages/e2b/subprocess-e2b/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/e2b/subprocess-e2b/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-acp-demo": [
-        "./../plugin-dev/session-tool-env/packages/examples/acp-demo/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/examples/acp-demo/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-acp-demo/*": [
-        "./../plugin-dev/session-tool-env/packages/examples/acp-demo/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/examples/acp-demo/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-spine-demo": [
-        "./../plugin-dev/session-tool-env/packages/examples/agent-spine-demo/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/examples/agent-spine-demo/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-spine-demo/*": [
-        "./../plugin-dev/session-tool-env/packages/examples/agent-spine-demo/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/examples/agent-spine-demo/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-jsonrpc-demo": [
-        "./../plugin-dev/session-tool-env/packages/examples/jsonrpc-demo/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/examples/jsonrpc-demo/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-jsonrpc-demo/*": [
-        "./../plugin-dev/session-tool-env/packages/examples/jsonrpc-demo/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/examples/jsonrpc-demo/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-command-feedback": [
-        "./../plugin-dev/session-tool-env/packages/feedback/command-feedback/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/feedback/command-feedback/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-command-feedback/*": [
-        "./../plugin-dev/session-tool-env/packages/feedback/command-feedback/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/feedback/command-feedback/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-fs": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/fs/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-fs/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/fs/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-fs-local": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-fs-local/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-fs-policy": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-policy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-policy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-fs-policy/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-policy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-policy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-fs-sandbox": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-sandbox/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-sandbox/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-fs-sandbox/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/fs-sandbox/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/fs-sandbox/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-fs": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-fs/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-fs/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-fs/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-fs/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-fs/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-fs-search": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-fs-search/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-fs-search/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-fs-search/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-fs-search/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-fs-search/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-str-replace-editor": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-str-replace-editor/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-str-replace-editor/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-str-replace-editor/*": [
-        "./../plugin-dev/session-tool-env/packages/fs/tool-str-replace-editor/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/fs/tool-str-replace-editor/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-command-goal": [
-        "./../plugin-dev/session-tool-env/packages/goal/command-goal/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/goal/command-goal/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-command-goal/*": [
-        "./../plugin-dev/session-tool-env/packages/goal/command-goal/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/goal/command-goal/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-goal": [
-        "./../plugin-dev/session-tool-env/packages/goal/goal/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/goal/goal/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-goal/*": [
-        "./../plugin-dev/session-tool-env/packages/goal/goal/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/goal/goal/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-goal-session": [
-        "./../plugin-dev/session-tool-env/packages/goal/goal-session/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/goal/goal-session/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-goal-session/*": [
-        "./../plugin-dev/session-tool-env/packages/goal/goal-session/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/goal/goal-session/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-goal": [
-        "./../plugin-dev/session-tool-env/packages/goal/tool-goal/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/goal/tool-goal/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-goal/*": [
-        "./../plugin-dev/session-tool-env/packages/goal/tool-goal/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/goal/tool-goal/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-repeat-tool-guard": [
-        "./../plugin-dev/session-tool-env/packages/guard/repeat-tool-guard/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/guard/repeat-tool-guard/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-repeat-tool-guard/*": [
-        "./../plugin-dev/session-tool-env/packages/guard/repeat-tool-guard/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/guard/repeat-tool-guard/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-timeout-policy": [
-        "./../plugin-dev/session-tool-env/packages/guard/timeout-policy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/guard/timeout-policy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-timeout-policy/*": [
-        "./../plugin-dev/session-tool-env/packages/guard/timeout-policy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/guard/timeout-policy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-hook-protocol": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hook-protocol/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/hooks/hook-protocol/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-hook-protocol/*": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hook-protocol/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/hooks/hook-protocol/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-hooks-claude": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hooks-claude/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/hooks/hooks-claude/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-hooks-claude/*": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hooks-claude/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/hooks/hooks-claude/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-hooks-codex": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hooks-codex/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/hooks/hooks-codex/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-hooks-codex/*": [
-        "./../plugin-dev/session-tool-env/packages/hooks/hooks-codex/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/hooks/hooks-codex/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-apiproxy": [
-        "./../plugin-dev/session-tool-env/packages/host/apiproxy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/apiproxy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-apiproxy/*": [
-        "./../plugin-dev/session-tool-env/packages/host/apiproxy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/apiproxy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker/*": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-auto": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-auto/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-auto/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-auto/*": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-auto/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-auto/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-browse": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-browse/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-browse/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-browse/*": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-browse/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-browse/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-native": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-native/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-native/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-directory-picker-native/*": [
-        "./../plugin-dev/session-tool-env/packages/host/directory-picker-native/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/directory-picker-native/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-frontend-static": [
-        "./../plugin-dev/session-tool-env/packages/host/frontend-static/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/frontend-static/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-frontend-static/*": [
-        "./../plugin-dev/session-tool-env/packages/host/frontend-static/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/frontend-static/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-host-webserver": [
-        "./../plugin-dev/session-tool-env/packages/host/webserver/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/host/webserver/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-host-webserver/*": [
-        "./../plugin-dev/session-tool-env/packages/host/webserver/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/host/webserver/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-commands": [
-        "./../plugin-dev/session-tool-env/packages/interaction/commands/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/interaction/commands/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-commands/*": [
-        "./../plugin-dev/session-tool-env/packages/interaction/commands/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/interaction/commands/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-permission": [
-        "./../plugin-dev/session-tool-env/packages/interaction/permission/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/interaction/permission/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-permission/*": [
-        "./../plugin-dev/session-tool-env/packages/interaction/permission/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/interaction/permission/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-ask-user": [
-        "./../plugin-dev/session-tool-env/packages/interaction/tool-ask-user/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/interaction/tool-ask-user/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-ask-user/*": [
-        "./../plugin-dev/session-tool-env/packages/interaction/tool-ask-user/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/interaction/tool-ask-user/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-user-approval": [
-        "./../plugin-dev/session-tool-env/packages/interaction/user-approval/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/interaction/user-approval/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-user-approval/*": [
-        "./../plugin-dev/session-tool-env/packages/interaction/user-approval/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/interaction/user-approval/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-user-interaction": [
-        "./../plugin-dev/session-tool-env/packages/interaction/user-interaction/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/interaction/user-interaction/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-user-interaction/*": [
-        "./../plugin-dev/session-tool-env/packages/interaction/user-interaction/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/interaction/user-interaction/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/llm/llm/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm/*": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/llm/llm/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm-deepseek": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-deepseek/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-deepseek/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm-deepseek/*": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-deepseek/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-deepseek/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm-pi-ai": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-pi-ai/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-pi-ai/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm-pi-ai/*": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-pi-ai/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-pi-ai/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm-retry": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-retry/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-retry/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm-retry/*": [
-        "./../plugin-dev/session-tool-env/packages/llm/llm-retry/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/llm/llm-retry/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-token-meter": [
-        "./../plugin-dev/session-tool-env/packages/llm/token-meter/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/llm/token-meter/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-token-meter/*": [
-        "./../plugin-dev/session-tool-env/packages/llm/token-meter/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/llm/token-meter/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-lsp": [
-        "./../plugin-dev/session-tool-env/packages/lsp/lsp/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/lsp/lsp/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-lsp/*": [
-        "./../plugin-dev/session-tool-env/packages/lsp/lsp/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/lsp/lsp/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-lsp-local": [
-        "./../plugin-dev/session-tool-env/packages/lsp/lsp-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/lsp/lsp-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-lsp-local/*": [
-        "./../plugin-dev/session-tool-env/packages/lsp/lsp-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/lsp/lsp-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-lsp": [
-        "./../plugin-dev/session-tool-env/packages/lsp/tool-lsp/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/lsp/tool-lsp/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-lsp/*": [
-        "./../plugin-dev/session-tool-env/packages/lsp/tool-lsp/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/lsp/tool-lsp/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-mcp-client": [
-        "./../plugin-dev/session-tool-env/packages/mcp/mcp-client/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/mcp/mcp-client/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-mcp-client/*": [
-        "./../plugin-dev/session-tool-env/packages/mcp/mcp-client/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/mcp/mcp-client/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-plan-mode": [
-        "./../plugin-dev/session-tool-env/packages/plan/plan-mode/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/plan/plan-mode/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-plan-mode/*": [
-        "./../plugin-dev/session-tool-env/packages/plan/plan-mode/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/plan/plan-mode/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-presets": [
-        "./../plugin-dev/session-tool-env/packages/preset/agent-presets/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/preset/agent-presets/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-presets/*": [
-        "./../plugin-dev/session-tool-env/packages/preset/agent-presets/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/preset/agent-presets/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-persona": [
-        "./../plugin-dev/session-tool-env/packages/preset/persona/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/preset/persona/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-persona/*": [
-        "./../plugin-dev/session-tool-env/packages/preset/persona/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/preset/persona/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-pty": [
-        "./../plugin-dev/session-tool-env/packages/pty/pty/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/pty/pty/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-pty/*": [
-        "./../plugin-dev/session-tool-env/packages/pty/pty/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/pty/pty/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-pty-local": [
-        "./../plugin-dev/session-tool-env/packages/pty/pty-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/pty/pty-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-pty-local/*": [
-        "./../plugin-dev/session-tool-env/packages/pty/pty-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/pty/pty-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-bash-persistent": [
-        "./../plugin-dev/session-tool-env/packages/pty/tool-bash-persistent/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/pty/tool-bash-persistent/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-bash-persistent/*": [
-        "./../plugin-dev/session-tool-env/packages/pty/tool-bash-persistent/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/pty/tool-bash-persistent/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-pty": [
-        "./../plugin-dev/session-tool-env/packages/pty/tool-pty/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/pty/tool-pty/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-pty/*": [
-        "./../plugin-dev/session-tool-env/packages/pty/tool-pty/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/pty/tool-pty/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox/*": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-local": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-local/*": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-policy": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-policy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-policy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-policy/*": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-policy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-policy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-windows-acl": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-windows-acl/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-windows-acl/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sandbox-windows-acl/*": [
-        "./../plugin-dev/session-tool-env/packages/sandbox/sandbox-windows-acl/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/sandbox/sandbox-windows-acl/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sdk-client": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/client/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/client/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sdk-client/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/client/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/client/lib/types/*.d.ts"
       ],
       "@deepseek-ai/create-sdk": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/create-sdk/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/create-sdk/lib/types/index.d.ts"
       ],
       "@deepseek-ai/create-sdk/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/create-sdk/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/create-sdk/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-helper": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/helper/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/helper/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-helper/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/helper/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/helper/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-sdk-protocol": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/protocol/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/protocol/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-sdk-protocol/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/protocol/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/protocol/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-scripts": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/scripts/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/scripts/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-scripts/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/scripts/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/scripts/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-jsonrpc": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/server/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/server/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-jsonrpc/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/server/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/server/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-telemetry": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/telemetry/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/scaffold/telemetry/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-telemetry/*": [
-        "./../plugin-dev/session-tool-env/packages/scaffold/telemetry/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/scaffold/telemetry/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-repository-plugin": [
-        "./../plugin-dev/session-tool-env/packages/self-modification/repository-plugin/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/self-modification/repository-plugin/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-repository-plugin/*": [
-        "./../plugin-dev/session-tool-env/packages/self-modification/repository-plugin/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/self-modification/repository-plugin/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-cordis": [
-        "./../plugin-dev/session-tool-env/packages/self-modification/tool-cordis/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/self-modification/tool-cordis/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-cordis/*": [
-        "./../plugin-dev/session-tool-env/packages/self-modification/tool-cordis/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/self-modification/tool-cordis/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-checkpoint-policy": [
-        "./../plugin-dev/session-tool-env/packages/session/session-checkpoint-policy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-checkpoint-policy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-checkpoint-policy/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-checkpoint-policy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-checkpoint-policy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence-jsonl": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence-jsonl/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence-jsonl/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence-jsonl/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence-jsonl/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence-jsonl/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence-sqlite": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence-sqlite/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence-sqlite/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-persistence-sqlite/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-persistence-sqlite/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-persistence-sqlite/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-projection": [
-        "./../plugin-dev/session-tool-env/packages/session/session-projection/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-projection/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-projection/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-projection/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-projection/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-projection-cache": [
-        "./../plugin-dev/session-tool-env/packages/session/session-projection-cache/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-projection-cache/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-projection-cache/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-projection-cache/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-projection-cache/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-tags": [
-        "./../plugin-dev/session-tool-env/packages/session/session-tags/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-tags/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-tags/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-tags/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-tags/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-telemetry": [
-        "./../plugin-dev/session-tool-env/packages/session/session-telemetry/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-telemetry/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-telemetry/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-telemetry/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-telemetry/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-telemetry-otel": [
-        "./../plugin-dev/session-tool-env/packages/session/session-telemetry-otel/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-telemetry-otel/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-telemetry-otel/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-telemetry-otel/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-telemetry-otel/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-title": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-title/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-title/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-title/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-all-messages-llm": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-all-messages-llm/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-all-messages-llm/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-all-messages-llm/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-all-messages-llm/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-all-messages-llm/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-first-message-llm": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-first-message-llm/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-first-message-llm/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-first-message-llm/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-first-message-llm/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-first-message-llm/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-llm": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-llm/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-llm/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-title-llm/*": [
-        "./../plugin-dev/session-tool-env/packages/session/session-title-llm/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/session-title-llm/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-user-id": [
-        "./../plugin-dev/session-tool-env/packages/session/user-id/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session/user-id/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-user-id/*": [
-        "./../plugin-dev/session-tool-env/packages/session/user-id/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session/user-id/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-query": [
-        "./../plugin-dev/session-tool-env/packages/session-query/session-query/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session-query/session-query/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-query/*": [
-        "./../plugin-dev/session-tool-env/packages/session-query/session-query/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session-query/session-query/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-session-query-sqlite": [
-        "./../plugin-dev/session-tool-env/packages/session-query/session-query-sqlite/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session-query/session-query-sqlite/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-session-query-sqlite/*": [
-        "./../plugin-dev/session-tool-env/packages/session-query/session-query-sqlite/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session-query/session-query-sqlite/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-session-query": [
-        "./../plugin-dev/session-tool-env/packages/session-query/tool-session-query/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/session-query/tool-session-query/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-session-query/*": [
-        "./../plugin-dev/session-tool-env/packages/session-query/tool-session-query/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/session-query/tool-session-query/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-settings": [
-        "./../plugin-dev/session-tool-env/packages/settings/settings/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/settings/settings/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-settings/*": [
-        "./../plugin-dev/session-tool-env/packages/settings/settings/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/settings/settings/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-settings-local": [
-        "./../plugin-dev/session-tool-env/packages/settings/settings-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/settings/settings-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-settings-local/*": [
-        "./../plugin-dev/session-tool-env/packages/settings/settings-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/settings/settings-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-skill": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/skill/skill/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-skill/*": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/skill/skill/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-skill-badge": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill-badge/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/skill/skill-badge/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-skill-badge/*": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill-badge/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/skill/skill-badge/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-skill-local": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/skill/skill-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-skill-local/*": [
-        "./../plugin-dev/session-tool-env/packages/skill/skill-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/skill/skill-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-skill": [
-        "./../plugin-dev/session-tool-env/packages/skill/tool-skill/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/skill/tool-skill/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-skill/*": [
-        "./../plugin-dev/session-tool-env/packages/skill/tool-skill/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/skill/tool-skill/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-spill": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/spill/spill/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-spill/*": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/spill/spill/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-spill-local": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/spill/spill-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-spill-local/*": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/spill/spill-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-spill-policy": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill-policy/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/spill/spill-policy/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-spill-policy/*": [
-        "./../plugin-dev/session-tool-env/packages/spill/spill-policy/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/spill/spill-policy/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-storage": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/storage/storage/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-storage/*": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/storage/storage/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-storage-domain": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-domain/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-domain/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-storage-domain/*": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-domain/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-domain/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-storage-json": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-json/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-json/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-storage-json/*": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-json/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-json/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-storage-sqlite": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-sqlite/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-sqlite/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-storage-sqlite/*": [
-        "./../plugin-dev/session-tool-env/packages/storage/storage-sqlite/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/storage/storage-sqlite/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-acp": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-acp/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-acp/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-acp/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-acp/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-acp/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-claude-code": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-claude-code/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-claude-code/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-claude-code/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-claude-code/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-claude-code/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-codex": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-codex/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-codex/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-codex/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-codex/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-codex/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-dsh-sdk": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-dsh-sdk/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-dsh-sdk/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-dsh-sdk/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-dsh-sdk/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-dsh-sdk/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-fork": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-fork/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-fork/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-fork/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-fork/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-fork/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-inprocess": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-inprocess/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-inprocess/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-inprocess/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-inprocess/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-inprocess/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-spawn": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-spawn/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-spawn/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subagent-spawn/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/subagent-spawn/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/subagent-spawn/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent-control": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent-control/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent-control/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent-control/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent-control/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent-control/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent-report": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent-report/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent-report/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-subagent-report/*": [
-        "./../plugin-dev/session-tool-env/packages/subagent/tool-subagent-report/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subagent/tool-subagent-report/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess": [
-        "./../plugin-dev/session-tool-env/packages/subprocess/subprocess/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subprocess/subprocess/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess/*": [
-        "./../plugin-dev/session-tool-env/packages/subprocess/subprocess/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subprocess/subprocess/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess-local": [
-        "./../plugin-dev/session-tool-env/packages/subprocess/subprocess-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/subprocess/subprocess-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-subprocess-local/*": [
-        "./../plugin-dev/session-tool-env/packages/subprocess/subprocess-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/subprocess/subprocess-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-acp-snapshot": [
-        "./../plugin-dev/session-tool-env/packages/support/acp-snapshot/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/acp-snapshot/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-acp-snapshot/*": [
-        "./../plugin-dev/session-tool-env/packages/support/acp-snapshot/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/acp-snapshot/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-agent-loop-testkit": [
-        "./../plugin-dev/session-tool-env/packages/support/agent-loop-testkit/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/agent-loop-testkit/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-agent-loop-testkit/*": [
-        "./../plugin-dev/session-tool-env/packages/support/agent-loop-testkit/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/agent-loop-testkit/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-invariants": [
-        "./../plugin-dev/session-tool-env/packages/support/invariants/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/invariants/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-invariants/*": [
-        "./../plugin-dev/session-tool-env/packages/support/invariants/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/invariants/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm-mock-server": [
-        "./../plugin-dev/session-tool-env/packages/support/llm-mock-server/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/llm-mock-server/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm-mock-server/*": [
-        "./../plugin-dev/session-tool-env/packages/support/llm-mock-server/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/llm-mock-server/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-llm-replay": [
-        "./../plugin-dev/session-tool-env/packages/support/llm-replay/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/llm-replay/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-llm-replay/*": [
-        "./../plugin-dev/session-tool-env/packages/support/llm-replay/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/llm-replay/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-loader-smoke": [
-        "./../plugin-dev/session-tool-env/packages/support/loader-smoke/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/support/loader-smoke/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-loader-smoke/*": [
-        "./../plugin-dev/session-tool-env/packages/support/loader-smoke/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/support/loader-smoke/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tasks": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tasks/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/tasks/tasks/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tasks/*": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tasks/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/tasks/tasks/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tasks-local": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tasks-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/tasks/tasks-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tasks-local/*": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tasks-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/tasks/tasks-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-tasks": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tool-tasks/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/tasks/tool-tasks/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-tasks/*": [
-        "./../plugin-dev/session-tool-env/packages/tasks/tool-tasks/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/tasks/tool-tasks/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-todo": [
-        "./../plugin-dev/session-tool-env/packages/todo/tool-todo/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/todo/tool-todo/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-todo/*": [
-        "./../plugin-dev/session-tool-env/packages/todo/tool-todo/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/todo/tool-todo/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-typert-generator": [
-        "./../plugin-dev/session-tool-env/packages/typert/generator/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/typert/generator/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-typert-generator/*": [
-        "./../plugin-dev/session-tool-env/packages/typert/generator/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/typert/generator/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-typert-loader": [
-        "./../plugin-dev/session-tool-env/packages/typert/loader/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/typert/loader/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-typert-loader/*": [
-        "./../plugin-dev/session-tool-env/packages/typert/loader/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/typert/loader/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-typert-registry": [
-        "./../plugin-dev/session-tool-env/packages/typert/registry/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/typert/registry/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-typert-registry/*": [
-        "./../plugin-dev/session-tool-env/packages/typert/registry/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/typert/registry/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-type-meta": [
-        "./../plugin-dev/session-tool-env/packages/typert/type-meta/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/typert/type-meta/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-type-meta/*": [
-        "./../plugin-dev/session-tool-env/packages/typert/type-meta/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/typert/type-meta/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-atomic-write": [
-        "./../plugin-dev/session-tool-env/packages/util/atomic-write/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/atomic-write/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-atomic-write/*": [
-        "./../plugin-dev/session-tool-env/packages/util/atomic-write/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/atomic-write/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-brand": [
-        "./../plugin-dev/session-tool-env/packages/util/brand/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/brand/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-brand/*": [
-        "./../plugin-dev/session-tool-env/packages/util/brand/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/brand/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-environment": [
-        "./../plugin-dev/session-tool-env/packages/util/environment/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/environment/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-environment/*": [
-        "./../plugin-dev/session-tool-env/packages/util/environment/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/environment/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-native-command": [
-        "./../plugin-dev/session-tool-env/packages/util/native-command/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/native-command/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-native-command/*": [
-        "./../plugin-dev/session-tool-env/packages/util/native-command/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/native-command/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-paths": [
-        "./../plugin-dev/session-tool-env/packages/util/paths/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/paths/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-paths/*": [
-        "./../plugin-dev/session-tool-env/packages/util/paths/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/paths/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-retention": [
-        "./../plugin-dev/session-tool-env/packages/util/retention/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/retention/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-retention/*": [
-        "./../plugin-dev/session-tool-env/packages/util/retention/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/retention/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-timeout": [
-        "./../plugin-dev/session-tool-env/packages/util/timeout/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/util/timeout/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-timeout/*": [
-        "./../plugin-dev/session-tool-env/packages/util/timeout/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/util/timeout/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-web": [
-        "./../plugin-dev/session-tool-env/packages/web/tool-web/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/tool-web/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-web/*": [
-        "./../plugin-dev/session-tool-env/packages/web/tool-web/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/tool-web/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web": [
-        "./../plugin-dev/session-tool-env/packages/web/web/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/web/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web/*": [
-        "./../plugin-dev/session-tool-env/packages/web/web/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/web/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web-fetch-local": [
-        "./../plugin-dev/session-tool-env/packages/web/web-fetch-local/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/web-fetch-local/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web-fetch-local/*": [
-        "./../plugin-dev/session-tool-env/packages/web/web-fetch-local/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/web-fetch-local/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-deepseek": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-deepseek/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-deepseek/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-deepseek/*": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-deepseek/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-deepseek/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-exa": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-exa/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-exa/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-exa/*": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-exa/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-exa/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-perplexity": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-perplexity/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-perplexity/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-web-search-perplexity/*": [
-        "./../plugin-dev/session-tool-env/packages/web/web-search-perplexity/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/web/web-search-perplexity/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-ralph": [
-        "./../plugin-dev/session-tool-env/packages/workflow/tool-ralph/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/workflow/tool-ralph/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-ralph/*": [
-        "./../plugin-dev/session-tool-env/packages/workflow/tool-ralph/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/workflow/tool-ralph/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-tool-workflow": [
-        "./../plugin-dev/session-tool-env/packages/workflow/tool-workflow/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/workflow/tool-workflow/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-tool-workflow/*": [
-        "./../plugin-dev/session-tool-env/packages/workflow/tool-workflow/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/workflow/tool-workflow/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-workflow": [
-        "./../plugin-dev/session-tool-env/packages/workflow/workflow/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/workflow/workflow/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-workflow/*": [
-        "./../plugin-dev/session-tool-env/packages/workflow/workflow/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/workflow/workflow/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-workflow-workerthread": [
-        "./../plugin-dev/session-tool-env/packages/workflow/workflow-workerthread/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/workflow/workflow-workerthread/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-workflow-workerthread/*": [
-        "./../plugin-dev/session-tool-env/packages/workflow/workflow-workerthread/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/workflow/workflow-workerthread/lib/types/*.d.ts"
       ],
       "@deepseek-ai/dsh-workspace": [
-        "./../plugin-dev/session-tool-env/packages/workspace/workspace/lib/types/index.d.ts"
+        "./../env/session-tool-env/packages/workspace/workspace/lib/types/index.d.ts"
       ],
       "@deepseek-ai/dsh-workspace/*": [
-        "./../plugin-dev/session-tool-env/packages/workspace/workspace/lib/types/*.d.ts"
+        "./../env/session-tool-env/packages/workspace/workspace/lib/types/*.d.ts"
       ],
       "cordis": [
-        "./../plugin-dev/session-tool-env/vendor/cordis/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/cordis/lib/types/index.d.ts"
       ],
       "cordis/*": [
-        "./../plugin-dev/session-tool-env/vendor/cordis/lib/types/*.d.ts"
+        "./../env/session-tool-env/vendor/cordis/lib/types/*.d.ts"
       ],
       "cosmokit": [
-        "./../plugin-dev/session-tool-env/vendor/cosmokit/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/cosmokit/lib/types/index.d.ts"
       ],
       "cosmokit/*": [
-        "./../plugin-dev/session-tool-env/vendor/cosmokit/lib/types/*.d.ts"
+        "./../env/session-tool-env/vendor/cosmokit/lib/types/*.d.ts"
       ],
       "@cordisjs/plugin-group": [
-        "./../plugin-dev/session-tool-env/vendor/group/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/group/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-hmr": [
-        "./../plugin-dev/session-tool-env/vendor/hmr/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/hmr/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-hmr/*": [
-        "./../plugin-dev/session-tool-env/vendor/hmr/lib/types/*.d.ts"
+        "./../env/session-tool-env/vendor/hmr/lib/types/*.d.ts"
       ],
       "@cordisjs/plugin-include": [
-        "./../plugin-dev/session-tool-env/vendor/include/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/include/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-loader": [
-        "./../plugin-dev/session-tool-env/vendor/loader/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/loader/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-loader/*": [
-        "./../plugin-dev/session-tool-env/vendor/loader/lib/types/*.d.ts"
+        "./../env/session-tool-env/vendor/loader/lib/types/*.d.ts"
       ],
       "@cordisjs/plugin-logger-console": [
-        "./../plugin-dev/session-tool-env/vendor/logger-console/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/logger-console/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-logger-console/*": [
-        "./../plugin-dev/session-tool-env/vendor/logger-console/lib/types/*.d.ts"
+        "./../env/session-tool-env/vendor/logger-console/lib/types/*.d.ts"
       ],
       "schemastery": [
-        "./../plugin-dev/session-tool-env/vendor/schemastery/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/schemastery/lib/types/index.d.ts"
       ],
       "@cordisjs/plugin-timer": [
-        "./../plugin-dev/session-tool-env/vendor/timer/lib/types/index.d.ts"
+        "./../env/session-tool-env/vendor/timer/lib/types/index.d.ts"
       ],
       "session-tool": [
         "./packages/session-tool/src/index.ts"

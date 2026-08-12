@@ -1,6 +1,13 @@
 // dsh-session CLI end-to-end: boots a real headless profile (with the
-// tool-session bundle installed) and drives the full create → write → read →
-// rename → list flow, comparing the transcript against a recorded fixture.
+// tool-session bundle installed) with NO web gateway reachable, and drives
+// every verb against the fail-loud path — the web-dependent operations
+// (create/write/rename/list/workspace) report `web-unreachable`, the local
+// read reports `session-not-found`. The transcript compares against a
+// recorded fixture.
+//
+// The full create → prompt → reply → GUI-visibility chain needs a running
+// `dsh web` with model credentials and is exercised as an integration
+// verification (see docs/design.md §14), not in this fixture.
 //
 // Requires the built CLI (pnpm -r run build) and the worktree's built dsh
 // bin. Re-record the fixture with: DSH_SNAPSHOT=record npx vitest run
@@ -24,9 +31,15 @@ const BUNDLES = [
   join(dshWorktreeRoot(), 'packages', 'session', 'session-tags'),
 ]
 
+/** The web gateway address the fixture guarantees to be unreachable. */
+const DEAD_WEB_URL = 'http://127.0.0.1:3999'
+
 /** Run one CLI invocation and return its stdout, stderr, and exit code. */
 function runCli(home: string, args: readonly string[]): { stdout: string; stderr: string; code: number } {
-  const result = spawnSync(process.execPath, [CLI_BIN, ...args], {
+  // Every verb carries the dead-gateway overlay so the fixture never depends
+  // on a real `dsh web` (a developer's running GUI on the default port would
+  // otherwise leak its environment into the transcript).
+  const result = spawnSync(process.execPath, [CLI_BIN, ...args, '--patch', join(home, 'dead-web.patch.yml')], {
     cwd: home,
     env: { ...process.env, DSH_HOME: home },
     encoding: 'utf8',
@@ -37,18 +50,29 @@ function runCli(home: string, args: readonly string[]): { stdout: string; stderr
 
 describe('dsh-session CLI e2e', () => {
   const skip = !existsSync(CLI_BIN) || !existsSync(DSH_BIN)
-  // The flow boots the profile once per verb (~1s each); allow a generous budget.
-  // The flow boots the profile once per verb (~1s each); allow a generous budget.
-  it.skipIf(skip)('replays the full session flow against the recorded fixture', () => {
+  it.skipIf(skip)('replays the fail-loud flow (no web gateway) against the recorded fixture', () => {
     const home = mkdtempSync(join(tmpdir(), 'dsh-session-e2e-'))
     try {
-      // Initialize the headless profile and install the bundle stack.
+      // Initialize the headless profile and install the bundle stack. The
+      // fixture environment has no `dsh web` on the default webUrl, so every
+      // web-dependent verb must fail loudly with `web-unreachable`.
       const init = spawnSync(process.execPath, [DSH_BIN, 'plugin', '--profile', 'headless', 'add', ...BUNDLES], {
         cwd: home,
         env: { ...process.env, DSH_HOME: home },
         encoding: 'utf8',
       })
       expect(init.status, init.stderr ?? '').toBe(0)
+      // Point session-tool-local at a port nothing listens on.
+      writeFileSync(join(home, 'dead-web.patch.yml'), `- id: session-tool-local
+  config:
+    allowAllScope: 'top-level'
+    cliAllowAll: true
+    readMaxBlocks: 500
+    listMaxRows: 100
+    hiddenPrefixes:
+      - '~'
+    webUrl: '${DEAD_WEB_URL}'
+`)
 
       const lines: string[] = []
       const record = (label: string, args: readonly string[]) => {
@@ -59,17 +83,13 @@ describe('dsh-session CLI e2e', () => {
         if (stderr.length > 0) lines.push(stderr.replace(/\n$/, ''))
       }
 
-      record('create', ['session', 'create', '--title', 'test session', '--tag', 'demo'])
-      record('write', ['session', 'write', 'session-1', 'hello world'])
-      record('read', ['session', 'read', 'session-1'])
-      record('rename', ['session', 'rename', 'session-1', '--title', 'renamed title', '--tag', 'alpha', '--tag', 'beta'])
-      record('list default (all)', ['session', 'list'])
-      record('hidden rename', ['session', 'rename', 'session-1', '--title', '~internal'])
-      record('list without hidden', ['session', 'list'])
-      record('list include hidden', ['session', 'list', '--include-hidden'])
-      record('create child under parent', ['session', 'create', '--title', 'child', '--parent', 'session-1'])
-      record('tree scope', ['session', 'list', '--scope', 'tree', '--root', 'session-1'])
-      record('read missing', ['session', 'read', 'session-999'])
+      record('create (web unreachable)', ['session', 'create', '--title', 'test session', '--tag', 'demo'])
+      record('write (web unreachable)', ['session', 'write', 'session-1', 'hello world'])
+      record('read local (no session)', ['session', 'read', 'session-1'])
+      record('read local missing', ['session', 'read', 'session-999'])
+      record('rename (web unreachable)', ['session', 'rename', 'session-1', '--title', 'renamed title'])
+      record('list (web unreachable)', ['session', 'list'])
+      record('workspace list (web unreachable)', ['workspace', 'list'])
       record('own scope from CLI', ['session', 'list', '--scope', 'own'])
       const transcript = `${lines.join('\n')}\n`
 

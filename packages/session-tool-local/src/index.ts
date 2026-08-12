@@ -1,26 +1,28 @@
 /**
- * Local provider for the session-tool Service Definition: implements
- * `ctx.sessionTool` over the DSH session stack — the live session store, the
- * session persistence backends (JSONL/SQLite), and the session title and tag
- * services. Zero new event types: every operation appends or folds DSH's
- * existing `user/message`, `session/title`, and `session/tags` events.
+ * Remote provider for the session-tool Service Definition: implements
+ * `ctx.sessionTool` over the web gateway (`dsh web`)'s HTTP carrier. Session
+ * creation, writing (conversation prompts), renaming, and listing go through
+ * the gateway so the web process owns every session it serves — sessions are
+ * live there, published to every GUI client through the ordinary event push.
+ * Reading stays local (persistence inspection, no agent acquisition); the
+ * owner fence, scope gates, and hidden-prefix filtering run in this process
+ * over a read-only header index. Zero new event types: the gateway reuses
+ * DSH's existing `user/message`, `session/title`, and `session/tags` events.
  * @module session-tool-local
  */
 
 import { Context, Service } from 'cordis'
 import z from 'schemastery'
-import { assertNever, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { assertNever } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { SessionTagsInvalidError, foldSessionTags, normalizeTags } from '@deepseek-ai/dsh-session-tags'
-import { SessionTitleInvalidError, foldSessionTitle, normalizeSessionTitle } from '@deepseek-ai/dsh-session-title'
+import { isTitleHidden } from '@deepseek-ai/dsh-session-tags'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
   SessionScopeDeniedError,
-  SessionToolError,
   SessionToolUnauthorizedError,
 } from 'session-tool'
 import type {
@@ -36,8 +38,17 @@ import type {
   SessionToolRenameOptions,
   SessionToolRenameResult,
   SessionToolService,
+  SessionToolWorkspaceAddOptions,
+  SessionToolWorkspaceAddResult,
+  SessionToolWorkspaceDeleteResult,
+  SessionToolWorkspaceListResult,
+  SessionToolWorkspaceRenameOptions,
+  SessionToolWorkspaceRenameResult,
+  SessionToolWorkspaceRow,
   SessionToolWriteResult,
 } from 'session-tool'
+import { SessionHttpClient } from './session-client.ts'
+import { WorkspaceHttpClient } from './workspace-client.ts'
 
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
@@ -52,34 +63,46 @@ export interface Config {
   readonly readMaxBlocks: number
   /** Single `list` row cap; model-supplied `limit` is clamped to it. */
   readonly listMaxRows: number
+  /**
+   * Title prefixes that drop a session from default lists (shared with the
+   * web composition's session-tags hiddenPrefixes; keep them in sync).
+   */
+  readonly hiddenPrefixes: string[]
+  /**
+   * Base URL of the web gateway (`dsh web`), the workspace registry's
+   * authority and the session operations' execution point. Workspace
+   * registration and session create/write/rename/list go over this gateway's
+   * HTTP carrier; a reachable gateway is required for those operations.
+   */
+  readonly webUrl: string
 }
 
-/** Cold persistence reads per listing; a constant bounds one read-only scan of local media. */
-const COLD_READ_CONCURRENCY = 4
-
-/** Wire code for title/tag validation failures translated from the owned services. */
-const TITLE_INVALID_CODE = 'title-invalid' as const
-const TAG_INVALID_CODE = 'tag-invalid' as const
 
 /**
  * The local session-tool provider. Mounted as the `session-tool-local` plugin
  * row; Cordis provides `ctx.sessionTool` from this Service subclass.
  */
 export class SessionToolLocalService extends Service implements SessionToolService {
-  static inject = ['sessions', 'sessionPersistence', 'sessionTitle', 'sessionTags']
+  static inject = ['sessions', 'sessionPersistence']
 
   static Config: z<Config> = z.object({
     allowAllScope: z.union([z.const('top-level'), z.const('any'), z.const('none')]).default('top-level'),
     cliAllowAll: z.boolean().default(true),
     readMaxBlocks: z.number().step(1).min(1).default(500),
     listMaxRows: z.number().step(1).min(1).default(100),
+    hiddenPrefixes: z.array(z.string()).default(['~']),
+    webUrl: z.string().default('http://127.0.0.1:3080'),
   })
 
   private readonly config: Config
+  private readonly workspaceClient: WorkspaceHttpClient
+  private readonly sessionClient: SessionHttpClient
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'sessionTool')
     this.config = Object.freeze({ ...config })
+    this.workspaceClient = new WorkspaceHttpClient(config.webUrl)
+    this.sessionClient = new SessionHttpClient(config.webUrl)
   }
 
   // ---- public contract ---------------------------------------------------
@@ -89,9 +112,6 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (caller.kind === 'agent' && !index.has(caller.sessionId)) {
       throw new SessionNotFoundError(`caller session "${caller.sessionId}" is not in the session store`)
     }
-    // Validate title/tags BEFORE the session exists, so a rejection leaves no
-    // partially-initialized session behind (even in-memory).
-    this.assertValidTitleTags(options.title, options.tags)
     if (options.parentSessionId !== undefined) {
       const parent = index.get(options.parentSessionId)
       if (parent === undefined) {
@@ -99,30 +119,37 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       }
       this.assertCreateParent(caller, options.parentSessionId, index)
     }
-    // The live store mints ids with a process-local counter, which collides
-    // with persisted ids across processes; mint from the merged header index.
-    // An agent caller's creations join its own tree by default (parent = the
-    // caller), so the creator keeps owner-fence access and `own` scope lists
-    // them; CLI creations are top-level sessions.
-    const session = this.ctx.sessions.create(this.mintSessionId(index), {
-      meta: {
-        ...options.parentSessionId !== undefined
-          ? { parentSession: options.parentSessionId }
-          : caller.kind === 'agent'
-            ? { parentSession: caller.sessionId }
-            : {},
-      },
-    })
-    try {
-      if (options.title !== undefined) this.renameTitle(session, options.title)
-      if (options.tags !== undefined) this.acceptTags(session, options.tags)
-      await this.ctx.sessions.flush(session)
-    } catch (error: unknown) {
-      // The session stays live with whatever already committed; the caller
-      // sees the failing validation loudly and may rename/tag it later.
-      throw error
+    // Register the workspace through the web gateway BEFORE creating the
+    // session: the remote operation is the most likely failure, and a
+    // rejecting/unreachable gateway must leave zero local state. The
+    // session's header cwd is the gateway's canonical workspace path — the
+    // durable membership mechanism the workspace registry accounts by.
+    let bound: { workspaceId: string; path: string } | undefined
+    if (options.workspacePath !== undefined) {
+      const { workspace } = await this.workspaceClient.addWorkspace(options.workspacePath)
+      bound = { workspaceId: workspace.workspaceId, path: workspace.path }
     }
-    return { sessionId: session.id }
+    // The gateway creates the durable session (no agent started) and serves
+    // it live, so every GUI client sees it immediately. An agent caller's
+    // creations join its own tree by default (parent = the caller), keeping
+    // owner-fence access and `own` scope listings; CLI creations are
+    // top-level sessions unless a parent is named.
+    const created = await this.sessionClient.durableCreate({
+      ...options.title === undefined ? {} : { title: options.title },
+      ...options.parentSessionId !== undefined
+        ? { parentSessionId: options.parentSessionId }
+        : caller.kind === 'agent'
+          ? { parentSessionId: caller.sessionId }
+          : {},
+      ...options.tags === undefined ? {} : { tags: options.tags },
+      ...bound === undefined
+        ? options.cwd === undefined ? {} : { cwd: options.cwd }
+        : { workspaceId: bound.workspaceId },
+    })
+    return {
+      sessionId: created.sessionId as SessionId,
+      ...bound === undefined ? {} : { workspaceId: bound.workspaceId, workspacePath: bound.path },
+    }
   }
 
   async read(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolReadOptions): Promise<SessionToolReadResult> {
@@ -145,21 +172,21 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (text.length === 0) {
       throw new SessionEmptyContentError('session write content must not be empty')
     }
-    const session = await this.materializeLive(caller, sessionId)
-    const message = createUserMessage({
-      content: [{ type: 'text', text }],
-      source: { kind: 'user' },
-    })
-    const event = session.append('user/message', message, { surfaceOp: 'append' })
-    await this.ctx.sessions.flush(session)
-    return { sessionId, seq: event.seq }
+    // Conversation write: the gateway resumes the session's agent (from the
+    // durable log on first touch) and delivers the prompt into the model
+    // loop; the reply streams back through the gateway's event push and
+    // lands in the session log. This settles on admission.
+    const index = await this.headerIndex()
+    await this.assertAccess(caller, sessionId, index)
+    await this.sessionClient.prompt(sessionId, text)
+    return { sessionId }
   }
 
   async list(caller: SessionToolCaller, filter: SessionToolListFilter): Promise<SessionToolListResult> {
     const index = await this.headerIndex()
     const scope = filter.scope ?? 'own'
     const children = indexChildren(index)
-    let candidates: SessionId[]
+    let candidates: SessionId[] | undefined
     if (scope === 'own') {
       if (caller.kind !== 'agent') {
         throw new SessionScopeDeniedError(
@@ -183,40 +210,33 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       candidates = descendantsOf(index, children, [filter.sessionId])
     } else if (scope === 'all') {
       this.assertAllScope(caller)
-      candidates = [...index.keys()]
+      // The gateway's web view IS the full materialized set; no local
+      // intersection (the scope-id filter below is skipped for `all`).
+      candidates = undefined
     } else {
       assertNever(scope, 'SessionToolListScope')
     }
 
-    const rows: SessionToolListRow[] = []
-    await forEachConcurrent(candidates, COLD_READ_CONCURRENCY, async (id) => {
-      const live = this.ctx.sessions.get(id)
-      let events: readonly SessionEvent[]
-      if (live !== undefined) {
-        events = live.events
-      } else {
-        const inspection = await this.inspectSession(id)
-        if (inspection === undefined) return
-        events = inspection.events
-      }
-      const header = index.get(id)
-      // Every candidate came from the index, so the header is present.
-      /* v8 ignore next -- index and candidates are built from the same map. */
-      if (header === undefined) return
-      const title = foldSessionTitle(events)
-      const tags = foldSessionTags(events)
-      rows.push({
-        sessionId: id,
-        ...title === undefined ? {} : { title: title.title },
-        tags: tags === undefined ? [] : [...tags.tags],
-        status: live === undefined ? 'idle' : 'live',
-        createdAt: header.createdAt,
+    // The gateway serves the web view (cwd-bearing sessions) with title/tags
+    // projections; own/tree rows are intersected with the scope's id set
+    // (the local header index carries the lineage), `all` uses every row.
+    const scopeIds = candidates === undefined ? undefined : new Set(candidates)
+    const rows: SessionToolListRow[] = (await this.sessionClient.list())
+      .filter(row => scopeIds === undefined || scopeIds.has(row.sessionId as SessionId))
+      .map(row => {
+        const header = index.get(row.sessionId as SessionId)
+        return {
+          sessionId: row.sessionId as SessionId,
+          ...row.title === undefined ? {} : { title: row.title },
+          tags: [...(row.tags ?? [])],
+          status: row.running ? 'live' : 'idle',
+          createdAt: header?.createdAt ?? row.updatedAt,
+        }
       })
-    })
 
     let visible = rows
     if (filter.includeHidden !== true) {
-      visible = this.ctx.sessionTags.filterVisible(visible)
+      visible = visible.filter(row => !isTitleHidden(row.title, this.config.hiddenPrefixes))
     }
     if (filter.status !== undefined) {
       visible = visible.filter(row => row.status === filter.status)
@@ -252,46 +272,60 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (options.title === undefined && options.tags === undefined) {
       throw new SessionEmptyContentError('rename requires at least one of title or tags')
     }
-    // Pre-validate BOTH inputs before committing either, so an empty-title or
-    // empty-tags rejection leaves the session untouched (no partial commit).
-    this.assertValidTitleTags(options.title, options.tags)
-    const session = await this.materializeLive(caller, sessionId)
-    let title: string | undefined
-    let tags: string[] | undefined
-    if (options.title !== undefined) {
-      const snapshot = this.renameTitle(session, options.title)
-      title = snapshot.title
-    }
-    if (options.tags !== undefined) {
-      const snapshot = this.acceptTags(session, options.tags)
-      tags = [...snapshot.tags]
-    }
-    await this.ctx.sessions.flush(session)
+    // The gateway pre-validates both inputs before committing either (no
+    // partial commit) and serves the renamed session to every GUI client.
+    const index = await this.headerIndex()
+    await this.assertAccess(caller, sessionId, index)
+    const accepted = await this.sessionClient.rename(sessionId, {
+      ...options.title === undefined ? {} : { title: options.title },
+      ...options.tags === undefined ? {} : { tags: options.tags },
+    })
     return {
       sessionId,
-      ...title === undefined ? {} : { title },
-      ...tags === undefined ? {} : { tags },
+      ...accepted.title === undefined ? {} : { title: accepted.title },
+      ...accepted.tags === undefined ? {} : { tags: [...accepted.tags] },
     }
+  }
+
+  // ---- workspace (web gateway authority) ---------------------------------
+
+  async workspaceAdd(_caller: SessionToolCaller, options: SessionToolWorkspaceAddOptions): Promise<SessionToolWorkspaceAddResult> {
+    const { workspace, created } = await this.workspaceClient.addWorkspace(options.path)
+    // The wire `workspace.create` names a new workspace by its path basename;
+    // an explicit title applies only when this call minted the record (a
+    // reused workspace keeps its established title).
+    if (created && options.title !== undefined && options.title.trim() !== '' && options.title.trim() !== workspace.title) {
+      await this.workspaceClient.renameWorkspace(workspace.workspaceId, options.title)
+    }
+    return { workspaceId: workspace.workspaceId, path: workspace.path, created }
+  }
+
+  async workspaceList(_caller: SessionToolCaller): Promise<SessionToolWorkspaceListResult> {
+    const { items, archivedSessionIds } = await this.workspaceClient.listWorkspaces()
+    return {
+      workspaces: items.map((row): SessionToolWorkspaceRow => ({
+        workspaceId: row.workspaceId,
+        path: row.path,
+        title: row.title,
+        sessionIds: [...row.sessionIds],
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      archivedSessionIds: [...archivedSessionIds],
+    }
+  }
+
+  async workspaceRename(_caller: SessionToolCaller, options: SessionToolWorkspaceRenameOptions): Promise<SessionToolWorkspaceRenameResult> {
+    const workspace = await this.workspaceClient.renameWorkspace(options.workspaceId, options.title)
+    return { workspaceId: workspace.workspaceId, title: workspace.title }
+  }
+
+  async workspaceDelete(_caller: SessionToolCaller, workspaceId: string): Promise<SessionToolWorkspaceDeleteResult> {
+    const deleted = await this.workspaceClient.deleteWorkspace(workspaceId)
+    return { workspaceId, deleted }
   }
 
   // ---- fences ------------------------------------------------------------
-
-  /**
-   * Mint a session id absent from both the live store and persistence,
-   * continuing the store's `session-<n>` series. The store's own minting is
-   * process-local and would collide with persisted ids across processes.
-   */
-  private mintSessionId(index: Map<SessionId, SessionHeader>): SessionId {
-    let max = 0
-    for (const id of index.keys()) {
-      const match = /^session-(\d+)$/.exec(id)
-      if (match !== null) max = Math.max(max, Number(match[1]))
-    }
-    for (let n = max + 1; ; n += 1) {
-      const candidate = SessionId(`session-${n}`)
-      if (!index.has(candidate) && this.ctx.sessions.get(candidate) === undefined) return candidate
-    }
-  }
 
   /** Assert the caller may create under `parentId`: itself or an ancestor. */
   private assertCreateParent(caller: SessionToolCaller, parentId: SessionId, index: Map<SessionId, SessionHeader>): void {
@@ -390,34 +424,6 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     return inspection
   }
 
-  /**
-   * Materialize a target as LIVE (resume semantics): the live session when
-   * present, otherwise persistence-prepared, entered, and announced. Cold
-   * materialization publishes the session so persistence backends receive the
-   * appended events through the ordinary `session/event` firehose.
-   */
-  private async materializeLive(caller: SessionToolCaller, id: SessionId): Promise<Session> {
-    const index = await this.headerIndex()
-    const live = this.ctx.sessions.get(id)
-    if (live !== undefined) {
-      await this.assertAccess(caller, id, index)
-      return live
-    }
-    if (!index.has(id)) {
-      throw new SessionNotFoundError(`session "${id}" does not exist`)
-    }
-    await this.assertAccess(caller, id, index)
-    const preparation = await this.ctx.sessionPersistence.prepare(id)
-    try {
-      this.ctx.sessions.enter(preparation.session)
-      this.ctx.sessions.announce(preparation.session)
-      return preparation.session
-    } catch (error: unknown) {
-      preparation[Symbol.dispose]()
-      throw error
-    }
-  }
-
   /** Read one cold session's events; `undefined` when the id is not persisted. */
   private async inspectSession(id: SessionId): Promise<SessionInspection | undefined> {
     try {
@@ -427,57 +433,6 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       // A missing (never-materialized) session surfaces as a backend miss;
       // treat any read failure as absence for the caller to classify.
       return undefined
-    }
-  }
-
-  // ---- owned-service adapters --------------------------------------------
-
-  /**
-   * Pre-validate title and tags input before ANY commit, so empty-title or
-   * empty-tags rejections leave the target session untouched (no partial
-   * commit). Limit-exceeded tags still fail inside the owned services, which
-   * may leave an already-committed sibling (event sourcing has no rollback).
-   */
-  private assertValidTitleTags(title: string | undefined, tags: readonly string[] | undefined): void {
-    if (title !== undefined && normalizeSessionTitle(title, Number.MAX_SAFE_INTEGER).length === 0) {
-      throw new SessionToolError('session title must contain visible characters', TITLE_INVALID_CODE)
-    }
-    if (tags !== undefined) {
-      try {
-        normalizeTags(tags, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-      } catch (error: unknown) {
-        throw new SessionToolError(
-          error instanceof Error ? error.message : 'invalid tag set',
-          TAG_INVALID_CODE,
-          { cause: error },
-        )
-      }
-    }
-  }
-
-  /** Rename through session-title, mapping its validation failure onto the wire. */
-  private renameTitle(session: Session, title: string): { title: string } {
-    try {
-      const snapshot = this.ctx.sessionTitle.rename(session, title)
-      return { title: snapshot.title }
-    } catch (error: unknown) {
-      if (error instanceof SessionTitleInvalidError) {
-        throw new SessionToolError(error.message, TITLE_INVALID_CODE, { cause: error })
-      }
-      throw error
-    }
-  }
-
-  /** Accept tags through session-tags, mapping its validation failure onto the wire. */
-  private acceptTags(session: Session, tags: readonly string[]): { tags: readonly string[] } {
-    try {
-      const snapshot = this.ctx.sessionTags.accept(session, tags)
-      return { tags: snapshot.tags }
-    } catch (error: unknown) {
-      if (error instanceof SessionTagsInvalidError) {
-        throw new SessionToolError(error.message, TAG_INVALID_CODE, { cause: error })
-      }
-      throw error
     }
   }
 }
@@ -518,27 +473,6 @@ function descendantsOf(
     }
   }
   return result
-}
-
-/** Run `task` over `items` with at most `limit` concurrent executions. */
-async function forEachConcurrent<T>(
-  items: readonly T[],
-  limit: number,
-  task: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0
-  const workers: Promise<void>[] = []
-  for (let i = 0; i < Math.min(limit, items.length); i += 1) {
-    workers.push((async () => {
-      while (true) {
-        const index = next
-        next += 1
-        if (index >= items.length) return
-        await task(items[index]!)
-      }
-    })())
-  }
-  await Promise.all(workers)
 }
 
 /** Project one event onto a readable message row; non-message events project to nothing. */

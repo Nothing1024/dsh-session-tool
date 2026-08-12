@@ -29,7 +29,7 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-session-tags": "link:../../../plugin-dev/session-tool-env/packages/session/session-tags",
+    "@deepseek-ai/dsh-session-tags": "link:../../../env/session-tool-env/packages/session/session-tags",
     "session-tool-local": "workspace:*"
   },
   "peerDependencies": {
@@ -39,9 +39,9 @@
     "cordis": "^4.0.0-rc.7"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-llm": "link:../../../plugin-dev/session-tool-env/packages/llm/llm",
-    "@deepseek-ai/dsh-session": "link:../../../plugin-dev/session-tool-env/packages/core/session",
-    "@deepseek-ai/dsh-tools": "link:../../../plugin-dev/session-tool-env/packages/core/tools",
-    "cordis": "link:../../../plugin-dev/session-tool-env/vendor/cordis"
+    "@deepseek-ai/dsh-llm": "link:../../../env/session-tool-env/packages/llm/llm",
+    "@deepseek-ai/dsh-session": "link:../../../env/session-tool-env/packages/core/session",
+    "@deepseek-ai/dsh-tools": "link:../../../env/session-tool-env/packages/core/tools",
+    "cordis": "link:../../../env/session-tool-env/vendor/cordis"
   }
 }

@@ -22,8 +22,8 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-llm": "link:../../../plugin-dev/session-tool-env/packages/llm/llm",
-    "@deepseek-ai/dsh-session": "link:../../../plugin-dev/session-tool-env/packages/core/session"
+    "@deepseek-ai/dsh-llm": "link:../../../env/session-tool-env/packages/llm/llm",
+    "@deepseek-ai/dsh-session": "link:../../../env/session-tool-env/packages/core/session"
   },
   "peerDependencies": {
     "cordis": "^4.0.0-rc.7"

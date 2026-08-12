@@ -41,6 +41,10 @@ import type {
   SessionToolListResult,
   SessionToolReadResult,
   SessionToolRenameResult,
+  SessionToolWorkspaceAddResult,
+  SessionToolWorkspaceDeleteResult,
+  SessionToolWorkspaceListResult,
+  SessionToolWorkspaceRenameResult,
   SessionToolWriteResult,
 } from 'session-tool'
 
@@ -67,7 +71,7 @@ let liveCtx: Context | undefined
  * @returns the worktree root, or the `DSH_SESSION_ANCHOR` override.
  */
 export function dshWorktreeRoot(): string {
-  return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL('../../../../plugin-dev/session-tool-env', import.meta.url))
+  return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL('../../../../env/session-tool-env', import.meta.url))
 }
 
 /**
@@ -167,13 +171,71 @@ function printResult(
 }
 
 /** Tool-shaped create result (session_create schema). */
-function createToolShape(value: SessionToolCreateResult): { session_id: string } {
-  return { session_id: value.sessionId }
+function createToolShape(value: SessionToolCreateResult): {
+  session_id: string
+  workspace_id?: string
+  workspace_path?: string
+} {
+  return {
+    session_id: value.sessionId,
+    ...value.workspaceId === undefined ? {} : { workspace_id: value.workspaceId },
+    ...value.workspacePath === undefined ? {} : { workspace_path: value.workspacePath },
+  }
+}
+
+/** CLI-shaped workspace add result (no agent tool carries this shape). */
+function workspaceAddShape(value: SessionToolWorkspaceAddResult): {
+  workspace_id: string
+  path: string
+  created: boolean
+} {
+  return { workspace_id: value.workspaceId, path: value.path, created: value.created }
+}
+
+/** CLI-shaped workspace list result. */
+function workspaceListShape(value: SessionToolWorkspaceListResult): {
+  workspaces: {
+    workspace_id: string
+    path: string
+    title: string
+    session_ids: string[]
+    created_at: string
+    updated_at: string
+  }[]
+  archived_session_ids: string[]
+} {
+  return {
+    workspaces: value.workspaces.map(row => ({
+      workspace_id: row.workspaceId,
+      path: row.path,
+      title: row.title,
+      session_ids: [...row.sessionIds],
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    })),
+    archived_session_ids: [...value.archivedSessionIds],
+  }
+}
+
+/** CLI-shaped workspace rename result. */
+function workspaceRenameShape(value: SessionToolWorkspaceRenameResult): {
+  workspace_id: string
+  title: string
+} {
+  return { workspace_id: value.workspaceId, title: value.title }
+}
+
+/** CLI-shaped workspace delete result. */
+function workspaceDeleteShape(value: SessionToolWorkspaceDeleteResult): {
+  workspace_id: string
+  deleted: boolean
+} {
+  return { workspace_id: value.workspaceId, deleted: value.deleted }
 }
 
 /** Tool-shaped write result (session_write schema). */
-function writeToolShape(value: SessionToolWriteResult): { session_id: string; seq: number } {
-  return { session_id: value.sessionId, seq: value.seq }
+function writeToolShape(value: SessionToolWriteResult): { session_id: string } {
+  return { session_id: value.sessionId }
 }
 
 /** Tool-shaped read result (session_read schema). */
@@ -241,6 +303,29 @@ function renderRenameText(value: SessionToolRenameResult): string {
   if (value.title !== undefined) parts.push(`title: ${value.title}`)
   if (value.tags !== undefined) parts.push(`tags: ${value.tags.join(',')}`)
   return parts.join('\n')
+}
+
+/** Render a workspace add result as text. */
+function renderWorkspaceAddText(value: SessionToolWorkspaceAddResult): string {
+  return `workspace ${value.workspaceId} (${value.path})${value.created ? '' : ' (reused)'}`
+}
+
+/** Render a workspace list result as text lines. */
+function renderWorkspaceListText(value: SessionToolWorkspaceListResult): string {
+  if (value.workspaces.length === 0) return '(no workspaces)'
+  return value.workspaces
+    .map(row => `${row.workspaceId} ${row.path}${row.title === row.path ? '' : ` ${row.title}`}`)
+    .join('\n')
+}
+
+/** Render a workspace rename result as text. */
+function renderWorkspaceRenameText(value: SessionToolWorkspaceRenameResult): string {
+  return `workspace ${value.workspaceId}: ${value.title}`
+}
+
+/** Render a workspace delete result as text. */
+function renderWorkspaceDeleteText(value: SessionToolWorkspaceDeleteResult): string {
+  return value.deleted ? `deleted workspace ${value.workspaceId}` : `workspace ${value.workspaceId} not found`
 }
 
 /** Collect repeated option values. */
@@ -320,6 +405,7 @@ function buildProgram(): Command {
     .option('--title <title>', 'explicit title; pins the title and stops automatic generation')
     .option('--tag <tag>', 'initial tag (repeatable)', collect, [])
     .option('--parent <id>', 'durable parent lineage (you or one of your ancestors)')
+    .option('--workspace <path>', 'register (or reuse) the workspace at this directory and bind the session to it')
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
     .action(verb(async (opts) => {
       const ctx = await bootProfile(opts.profile, opts.patch)
@@ -328,6 +414,10 @@ function buildProgram(): Command {
           ...opts.title !== undefined ? { title: opts.title } : {},
           ...opts.parent !== undefined ? { parentSessionId: SessionId(opts.parent) } : {},
           ...opts.tag.length > 0 ? { tags: opts.tag } : {},
+          ...opts.workspace !== undefined ? { workspacePath: opts.workspace } : {},
+          // The invoking directory becomes the session cwd so the web
+          // process serves the new session to every GUI client.
+          cwd: process.cwd(),
         })
         printResult(opts.format, () => result.sessionId, () => createToolShape(result),)
       } finally {
@@ -356,13 +446,13 @@ function buildProgram(): Command {
 
   bootOptions(session
     .command('write <session_id> <content...>')
-    .description('Append one user prompt to a session log (durable; not delivered).')
+    .description('Send one prompt into a session conversation (the gateway resumes the agent; reply streams back).')
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
     .action(verb(async (sessionId, content, opts) => {
       const ctx = await bootProfile(opts.profile, opts.patch)
       try {
         const result = await ctx.sessionTool.write(CLI_CALLER, SessionId(sessionId), content.join(' '))
-        printResult(opts.format, () => String(result.seq), () => writeToolShape(result),)
+        printResult(opts.format, () => result.sessionId, () => writeToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -413,6 +503,81 @@ function buildProgram(): Command {
           ...opts.tag.length > 0 ? { tags: opts.tag } : {},
         })
         printResult(opts.format, () => renderRenameText(result), () => renameToolShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  // ── workspace (web gateway authority) ────────────────────────────────────
+  //
+  // The web process (`dsh web`) owns the workspace registry; every workspace
+  // verb talks to it over the gateway's HTTP carrier through the shared
+  // service layer (`ctx.sessionTool.workspace*`). `Config.webUrl` (default
+  // http://127.0.0.1:3080) names the gateway; a `--patch` overlay or the
+  // profile's cordis.patch.yml can point elsewhere.
+  const workspace = program
+    .command('workspace')
+    .description('Workspace registry operations through the web gateway (boots a profile; default headless).')
+
+  bootOptions(workspace
+    .command('add <path>')
+    .description('Register (or reuse) the workspace at an existing directory.')
+    .option('--title <title>', 'display title (used only when a new record is created)')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (path, opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.workspaceAdd(CLI_CALLER, {
+          path,
+          ...opts.title !== undefined ? { title: opts.title } : {},
+        })
+        printResult(opts.format, () => renderWorkspaceAddText(result), () => workspaceAddShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  bootOptions(workspace
+    .command('list')
+    .description('List workspaces in durable registry order.')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.workspaceList(CLI_CALLER)
+        printResult(opts.format, () => renderWorkspaceListText(result), () => workspaceListShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  bootOptions(workspace
+    .command('rename <workspace_id>')
+    .description('Rename a workspace (the title must be non-blank and unique).')
+    .requiredOption('--title <title>', 'new display title')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (workspaceId, opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.workspaceRename(CLI_CALLER, {
+          workspaceId,
+          title: opts.title,
+        })
+        printResult(opts.format, () => renderWorkspaceRenameText(result), () => workspaceRenameShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  bootOptions(workspace
+    .command('delete <workspace_id>')
+    .description('Delete a workspace registration (its directory and session logs are retained).')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (workspaceId, opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.workspaceDelete(CLI_CALLER, workspaceId)
+        printResult(opts.format, () => renderWorkspaceDeleteText(result), () => workspaceDeleteShape(result),)
       } finally {
         await disposeTree()
       }

@@ -80,16 +80,40 @@ describe('tool-session', () => {
     expect(value).toEqual({ session_id: 'session-9' })
   })
 
-  it('session_write forwards content and returns the appended seq', async () => {
+  it('session_create maps workspace_path onto the service and echoes the binding', async () => {
     const { defs, sessionTool } = register()
-    sessionTool.write.mockResolvedValue({ sessionId: SessionId('session-9'), seq: 3 })
+    sessionTool.create.mockResolvedValue({
+      sessionId: SessionId('session-9'),
+      workspaceId: 'ws-1',
+      workspacePath: '/canonical/ws',
+    })
+    const value = await run(defs.get('session_create')!, {
+      workspace_path: '/some/path',
+    }, sessionTool)
+    expect(sessionTool.create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent', sessionId: 'caller' }),
+      { workspacePath: '/some/path' },
+    )
+    expect(value).toEqual({ session_id: 'session-9', workspace_id: 'ws-1', workspace_path: '/canonical/ws' })
+  })
+
+  it('session_create output schema accepts a binding-free result', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.create.mockResolvedValue({ sessionId: SessionId('session-9') })
+    const value = await run(defs.get('session_create')!, {}, sessionTool)
+    expect(value).toEqual({ session_id: 'session-9' })
+  })
+
+  it('session_write forwards content and returns the session id', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.write.mockResolvedValue({ sessionId: SessionId('session-9') })
     const value = await run(defs.get('session_write')!, { session_id: 'session-9', content: 'hello' }, sessionTool)
     expect(sessionTool.write).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'agent' }),
       'session-9',
       'hello',
     )
-    expect(value).toEqual({ session_id: 'session-9', seq: 3 })
+    expect(value).toEqual({ session_id: 'session-9' })
   })
 
   it('session_read forwards since_seq and max_blocks and projects rows', async () => {

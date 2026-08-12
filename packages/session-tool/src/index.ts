@@ -36,12 +36,31 @@ export interface SessionToolCreateOptions {
   readonly parentSessionId?: SessionId
   /** Tag set accepted immediately after creation (last-wins replace). */
   readonly tags?: readonly string[]
+  /**
+   * Register (or reuse) the workspace at this directory through the web
+   * gateway and bind the new session to it. The session's header `cwd` is set
+   * to the workspace's canonical path (the durable membership mechanism the
+   * workspace registry accounts by). The web process must be reachable at
+   * `Config.webUrl`; a missing or rejecting gateway fails the call loudly
+   * (`web-unreachable` / workspace wire codes).
+   */
+  readonly workspacePath?: string
+  /**
+   * Working directory for the session header, used when no `workspacePath`
+   * is given (a cwd-bearing session is served by the web process's session
+   * list; a cwd-less session stays a local durable log).
+   */
+  readonly cwd?: string
 }
 
 /** Result of {@link SessionToolService.create}. */
 export interface SessionToolCreateResult {
   /** The minted session id. */
   readonly sessionId: SessionId
+  /** The bound workspace id, when `workspacePath` was requested. */
+  readonly workspaceId?: string
+  /** The workspace's canonical path (the session header `cwd`), when bound. */
+  readonly workspacePath?: string
 }
 
 /** One readable message row of a session transcript. */
@@ -74,8 +93,6 @@ export interface SessionToolReadResult {
 export interface SessionToolWriteResult {
   /** The written session id. */
   readonly sessionId: SessionId
-  /** Sequence number of the appended `user/message` event. */
-  readonly seq: number
 }
 
 /** Listing scopes: the caller's own tree, one named tree, or every materialized session. */
@@ -141,6 +158,72 @@ export interface SessionToolRenameResult {
   readonly tags?: readonly string[]
 }
 
+/** One workspace row served by the web gateway. */
+export interface SessionToolWorkspaceRow {
+  /** The workspace id. */
+  readonly workspaceId: string
+  /** The canonical directory the workspace owns. */
+  readonly path: string
+  /** The display title. */
+  readonly title: string
+  /** Sessions accounted by the workspace, in registry order. */
+  readonly sessionIds: readonly string[]
+  /** Creation timestamp (ISO). */
+  readonly createdAt: string
+  /** Last mutation timestamp (ISO). */
+  readonly updatedAt: string
+}
+
+/** Options for {@link SessionToolService.workspaceAdd}. */
+export interface SessionToolWorkspaceAddOptions {
+  /** Existing directory to adopt; canonicalized and reused when already registered. */
+  readonly path: string
+  /** Display title, used only when a new record is created. */
+  readonly title?: string
+}
+
+/** Result of {@link SessionToolService.workspaceAdd}. */
+export interface SessionToolWorkspaceAddResult {
+  /** The registered (or reused) workspace id. */
+  readonly workspaceId: string
+  /** The workspace's canonical path. */
+  readonly path: string
+  /** Whether this call minted the record (`false` = reused). */
+  readonly created: boolean
+}
+
+/** Result of {@link SessionToolService.workspaceList}. */
+export interface SessionToolWorkspaceListResult {
+  /** Workspaces in durable registry order. */
+  readonly workspaces: readonly SessionToolWorkspaceRow[]
+  /** The registry-global archived session id set. */
+  readonly archivedSessionIds: readonly string[]
+}
+
+/** Options for {@link SessionToolService.workspaceRename}. */
+export interface SessionToolWorkspaceRenameOptions {
+  /** The workspace to rename. */
+  readonly workspaceId: string
+  /** The new display title; must be non-blank and unique. */
+  readonly title: string
+}
+
+/** Result of {@link SessionToolService.workspaceRename}. */
+export interface SessionToolWorkspaceRenameResult {
+  /** The renamed workspace id. */
+  readonly workspaceId: string
+  /** The accepted title. */
+  readonly title: string
+}
+
+/** Result of {@link SessionToolService.workspaceDelete}. */
+export interface SessionToolWorkspaceDeleteResult {
+  /** The deleted workspace id. */
+  readonly workspaceId: string
+  /** Whether a record was removed (`false` = unknown id, idempotent no-op). */
+  readonly deleted: boolean
+}
+
 /**
  * The session-management capability: create, read, write, list, and rename
  * sessions over DSH's durable session stack. `write` appends a `user/message`
@@ -169,12 +252,16 @@ export interface SessionToolService {
   read(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolReadOptions): Promise<SessionToolReadResult>
 
   /**
-   * Append one user prompt to a session's log.
+   * Send one user prompt into a session's conversation: the web gateway
+   * resumes the session's agent (from the durable log on first touch) and
+   * delivers the message into the model loop; the reply streams back through
+   * the gateway's event push and lands in the session log. This settles when
+   * the message is admitted, not when the turn completes.
    * @param caller - the calling agent or the CLI.
    * @param sessionId - target session; the caller must be the session itself
    *   or one of its ancestors.
    * @param content - non-empty prompt text.
-   * @returns the session id and the appended event's seq.
+   * @returns the written session id.
    */
   write(caller: SessionToolCaller, sessionId: SessionId, content: string): Promise<SessionToolWriteResult>
 
@@ -196,6 +283,40 @@ export interface SessionToolService {
    * @returns the accepted title and/or tags.
    */
   rename(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolRenameOptions): Promise<SessionToolRenameResult>
+
+  /**
+   * Register (or reuse) a workspace through the web gateway. The gateway is
+   * the workspace registry's authority; this provider holds no workspace
+   * state of its own.
+   * @param caller - the calling agent or the CLI.
+   * @param options - the existing directory to adopt and an optional title.
+   * @returns the workspace id, its canonical path, and whether it was minted.
+   */
+  workspaceAdd(caller: SessionToolCaller, options: SessionToolWorkspaceAddOptions): Promise<SessionToolWorkspaceAddResult>
+
+  /**
+   * List workspaces through the web gateway, in durable registry order.
+   * @param caller - the calling agent or the CLI.
+   * @returns the workspace rows and the archived session id set.
+   */
+  workspaceList(caller: SessionToolCaller): Promise<SessionToolWorkspaceListResult>
+
+  /**
+   * Rename a workspace through the web gateway.
+   * @param caller - the calling agent or the CLI.
+   * @param options - the workspace and its new title.
+   * @returns the accepted title.
+   */
+  workspaceRename(caller: SessionToolCaller, options: SessionToolWorkspaceRenameOptions): Promise<SessionToolWorkspaceRenameResult>
+
+  /**
+   * Delete a workspace registration through the web gateway (the directory
+   * and every session log are retained).
+   * @param caller - the calling agent or the CLI.
+   * @param workspaceId - the registration to remove.
+   * @returns whether a record was removed.
+   */
+  workspaceDelete(caller: SessionToolCaller, workspaceId: string): Promise<SessionToolWorkspaceDeleteResult>
 }
 
 declare module 'cordis' {
@@ -214,6 +335,12 @@ export type SessionToolErrorCode =
   // Translated from the owned session-title / session-tags services.
   | 'title-invalid'
   | 'tag-invalid'
+  // The web gateway was unreachable or refused the request at the carrier layer.
+  | 'web-unreachable'
+  // Translated from the web gateway's workspace wire codes.
+  | 'workspace-not-found'
+  | 'workspace-name-conflict'
+  | 'workspace-invalid-path'
 
 /**
  * Typed failure for the session-tool seam. The code is the stable
@@ -258,5 +385,16 @@ export class SessionEmptyContentError extends SessionToolError {
 export class SessionLimitError extends SessionToolError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, 'limit-exceeded', options)
+  }
+}
+
+/**
+ * The web gateway (workspace registry authority) was unreachable or rejected
+ * the request at the transport/carrier layer (connection refused, timeout,
+ * non-JSON envelope, non-2xx HTTP status).
+ */
+export class SessionWebUnreachableError extends SessionToolError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, 'web-unreachable', options)
   }
 }

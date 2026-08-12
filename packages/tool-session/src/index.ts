@@ -55,8 +55,11 @@ export function apply(ctx: Context): void {
     name: 'session_create',
     description:
       'Create a persistent, addressable session. Optionally fork under a parent session (you or one of your '
-      + 'ancestors) for lineage, pin an explicit title, and attach an initial tag set. The session stays durable '
-      + 'across processes; write prompts into it with session_write and read them back with session_read.',
+      + 'ancestors) for lineage, pin an explicit title, and attach an initial tag set. Pass workspace_path to '
+      + 'register (or reuse) the workspace at that directory through the web gateway and bind the session to it '
+      + '(the session header cwd becomes the workspace\'s canonical path; the web process accounts it on its next '
+      + 'index rebuild). The session stays durable across processes; write prompts into it with session_write and '
+      + 'read them back with session_read.',
     parameters: {
       title: {
         type: 'string',
@@ -71,6 +74,10 @@ export function apply(ctx: Context): void {
         items: { type: 'string' },
         description: 'Optional initial tag set (last-wins replace if accepted again later).',
       },
+      workspace_path: {
+        type: 'string',
+        description: 'Optional existing directory to register as a workspace (idempotent) and bind this session to.',
+      },
     },
     output: {
       schema: {
@@ -78,9 +85,15 @@ export function apply(ctx: Context): void {
         additionalProperties: false,
         properties: {
           session_id: { type: 'string', required: true },
+          workspace_id: { type: 'string' },
+          workspace_path: { type: 'string' },
         },
       },
-      render: (_args, value) => [{ type: 'text', text: `created session ${value.session_id}` }],
+      render: (_args, value) => [{
+        type: 'text',
+        text: `created session ${value.session_id}`
+          + (value.workspace_id === undefined ? '' : ` (workspace ${value.workspace_id})`),
+      }],
     },
     async execute(args, exec) {
       const caller = callerOf(exec)
@@ -88,10 +101,19 @@ export function apply(ctx: Context): void {
         ...args.title !== undefined ? { title: args.title } : {},
         ...args.parent_session_id !== undefined ? { parentSessionId: SessionId(args.parent_session_id) } : {},
         ...args.tags !== undefined ? { tags: args.tags } : {},
+        ...args.workspace_path !== undefined ? { workspacePath: args.workspace_path } : {},
+        // Bind the new session to the calling agent's working directory so
+        // the web process serves it (cwd-less sessions stay invisible to the
+        // GUI). callerOf above guarantees the agent is attached.
+        ...(exec.agent?.session.header.cwd ?? undefined) === undefined ? {} : { cwd: exec.agent!.session.header.cwd },
       })
-      return { session_id: result.sessionId }
+      return {
+        session_id: result.sessionId,
+        ...result.workspaceId === undefined ? {} : { workspace_id: result.workspaceId },
+        ...result.workspacePath === undefined ? {} : { workspace_path: result.workspacePath },
+      }
     },
-    presentCall: args => sessionCard('Create a persistent session', args.title ?? args.parent_session_id),
+    presentCall: args => sessionCard('Create a persistent session', args.title ?? args.parent_session_id ?? args.workspace_path),
   }))
 
   ctx.tools.register(defineTool({
@@ -155,15 +177,17 @@ export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'session_write',
     description:
-      'Append one user prompt to a session log (yours or a descendant\'s). The text lands as a durable '
-      + 'user/message event — model-visible on the session\'s next turn — but is NOT delivered to a live agent: '
-      + 'delivery stays send_message. Cold sessions are materialized on first write (resume semantics).',
+      'Send one prompt into a session conversation (yours or a descendant\'s). The web gateway resumes the '
+      + 'session\'s agent — creating it from the durable log on first touch — and delivers the message into the '
+      + 'model loop; the reply streams back through the gateway\'s event push and lands in the session log. '
+      + 'This settles when the message is admitted, not when the turn completes; read the reply back with '
+      + 'session_read.',
     parameters: {
       session_id: SESSION_ID_SCHEMA,
       content: {
         type: 'string',
         required: true,
-        description: 'Non-empty prompt text to append as a user message.',
+        description: 'Non-empty prompt text to send into the conversation.',
       },
     },
     output: {
@@ -172,14 +196,13 @@ export function apply(ctx: Context): void {
         additionalProperties: false,
         properties: {
           session_id: { type: 'string', required: true },
-          seq: { type: 'integer', required: true },
         },
       },
-      render: (_args, value) => [{ type: 'text', text: `appended to ${value.session_id} at seq ${value.seq}` }],
+      render: (_args, value) => [{ type: 'text', text: `prompt sent to ${value.session_id}` }],
     },
     async execute(args, exec) {
       const result = await ctx.sessionTool.write(callerOf(exec), SessionId(args.session_id), args.content)
-      return { session_id: result.sessionId, seq: result.seq }
+      return { session_id: result.sessionId }
     },
     presentCall: args => sessionCard(`Write to session ${args.session_id}`, args.content),
   }))

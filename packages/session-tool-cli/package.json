@@ -25,10 +25,10 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-app-boot": "link:../../../plugin-dev/session-tool-env/packages/boot/app-boot",
-    "@deepseek-ai/dsh-environment": "link:../../../plugin-dev/session-tool-env/packages/util/environment",
-    "@deepseek-ai/dsh-paths": "link:../../../plugin-dev/session-tool-env/packages/util/paths",
-    "@deepseek-ai/dsh-session": "link:../../../plugin-dev/session-tool-env/packages/core/session",
+    "@deepseek-ai/dsh-app-boot": "link:../../../env/session-tool-env/packages/boot/app-boot",
+    "@deepseek-ai/dsh-environment": "link:../../../env/session-tool-env/packages/util/environment",
+    "@deepseek-ai/dsh-paths": "link:../../../env/session-tool-env/packages/util/paths",
+    "@deepseek-ai/dsh-session": "link:../../../env/session-tool-env/packages/core/session",
     "commander": "^15.0.0",
     "session-tool": "workspace:*"
   },
@@ -37,7 +37,7 @@
     "cordis": "^4.0.0-rc.7"
   },
   "devDependencies": {
-    "@cordisjs/plugin-include": "link:../../../plugin-dev/session-tool-env/vendor/include",
-    "cordis": "link:../../../plugin-dev/session-tool-env/vendor/cordis"
+    "@cordisjs/plugin-include": "link:../../../env/session-tool-env/vendor/include",
+    "cordis": "link:../../../env/session-tool-env/vendor/cordis"
   }
 }
