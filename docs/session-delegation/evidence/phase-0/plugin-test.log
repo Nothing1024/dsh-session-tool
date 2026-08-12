@@ -1,0 +1,17 @@
+$ vitest run
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/tool-session/tests/tools.spec.ts (12 tests) 15ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (11 tests) 29ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (10 tests) 29ms
+ ✓ packages/session-tool-local/tests/workspace.spec.ts (12 tests) 67ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (21 tests) 152ms
+ ✓ packages/session-tool-cli/tests/e2e.spec.ts (1 test) 5374ms
+     ✓ replays the fail-loud flow (no web gateway) against the recorded fixture  5374ms
+
+ Test Files  6 passed (6)
+      Tests  67 passed (67)
+   Start at  18:12:26
+   Duration  5.71s (transform 1.72s, setup 0ms, import 2.42s, tests 5.67s, environment 0ms)
+

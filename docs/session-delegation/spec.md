@@ -61,12 +61,12 @@
 
 | 假设 ID | 内容 | 风险 | 确认方式 |
 |---|---|---|---|
-| ASM-001 | **continuable 平级化选项**：P4 默认走选项 A（send_message/list_agents 改走 session API，续写开放）；若 P0 决策改为选项 B（continuable 暂留旧实现），P4 降级为仅标记 deprecated | 语义变化大（授权放宽） | P0 决策任务 T-002 用户拍板 |
-| ASM-002 | **授权强度**默认 `workspace`（同 workspace 可续写），Config 可配 `creator`/`anyone` | 与 subagent 精确父授权语义差异 | P0 决策任务 T-002 |
-| ASM-003 | **等待语义** = 单 session idle（不等子树）；`session.wait` 端点实现于 P1 | 子又开子时父不等孙（与现状 whenIdle 有差异） | P0 决策任务 T-002 + P3 回归确认 |
-| ASM-004 | **结构化输出**保留：session provider 桥接在子会话注入结构化约定（JSON 文本 + 校验重试），workflow/ralph 的 outputSchema 能力声明保持 true | 文本约定弱于现状强校验 | P3 任务 T-014 实现 + ralph 回归 |
-| ASM-005 | **清理策略** = 标记 + 手动 + 超时三件套（tags `~archived` + hiddenPrefixes + 后台扫描任务可后置） | 孤儿会话无自动回收 | P0 决策任务 T-002 + P2 后置 |
-| ASM-006 | 上游基线 = `env/session-tool-env` HEAD（534eb84）；subagent 源码基线 = `~/.dsh/source/current`（staging-20260811T020137Z） | 两处基线差异导致定位漂移 | P0 校准任务 T-001 |
+| ASM-001 | **continuable 平级化选项 A（已定案）**：send_message/list_agents 改走 session API，续写开放；P4 全量实施 | 语义变化大（授权放宽） | ✅ 用户拍板（evidence/phase-0/decisions.md） |
+| ASM-002 | **授权强度默认 `workspace`（已定案）**（同 workspace 可续写），Config 可配 `creator`/`anyone` | 与 subagent 精确父授权语义差异 | ✅ 用户拍板 |
+| ASM-003 | **等待语义 = 单 session idle（已定案，不等子树）**；`session.wait` 端点实现于 P1 | 子又开子时父不等孙（与现状 whenIdle 有差异） | ✅ 用户拍板 + P3 回归确认 |
+| ASM-004 | **结构化输出保留（已定案）**：session provider 桥接在子会话注入结构化约定（JSON 文本 + 校验重试一次），workflow/ralph 的 outputSchema 能力声明保持 true | 文本约定弱于现状强校验 | ✅ 用户拍板 + T-014 实现 + ralph 回归 |
+| ASM-005 | **清理策略 = 标记+手动+超时三件套（已定案）**（tags `~archived` + hiddenPrefixes + 后台扫描任务可后置） | 孤儿会话无自动回收 | ✅ 用户拍板；超时扫描为后置项 |
+| ASM-006 | 上游基线 = `env/session-tool-env` HEAD（534eb84，**实际改造仓库**）；`~/.dsh/source/current`（staging-20260811T020137Z）为勘察参照。**两处 subagent 源码有差异**（worktree continuation.ts 1285 行含 interrupt 扩展 vs staging 1213 行）——改动一律以 worktree 为准，行号仅 hint | 两处基线差异导致定位漂移 | ✅ T-001 校准完成（baseline.md §3：无需同步，worktree 覆盖全部锚点 symbol） |
 | ASM-007 | **收集约束边界**：`session_collect` 只做"完成条件声明式求值"（wait-all/any/n/first-failed + 失败策略 + 超时 + 聚合），**不做**依赖图（DAG）/调度/重试编排——那些留给后期 flow 生态，collect 作为 vibee 未来可复用的执行原语 | 边界膨胀成迷你工作流引擎 | P2 任务 T-012 契约注释 + 5.4 检查 |
 | ASM-008 | **provider 桥接落点 = 上游 subagent-session 包**（subagent 家族新成员，与 acp/codex 并列），bundle/base 装配行改为指向它；插件（session-tool）**不注册 provider**，专注工具面/元数据/约束。依据（已勘察）：bundle/base 的 tool-subagent/workflow/ralph 装配行全部指向 provider 名，provider 必须在核心 composition 注册；headless 进程 = web composition 完整挂载（自带 apiProxy），transport 用 `InProcessApiClient(toFetchHandler(ctx.apiProxy))`（headless runner 现成模式，双进程皆进程内网关，无跨进程 HTTP） | 插件若注册 provider，web profile（未装插件）的 workflow 在 `getProvider` 处 AGENT_START 崩溃 | P3 任务 T-014 实现 + 装配回归 |
 | ASM-009 | **约束执行路径割裂边界**：creator/anyone 档位只覆盖插件工具路径（`session_write`/`session_collect`）；上游 subagent 工具路径（`subagent`/`send_message` → subagent-session）保持 workspace 级授权（网关既有面），上游不读插件 Config | 用户误以为 creator 档约束了 subagent 工具路径 | BR-005 边界说明 + 5.4 检查 |
@@ -85,7 +85,7 @@
 | BR-002 | **生态契约零破坏**：`subagent`/`subagent_fork` 工具名与 schema、`SubagentProvider`/`SubagentRun` 接口、`subagent.list/history/prompt` RPC 形状、workflow/ralph 调用方式全部不变 | workflow 以 `subagentProvider: spawn` 配置跑通 | 工具名/schema/RPC 字段任何变化 | 全部 | 全量回归 |
 | BR-003 | 委派元数据（来源/模式/深度/状态）必须**持久可查**：来源/深度入 header，状态由投影推导，标签可过滤 | `session_list` 按 `tags:['delegated']` + status 过滤出运行中任务 | 状态只在内存、崩溃丢失 | session-tool | unit + 重启验证 |
 | BR-004 | 完成状态必须**可从会话日志推导**（投影纯函数），不依赖任何进程本地状态 | 进程重启后 `session_list` 仍显示 completed/failed | 重启后状态消失或需手动修复 | session-tool 投影 | unit + 重启验证 |
-| BR-005 | 约束（续写授权/深度上限）在**插件工具层执行**，强度由 Config 决定；默认不改变 web GUI 既有会话行为。**路径边界**（ASM-009）：creator/anyone 档位只约束插件工具路径（`session_write`/`session_collect`）；上游 subagent 工具路径（`subagent`/`send_message`）保持 workspace 级授权（网关既有面） | `allowOthersToWrite: 'workspace'` 下同 workspace 会话可续写 | 约束逻辑进入核心或影响非委派会话 | session-tool + subagent-session | unit |
+| BR-005 | 约束（续写授权/深度上限）在**插件工具层执行**，强度由 Config 决定（**默认 `workspace`**，已定案 ASM-002）；默认不改变 web GUI 既有会话行为。**路径边界**（ASM-009）：creator/anyone 档位只约束插件工具路径（`session_write`/`session_collect`）；上游 subagent 工具路径（`subagent`/`send_message`）保持 workspace 级授权（网关既有面） | `allowOthersToWrite: 'workspace'` 下同 workspace 会话可续写 | 约束逻辑进入核心或影响非委派会话 | session-tool + subagent-session | unit |
 | BR-006 | 上游改动**零新增事件类型**（归因走 `MessageSource` 合并扩展；深度走既有 header 字段） | 父投递消息在子日志带 `coordinator` 归因 | 新增 `subagent/*` 式专用事件 | env worktree | typecheck + 测试 |
 | BR-007 | 收集约束必须**声明式求值**：对一组会话（血缘树或 tags 聚合）判定完成条件（`wait: all/any/n/first-failed` + `on_failure: continue/cancel-rest` + 超时），结果从会话日志/投影聚合；**禁止**内置依赖图/调度/重试编排 | `wait: 'all'` 下 3 个会话全部终态后返回聚合结果 | `wait: 'n'(2)` 下等全部 3 个才返回 | session-tool collect | unit + 冒烟 |
 
@@ -403,10 +403,10 @@ After:
 | `packages/subagent/subagent/src/descriptor.ts` | `snapshotSubagentDescriptor` / `foldSubagentDescriptor` / `SUBAGENT_DESCRIPTOR_VERSION` | `rg "SUBAGENT_DESCRIPTOR_VERSION" packages/subagent/subagent/src/descriptor.ts` | 全文件 312 行 | 冷恢复协议 |
 | `packages/subagent/subagent-inprocess/src/index.ts` | `startInProcessRun` / `drivePublishedRun` / `readResult` | `rg "startInProcessRun" packages/subagent/subagent-inprocess/src/index.ts` | L99/L160/L214 | one-shot 驱动器 |
 | `packages/subagent/subagent-spawn/src/index.ts` | `class SpawnProvider` / `start` / `prepareContinuable` | `rg "class SpawnProvider" packages/subagent/subagent-spawn/src/index.ts` | L41-L60 | 换引擎目标点 |
-| `packages/subagent/tool-subagent/src/index.ts` | `name: 'subagent'` 工具定义 | `rg "toolName" packages/subagent/tool-subagent/src/index.ts` | 待勘察 | 工具面(名字不变) |
-| `packages/subagent/tool-subagent-control/src/index.ts` | `send_message` / `list_agents` 工具 | `rg "send_message" packages/subagent/tool-subagent-control/src/` | 待勘察 | P4 改走 session API |
+| `packages/subagent/tool-subagent/src/index.ts` | `name: 'subagent'` 工具定义 | `rg "toolName" packages/subagent/tool-subagent/src/index.ts` | L78（schema）/L247（注册）/L403（延迟注册） | 工具面(名字不变) |
+| `packages/subagent/tool-subagent-control/src/index.ts` | `send_message` / `list_agents` 工具 | `rg "send_message" packages/subagent/tool-subagent-control/src/` | L27 send_message（另有 interrupt_agent）/ list-agents.ts L91 list_agents | P4 改走 session API |
 | `packages/host/apiproxy/src/api-proxy.ts` | `sessions:` 域 `prompt` / `durableCreate`(env) / `hasSubagentOwner` / `subagents:` 域 | `rg "durableCreate|hasSubagentOwner|async prompt" packages/host/apiproxy/src/api-proxy.ts` | L945/L1442/L1813 | 网关改造点 |
-| `packages/host/apiproxy/src/api/sessions.schema.ts` | RPC schema 定义 | `rg "durableCreate" packages/host/apiproxy/src/api/sessions.schema.ts` | 待勘察 | wait 端点 schema 落点 |
+| `packages/host/apiproxy/src/api/sessions.schema.ts` | RPC schema 定义 | `rg "durableCreate" packages/host/apiproxy/src/api/sessions.schema.ts` | L117（请求）/L130（响应） | wait 端点 schema 落点 |
 | `packages/bundle/base/cordis.patch.yml` | subagent/workflow/ralph 装配行 | `rg -n "subagent|workflow-workerthread|tool-ralph" packages/bundle/base/cordis.patch.yml` | L250-L333 | 5 处 provider 指向需改 |
 | `packages/subagent/subagent-session/`(新增) | 上游 session provider | `rg "subagent-session" packages/subagent/` | 新增包 | 实现=headless runner 模式 + sessions.fork |
 | `packages/bundle/headless/cordis.patch.yml` | headless=web composition | `rg "dsh-web-app" packages/bundle/headless/cordis.patch.yml` | 全文件 | 证明双进程皆进程内网关 |
@@ -415,7 +415,7 @@ After:
 | `plugin/packages/session-tool/src/index.ts` | `SessionToolCreateOptions` / `SessionToolListFilter` | `rg "interface SessionToolCreateOptions" plugin/packages/session-tool/src/index.ts` | L29-L136 | 契约扩展点 |
 | `plugin/packages/session-tool-local/src/index.ts` | `assertCreateParent` / `list` / `read` / provider 实现 | `rg "assertCreateParent" plugin/packages/session-tool-local/src/index.ts` | L115-L195 | 约束/过滤实现点 |
 | `plugin/packages/tool-session/src/index.ts` | 5 工具定义 | `rg "name: 'session_" plugin/packages/tool-session/src/index.ts` | L55-L230 | 工具 schema 扩展点 |
-| `plugin/packages/session-tool-local/src/session-client.ts` | `SessionHttpClient`(durableCreate/prompt/list/rename) | `rg "durableCreate" plugin/packages/session-tool-local/src/session-client.ts` | 待勘察 | wait 客户端落点 |
+| `plugin/packages/session-tool-local/src/session-client.ts` | `SessionHttpClient`(durableCreate/prompt/list/rename) | `rg "durableCreate" plugin/packages/session-tool-local/src/session-client.ts` | L87（durableCreate）/L95（invoke） | wait 客户端落点 |
 | `plugin/packages/session-tool-local/src/collect.ts`(新增) | 收集约束求值器 | `rg "collect" plugin/packages/session-tool-local/src/` | 新增文件 | 谓词求值/聚合/cancel-rest |
 | `plugin/packages/session-tool/src/index.ts` | `SessionToolCollectRequest/Result` 契约 | `rg "SessionToolCollect" plugin/packages/session-tool/src/index.ts` | 新增类型 | collect 契约 |
 | `packages/workflow/tool-ralph/src/index.ts` | `getProvider` / structured 能力检查 | `rg "supports structured output|getProvider" packages/workflow/tool-ralph/src/index.ts` | L221-L229 | 回归锚点 |
@@ -785,7 +785,7 @@ P5 真实场景验收 ◀──────┘
 1. 新包 `subagent-session`：`providerName: 'session'`，实现 `SubagentProvider`：
    - **深度校验在 provider 内实现**：读 `request.parent` 的 `session.header.delegationDepth`，child = depth+1，超限抛 `SubagentDepthError`（复用 `resolveChildDepth` 语义，参考 subagent-fork L38-L52 同款；此路径不经过插件 Config，与 ASM-009 一致）
    - `start(request)` = `new InProcessApiClient(toFetchHandler(ctx.apiProxy))` → `sessions.durableCreate({ parentSessionId, delegationDepth: depth+1, title, tags: ['delegated'] })` → `sessions.prompt`（coordinator 归因）→ `sessions.wait` → 读最后 `assistant/message` + `turn/end` reason → 组装 `SubagentRun`（`{ id, localAgent: undefined, result, dispose }`）
-   - **fork 场景（待勘察）**：`sessions.fork` 走网关 RPC（apiproxy 是否有 fork 端点，T-001 勘察确认）；若无端点，退化为进程内 `ctx.sessions.fork(parent.session, boundary)`（本包在 web composition 内，store 现成）——两种路径 T-001 定案后择一
+   - **fork 场景（已勘察定案）**：`session.fork` 走网关 RPC——apiproxy 已有 `session.fork` 端点（`fetch/handler.ts` L99 `'session.fork'` → `api.sessions.fork`，schema `sessions.schema.ts` L154，实现 `api-proxy.ts` L2285，错误码 `fork-unavailable`）；provider 用 `InProcessApiClient` 调 `sessions.fork({ sessionId, atSeq? })` 即可
    - `prepareContinuable()` 返回空 spec（continuable 语义保留：续写走 `session.prompt`，send_message 经 tool-subagent-control 改走 session API——P4 Task 18）
    - 能力声明与 spawn 一致（`outputSchema: true` 等，Task 15 保证）；`inheritsParentContext: false`
 2. `bundle/base` 装配：删 subagent-spawn/fork 行 → 加 subagent-session 行；`tool-subagent`×2 `provider: session`（backgroundMode: continuable 保留）；`workflow-workerthread` `provider: session`；`tool-ralph` `subagentProvider: session`

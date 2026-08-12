@@ -1,6 +1,6 @@
 序号,Phase,名称,详情锚点,前置任务,验证命令,状态,备注
-1,P0:基线与决策,校准上游与插件基线,spec.md#task-1,无,pnpm test(两处) 与基线记录一致,待开始,
-2,P0:基线与决策,定案开放决策并更新 spec 假设,spec.md#task-2,1,validate_package.py 0 FAIL,待开始,continuable A/B 与授权强度需用户拍板
+1,P0:基线与决策,校准上游与插件基线,spec.md#task-1,无,pnpm test(两处) 与基线记录一致,已完成,env HEAD 534eb84 / plugin 3765918;apiproxy 344 例+plugin 67 例全绿;4 项待勘察已补全
+2,P0:基线与决策,定案开放决策并更新 spec 假设,spec.md#task-2,1,validate_package.py 0 FAIL,已完成,6 项全部拍板(选项A/workspace/单session idle/三件套/JSON约定/report保留);decisions.md 已落盘
 3,P0:基线与决策,执行 Phase 0 回归验证,spec.md#task-3,1;2,pnpm test(两处) 全绿,待开始,
 4,P1:上游核心小改,durableCreate 补 delegationDepth 写入,spec.md#task-4,3,pnpm test(env) 新增用例通过,待开始,
 5,P1:上游核心小改,MessageSource 增加 coordinator 归因,spec.md#task-5,3,pnpm test(env) 归因用例通过,待开始,
