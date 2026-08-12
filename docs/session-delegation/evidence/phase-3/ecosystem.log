@@ -1,0 +1,16 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/dev/workspace/dsh/plugin/session-tool/env/session-tool-env
+
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/workflow-session.spec.ts (2 tests) 684ms
+     ✓ fan-out 3 runs peer session children and collects their answers  431ms
+ ✓ |thread-safe| packages/workflow/tool-ralph/tests/integration.spec.ts (10 tests) 2223ms
+     ✓ uses distinct empty-seed children, shared cwd, and only the prior bounded handoff  374ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  19:34:55
+   Duration  3.59s (transform 2.10s, setup 535ms, import 2.00s, tests 2.91s, environment 0ms)
+

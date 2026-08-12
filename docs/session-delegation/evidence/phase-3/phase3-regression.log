@@ -1,0 +1,166 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /Users/dev/workspace/dsh/plugin/session-tool/env/session-tool-env
+
+ ✓ |process-bound| packages/workflow/workflow-workerthread/tests/session.spec.ts (27 tests) 658ms
+ ✓ |thread-safe| packages/subagent/tool-subagent-control/tests/list-agents.spec.ts (11 tests) 718ms
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/integration.spec.ts (2 tests) 817ms
+     ✓ runs a two-stage workflow: a plain child, then a schema child through the structured runtime  429ms
+     ✓ a child that fails against its schema (nudges exhausted) reaches the script as null  387ms
+ ✓ |thread-safe| packages/subagent/subagent-spawn/tests/subagent-spawn.spec.ts (27 tests) 450ms
+ ✓ |thread-safe| packages/subagent/tool-subagent-control/tests/tool-subagent-control.spec.ts (14 tests) 1389ms
+ ✓ |thread-safe| packages/workflow/tool-ralph/tests/tool-ralph.spec.ts (15 tests) 1671ms
+     ✓ turns malformed fixed-workflow terminal values and reports into errors  999ms
+ ✓ |thread-safe| packages/workflow/tool-workflow/tests/tool-workflow.spec.ts (15 tests) 516ms
+ ✓ |thread-safe| packages/subagent/tool-subagent-report/tests/tool-subagent-report.spec.ts (17 tests) 1860ms
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/source-worker.compat.spec.ts (1 test) 453ms
+   ✓ runs the default config through the source worker  452ms
+ ✓ |thread-safe| packages/subagent/subagent-inprocess/tests/structured.spec.ts (30 tests) 448ms
+ ✓ |thread-safe| packages/subagent/subagent-dsh-sdk/tests/subagent-dsh-sdk.spec.ts (31 tests) 2186ms
+     ✓ runs a child turn end to end with a parent-unique run id  314ms
+ ✓ |thread-safe| packages/subagent/tool-subagent/tests/tool-subagent.spec.ts (55 tests) 1094ms
+     ✓ starts a continuable child and returns only its durable id, creating no Task  644ms
+ ✓ |thread-safe| packages/subagent/subagent-fork/tests/subagent-fork.spec.ts (11 tests) 583ms
+     ✓ emits subagent/start only after the seeded child is published  415ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/service.spec.ts (41 tests) 88ms
+ ✓ |thread-safe| packages/subagent/subagent-codex/tests/subagent-codex.spec.ts (32 tests) 139ms
+ ✓ |thread-safe| packages/subagent/subagent-inprocess/tests/subagent-inprocess.spec.ts (16 tests) 432ms
+ ✓ |thread-safe| packages/subagent/subagent-inprocess/tests/preset-inheritance.spec.ts (5 tests) 466ms
+ ✓ |thread-safe| packages/subagent/subagent-codex/tests/real-product.spec.ts (3 tests) 3557ms
+     ✓ passes the exact task and fake authentication to local Responses and returns exact text  1596ms
+     ✓ cancels a real app-server command approval without executing the command  1499ms
+     ✓ settles cancellation locally and leaves the real app-server tree quiescent  460ms
+ ✓ |thread-safe| packages/subagent/subagent-inprocess/tests/inheritance.spec.ts (4 tests) 357ms
+ ✓ |thread-safe| packages/workflow/workflow/tests/workflow.spec.ts (9 tests) 54ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/activation-setup-registry.spec.ts (11 tests) 47ms
+ ✓ |thread-safe| packages/subagent/tool-subagent/tests/scripted-provider.spec.ts (7 tests) 111ms
+ ✓ |thread-safe| packages/subagent/subagent-claude-code/tests/subagent-claude-code.spec.ts (21 tests) 147ms
+ ✓ |thread-safe| packages/subagent/subagent-fork/tests/multi-subagent.spec.ts (2 tests) 111ms
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/workflow-session.spec.ts (2 tests) 1446ms
+     ✓ fan-out 3 runs peer session children and collects their answers  780ms
+     ✓ resolves a failed child to null and records the failed outcome (baseline contract)  664ms
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/realm.spec.ts (15 tests) 55ms
+ ✓ |thread-safe| packages/subagent/subagent-session/tests/subagent-session.spec.ts (4 tests) 282ms
+ ✓ |thread-safe| packages/workflow/workflow/tests/invariant.spec.ts (4 tests) 97ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/timing-projection.spec.ts (4 tests) 23ms
+ ✓ |thread-safe| packages/workflow/workflow-workerthread/tests/meta.spec.ts (7 tests) 8ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/out-of-process.spec.ts (12 tests) 15ms
+ ✓ |thread-safe| packages/bundle/base/tests/base.spec.ts (2 tests) 14ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/invariant.spec.ts (4 tests) 16ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/run-settlement.spec.ts (7 tests) 6ms
+ ✓ |thread-safe| packages/subagent/subagent-claude-code/tests/real-product.spec.ts (3 tests) 5414ms
+     ✓ inherits host settings and sends the exact task and fake key to local Messages  1047ms
+     ✓ maps a real CLI process failure to error  1396ms
+     ✓ settles cancellation and leaves the real SDK-spawned CLI tree quiescent  2969ms
+ ✓ |thread-safe| packages/workflow/tool-ralph/tests/integration.spec.ts (10 tests) 3886ms
+     ✓ uses distinct empty-seed children, shared cwd, and only the prior bounded handoff  643ms
+     ✓ reports the failed round and last good handoff when a child fails  707ms
+     ✓ enforces the fixed script for 'blocked'  471ms
+     ✓ enforces the fixed script for 'budget-limited'  311ms
+     ✓ enforces the fixed script for 'unnormalized report'  307ms
+     ✓ runs fresh structured children as peer sessions with fenced JSON reports  398ms
+     ✓ reports a failed round when the child produces no valid fenced JSON  313ms
+ ✓ |process-bound| packages/subagent/subagent-acp/tests/subagent-acp.spec.ts (47 tests) 7711ms
+     ✓ forwards explicit DSH_* config entries to the child  336ms
+     ✓ tier 3: a TERM-trapping child reaches the host force-termination outcome  315ms
+     ✓ drives child processes with parent-unique run ids and returns streamed output  461ms
+     ✓ aborting the required signal cancels a running child  387ms
+     ✓ reaps a child whose session/new response omits the session id  415ms
+     ✓ dispose escalates SIGTERM → SIGKILL for a child that traps SIGTERM (bounded quiescence)  662ms
+     ✓ dispose gives the child an EOF window that outlasts the SIGTERM grace (graceful flush)  679ms
+     ✓ terminates a child that ignores EOF using the host platform semantics  358ms
+     ✓ plugin-config dispose graces reach the run (SIGKILL escalation through the provider)  483ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/continuation.spec.ts (76 tests) 8105ms
+     ✓ records the declared persona in the descriptor and reapplies it on cold resume  306ms
+     ✓ wakes a waiting Activation instead of cold-resuming it  709ms
+ ✓ |thread-safe| packages/subagent/subagent/tests/list-children.spec.ts (59 tests) 8178ms
+     ✓ diagnoses an inspection returning another lifecycle (id) as corrupt  703ms
+     ✓ diagnoses an inspection returning another lifecycle (createdAt) as corrupt  319ms
+     ✓ walks a deeply nested ordinary-session chain without consuming the call stack  1311ms
+     ✓ discovers continuable descendants below ordinary and one-shot intermediates  1043ms
+ ❯ |thread-safe| packages/workflow/workflow-workerthread/tests/workflow-workerthread.spec.ts (52 tests | 1 failed) 15550ms
+       ✓ runs a script end-to-end: agent() text results, phases, log, args, return value, events  391ms
+       ✓ agent({schema, model}) forwards outputSchema and agentOptions to the provider across the thread  380ms
+       ✓ agent({provider}) forwards provider-only agentOptions across the thread  384ms
+       ✓ a start-request provider override selects every child without changing the engine default  808ms
+       ✓ rejects invalid start-request provider routes before publishing a run 3ms
+       ✓ rejects invalid per-run total-agent caps before publishing a run 3ms
+       ✓ enforces a per-run total-agent cap below the engine ceiling  338ms
+       ✓ a fatal hook error inside the worker kills the script and reports the error 265ms
+       ✓ rejects an unregistered configured provider before publishing a run 3ms
+       ✓ waits for async provider start before announcing a result that settled early  533ms
+       ✓ observes an early result rejection but sends ChildStarted before ChildFailed after start fulfills  743ms
+       ✓ classifies provider start rejection as AGENT_START, drops an early result, and emits no false lifecycle pair  538ms
+       ✓ aborts a pending provider start once without publishing workflow lifecycle  364ms
+       ✓ a child result REJECTION crosses back as a fatal AGENT_RESULT error (a broken provider is not a failed child)  302ms
+       ✓ maps a non-JSON ready-child result to fatal AGENT_RESULT instead of wedging the bridge 233ms
+       ✓ contains a non-JSON result even if the injected subagent service violates its normalization contract 235ms
+       ✓ a child whose dispose() throws synchronously cannot wedge the script (the host acks anyway) 247ms
+       ✓ a child dispose() rejecting an UNRENDERABLE value still acks — the containment warn is total  325ms
+       × the worker spawns with an EMPTY environment: an escaped script finds no ambient credentials 309ms
+       ✓ the unbuilt worker forwards exactly TSX_TSCONFIG_PATH through the scrub: the paths-map pin survives, secrets do not 238ms
+       ✓ start() throws synchronously for invalid meta data or an unparseable body (host-side pre-checks) 3ms
+       ✓ cancel() aborts in-flight children (signal AND cancel RPC) and settles the run cancelled 209ms
+       ✓ an already-aborted request signal cancels before the body ever runs (the go handshake holds it) 270ms
+       ✓ cancel() right after start() cancels before the body runs; the signal aborting mid-run cancels like cancel()  606ms
+       ✓ removes the exact external abort callback on first settlement or teardown  471ms
+       ✓ a child-start racing the host cancel is refused: no child starts after cancellation 265ms
+       ✓ post-cancel narration is suppressed host-side, and completion racing a cancel reports cancelled  1197ms
+       ✓ cancel() force-settles a script parked on a promise no hook owns, and TERMINATES its worker 55ms
+       ✓ dispose() on a stuck script returns within the grace instead of hanging (result settles cancelled) 53ms
+       ✓ dispose() is idempotent and settles cleanly after a completed run 222ms
+       ✓ a settled run arms NO grace timer: disposing a completed run must not pin it for disposeGraceMs 221ms
+       ✓ strays: children fired without await are aborted once the script settles, and dispose() waits for their disposal 240ms
+       ✓ result settlement reaps a registered stray even when the worker cannot relay disposal 215ms
+       ✓ the settle-reap fires the request signal too: a provider honoring ONLY the signal winds its stray down promptly 217ms
+       ✓ the settle-reap aborts a pending provider start before workflow/end 200ms
+       ✓ a duplicate Result after the terminal claim cannot repeat cleanup or rewrite the outcome 208ms
+       ✓ a grace-terminated worker reaps its child on exit without waiting for consumer dispose()  357ms
+       ✓ dispose() on a wedged worker host-drives child disposal inside the grace: it returns with the children DISPOSED, not with their teardown still in flight  609ms
+       ✓ a live child disposed by the dispose() drive is disposed ONCE, and the worker's late dispose RPC still gets its ack (the script settles, not the grace) 208ms
+       ✓ the grace force-settle pairs every stranded start: a host-synthesized cancelled agent-end lands before workflow/end  510ms
+       ✓ graceful cancellation keeps pairing worker-authored: exactly one agent-end per start, nothing synthesized on top 255ms
+       ✓ the first death signal closes admission to messages Node delivers before exit 6ms
+       ✓ refuses and disposes a provider run that becomes ready after its real worker dies 252ms
+       ✓ a worker that exits before settling reports an error result and reaps its children 211ms
+       ✓ an uncaught exception inside the worker surfaces as an error result and reaps the in-flight child  405ms
+       ✓ a worker death pairs every stranded start: the synthesized cancelled agent-end precedes the error workflow/end 261ms
+       ✓ a dispose ack racing the worker death is dropped, not crashed (post after exit)  515ms
+       ✓ a worker death AFTER a cancel reports cancelled, not error 209ms
+       ✓ run ids are unique and lifecycle meta is the run's borrowed immutable value 180ms
+       ✓ unregisters ctx.workflows when the engine fiber is disposed (HMR safety) 1ms
+       ✓ keeps a holder-owned run usable when the engine unloads before its child starts 272ms
+       ✓ has the class-plugin export shape (default = the engine service class) 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/workflow/workflow-workerthread/tests/workflow-workerthread.spec.ts > dsh-workflow-workerthread > script execution over a real worker thread > the worker spawns with an EMPTY environment: an escaped script finds no ambient credentials
+AssertionError: expected { canary: null, keys: 1 } to deeply equal { canary: null, keys: +0 }
+
+- Expected
++ Received
+
+  {
+    "canary": null,
+-   "keys": 0,
++   "keys": 1,
+  }
+
+ ❯ packages/workflow/workflow-workerthread/tests/workflow-workerthread.spec.ts:574:30
+    572|         `))
+    573|         expect(result.stopReason).toBe('completed')
+    574|         expect(result.value).toEqual({ canary: null, keys: 0 })
+       |                              ^
+    575|       } finally {
+    576|         delete process.env.WORKFLOW_ENV_CANARY
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 39 passed (40)
+      Tests  1 failed | 714 passed (715)
+   Start at  19:36:26
+   Duration  17.16s (transform 24.85s, setup 7.39s, import 29.96s, tests 69.16s, environment 4ms)
+
