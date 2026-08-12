@@ -88,6 +88,9 @@ importers:
       '@deepseek-ai/dsh-session-persistence-jsonl':
         specifier: link:../../../env/session-tool-env/packages/session/session-persistence-jsonl
         version: link:../../../env/session-tool-env/packages/session/session-persistence-jsonl
+      '@deepseek-ai/dsh-session-projection':
+        specifier: link:../../../env/session-tool-env/packages/session/session-projection
+        version: link:../../../env/session-tool-env/packages/session/session-projection
       '@deepseek-ai/dsh-session-tags':
         specifier: link:../../../env/session-tool-env/packages/session/session-tags
         version: link:../../../env/session-tool-env/packages/session/session-tags
@@ -100,6 +103,9 @@ importers:
       schemastery:
         specifier: link:../../../env/session-tool-env/vendor/schemastery
         version: link:../../../env/session-tool-env/vendor/schemastery
+      zod:
+        specifier: link:../../../env/session-tool-env/node_modules/.pnpm/zod@4.4.3/node_modules/zod
+        version: link:../../../env/session-tool-env/node_modules/.pnpm/zod@4.4.3/node_modules/zod
 
   packages/tool-session:
     dependencies:

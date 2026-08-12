@@ -49,6 +49,7 @@ import type {
 } from 'session-tool'
 import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
+import { delegationProjectionDefinition } from './delegation-projection.ts'
 
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
@@ -103,6 +104,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     this.config = Object.freeze({ ...config })
     this.workspaceClient = new WorkspaceHttpClient(config.webUrl)
     this.sessionClient = new SessionHttpClient(config.webUrl)
+    // Register the delegation status projection when the projection registry
+    // is composed; a deployment without it degrades to log-tail reads.
+    ctx.inject(['sessionProjections'], (projectionCtx) => {
+      projectionCtx.sessionProjections.register(delegationProjectionDefinition)
+    })
   }
 
   // ---- public contract ---------------------------------------------------

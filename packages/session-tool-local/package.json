@@ -40,9 +40,11 @@
     "@deepseek-ai/dsh-session": "link:../../../env/session-tool-env/packages/core/session",
     "@deepseek-ai/dsh-session-persistence": "link:../../../env/session-tool-env/packages/session/session-persistence",
     "@deepseek-ai/dsh-session-persistence-jsonl": "link:../../../env/session-tool-env/packages/session/session-persistence-jsonl",
+    "@deepseek-ai/dsh-session-projection": "link:../../../env/session-tool-env/packages/session/session-projection",
     "@deepseek-ai/dsh-session-tags": "link:../../../env/session-tool-env/packages/session/session-tags",
     "@deepseek-ai/dsh-session-title": "link:../../../env/session-tool-env/packages/session/session-title",
     "cordis": "link:../../../env/session-tool-env/vendor/cordis",
-    "schemastery": "link:../../../env/session-tool-env/vendor/schemastery"
+    "schemastery": "link:../../../env/session-tool-env/vendor/schemastery",
+    "zod": "link:../../../env/session-tool-env/node_modules/.pnpm/zod@4.4.3/node_modules/zod"
   }
 }
