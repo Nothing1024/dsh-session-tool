@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>session-delegation 方案全景 · DSH subagent 平级化</title>
+<style>
+:root{
+  --bg:#0f1420; --panel:#171e2e; --panel2:#1d2640; --line:#2a3550;
+  --text:#dbe4f5; --dim:#8b98b5; --accent:#4da3ff; --green:#3ddc97;
+  --orange:#ffb454; --red:#ff6b6b; --purple:#b48aff; --yellow:#ffe066;
+  --mono:'SF Mono','JetBrains Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:15px/1.65 -apple-system,'PingFang SC','Microsoft YaHei',sans-serif;padding-bottom:80px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header{background:linear-gradient(135deg,#101a30 0%,#0f1420 100%);border-bottom:1px solid var(--line);padding:42px 0 30px;margin-bottom:28px}
+header h1{font-size:30px;letter-spacing:.5px}
+header h1 .tag{display:inline-block;font-size:12px;background:var(--accent);color:#06121f;border-radius:4px;padding:2px 8px;vertical-align:6px;margin-left:10px;font-weight:700}
+header p.sub{color:var(--dim);margin-top:10px;font-size:15px}
+header .meta{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+header .meta span{font-size:12px;color:var(--dim);background:var(--panel);border:1px solid var(--line);padding:4px 10px;border-radius:20px}
+nav{position:sticky;top:0;background:rgba(15,20,32,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);z-index:50;padding:10px 0}
+nav .wrap{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+nav a{color:var(--dim);text-decoration:none;font-size:13px;padding:5px 12px;border-radius:16px;border:1px solid transparent}
+nav a:hover{color:var(--text);border-color:var(--line);background:var(--panel)}
+section{margin:52px 0}
+h2{font-size:22px;border-left:4px solid var(--accent);padding-left:12px;margin-bottom:20px}
+h2 .no{color:var(--accent);font-family:var(--mono);font-size:14px;vertical-align:3px;margin-right:6px}
+h3{font-size:16px;color:var(--accent);margin:24px 0 10px}
+p.lead{color:var(--dim);margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.green{border-color:#1d5c44}
+.card.orange{border-color:#5c4a1d}
+.card.red{border-color:#5c2a2a}
+.card h4{font-size:15px;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin:14px 0}
+.grid .card{margin:0}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:var(--text);font-weight:600;white-space:nowrap}
+td{color:var(--text)}
+.dim{color:var(--dim)}
+.ok{color:var(--green)} .warn{color:var(--orange)} .bad{color:var(--red)} .acc{color:var(--accent)}
+pre{background:#0b1019;border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#c9d6ec;margin:12px 0}
+code{font-family:var(--mono);font-size:12.5px;background:#0b1019;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--yellow)}
+.box{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:var(--panel2);font-size:13px;margin:2px}
+.box.b{background:#123a66;border-color:#1d5c9e}
+.box.g{background:#0f3d2e;border-color:#1d7a58}
+.box.r{background:#4a1d1d;border-color:#8a3a3a;color:#ffb3b3;text-decoration:line-through}
+.box.p{background:#331c5c;border-color:#6a3fc8}
+.box.o{background:#4a3212;border-color:#8a6a1d}
+.arrow{color:var(--dim);padding:0 6px;font-family:var(--mono)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:10px 0}
+.flow .box{white-space:nowrap}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0;font-size:12.5px;color:var(--dim)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 14px;font-size:13.5px}
+.kv dt{color:var(--dim)}
+.kv dd{color:var(--text)}
+.pill{display:inline-block;font-size:12px;border-radius:20px;padding:2px 10px;margin:2px;border:1px solid var(--line);background:var(--panel2)}
+.pill.b{color:var(--accent)} .pill.g{color:var(--green)} .pill.r{color:var(--red)} .pill.o{color:var(--orange)} .pill.p{color:var(--purple)}
+.phase{display:flex;gap:0;flex-wrap:wrap;margin:16px 0}
+.phase .step{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin:0 4px;text-align:center}
+.phase .step b{display:block;font-size:14px;margin-bottom:4px}
+.phase .step small{color:var(--dim);font-size:12px;line-height:1.5;display:block}
+.phase .step .t{font-size:11px;color:var(--accent);display:block;margin-top:6px}
+.decide{background:linear-gradient(135deg,#1a2438,#161d2c);border:1px solid var(--orange);border-radius:14px;padding:20px;margin:16px 0}
+.decide h4{color:var(--orange);margin-bottom:12px}
+details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:var(--panel)}
+summary{cursor:pointer;padding:12px 16px;font-weight:600;color:var(--text)}
+summary:hover{color:var(--accent)}
+details .body{padding:4px 16px 14px}
+footer{margin-top:60px;border-top:1px solid var(--line);padding-top:18px;color:var(--dim);font-size:12.5px;text-align:center}
+.tag-r{color:var(--red)} .tag-g{color:var(--green)} .tag-o{color:var(--orange)} .tag-b{color:var(--accent)} .tag-p{color:var(--purple)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>session-delegation 方案全景<span class="tag">讨论稿 v3</span></h1>
+    <p class="sub">把 DSH subagent 的「受控机制」替换为 <b style="color:var(--accent)">平级持久会话 + 标签/属性/约束元数据</b> —— 换引擎不换壳，生态零破坏，为后期 flow 生态预留 session 层接入面</p>
+    <div class="meta">
+      <span>来源: plugin/docs/session-delegation/spec.md</span>
+      <span>任务: 23 条 P0-P5</span>
+      <span>校验: 0 FAIL / 13 PASS</span>
+      <span>状态: 讨论阶段 · 4 决策待拍板</span>
+    </div>
+  </div>
+</header>
+
+<nav><div class="wrap">
+  <a href="#idea">三个思想</a>
+  <a href="#five">五机制详解</a>
+  <a href="#meta">元数据方案</a>
+  <a href="#collect">收集约束</a>
+  <a href="#pkg">包级改造</a>
+  <a href="#roadmap">任务路线</a>
+  <a href="#decide">决策清单</a>
+  <a href="#compare">对比总表</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ============ 三个思想 ============ -->
+<section id="idea">
+<h2><span class="no">01</span>三个思想</h2>
+<p class="lead">方案由三条线交汇而成:委派模型平级化 · 编排层上移预留 · Codex 生产验证。</p>
+
+<div class="grid">
+  <div class="card green">
+    <h4 class="ok">思想一:委派 = 平级会话(不是受控子进程)</h4>
+    <div class="flow">
+      <span class="box b">协调者<br>session-P</span><span class="arrow">┃血缘记录</span>
+      <span class="box g">执行A</span><span class="box g">执行B</span><span class="box g">执行C</span><span class="box o">用户会话</span>
+    </div>
+    <p class="dim" style="font-size:13px">执行单元互相平级、独立存活、GUI 可见可接管。<code>parentSession</code> 只是血缘记录，不是控制关系。类比:函数调用 → 邮件/会议。</p>
+  </div>
+  <div class="card orange">
+    <h4 class="warn">思想二:编排上移(workflow 暂留,vibee 后期)</h4>
+    <div class="flow">
+      <span class="box p">vibee 编排<br>(Run Graph)</span><span class="arrow">→</span>
+      <span class="box b">DSH 执行层<br>平级会话池</span>
+    </div>
+    <p class="dim" style="font-size:13px">编排能力由 vibee 生态承接(wt-vibee 已在做)；本次<b>不迁移</b>，只把 DSH 执行面收敛成「会话」，让 flow 生态未来从 session 层直接接入。</p>
+  </div>
+  <div class="card">
+    <h4 class="acc">思想三:Codex 生产验证</h4>
+    <div class="flow">
+      <span class="box b">父 Thread</span><span class="arrow">spawn_session</span>
+      <span class="box g">子 Thread<br>(=完整 Session)</span><span class="arrow">→</span>
+      <span class="box">同一 ThreadStore</span>
+    </div>
+    <p class="dim" style="font-size:13px">Codex <code>run_codex_thread_interactive</code> 证实:subagent = spawn 一个真 Session + 血缘边 + 来源标记 + 继承环境/策略。<b>没有任何 Activation/ownedChildren/descriptor 机制</b>。</p>
+  </div>
+</div>
+</section>
+
+<!-- ============ 五机制 ============ -->
+<section id="five">
+<h2><span class="no">02</span>现状五机制:受控树的全套配套</h2>
+<p class="lead">subagent 的 continuation manager(continuation.ts, 1213 行)用五个互相咬合的机制实现「父拥有子」。每个机制解决一个真实问题——但问题本身是「受控」引入的。</p>
+
+<table>
+<tr><th>机制</th><th>解决什么问题</th><th>复杂度来源</th><th>session 栈下</th></tr>
+<tr>
+  <td><b>① Activation 三态</b><br><span class="dim">running/waiting/settled</span></td>
+  <td>父等子树时的中间驻留态(子跑完了、孙还在跑)</td>
+  <td>三态靠推导非维护；销毁时机锁内决定；进程本地崩溃即失</td>
+  <td class="ok">消失——无子树等待概念，父不驻留</td>
+</tr>
+<tr>
+  <td><b>② ownedChildren 图</b></td>
+  <td>父销毁前必须等子孙(作用域悬挂防护)</td>
+  <td>释放要全表扫描；语义是「等待链」；与投递耦合</td>
+  <td class="ok">消失——会话自治，孤儿靠产品策略</td>
+</tr>
+<tr>
+  <td><b>③ descriptor 冷恢复协议</b></td>
+  <td>崩溃后如何重建子(版本化持久契约)</td>
+  <td>版本协议治理；写入时机敏感；与授权咬合；丢消息不重放</td>
+  <td class="ok">消失——SessionHeader + requestHeader 现成，隐式 resume 免费</td>
+</tr>
+<tr>
+  <td><b>④ child-first drain</b></td>
+  <td>宿主关闭时有序释放森林(admission 仪式)</td>
+  <td>关闭与创建并发；scope 注册顺序逆向工程；取消 top-down 释放 child-first</td>
+  <td class="ok">消失——AgentRegistry 统一 dispose，持久会话下次 resume</td>
+</tr>
+<tr>
+  <td><b>⑤ 精确父授权</b></td>
+  <td>只有创建者能续写(实例级)</td>
+  <td>「精确实例」语义无法跨进程；双关卡封异步恢复窗口；网关双层栅栏</td>
+  <td class="warn">降级——开放续写，隔离靠 workspace；区别只留 MessageSource 归因</td>
+</tr>
+</table>
+
+<h3>五机制为什么是一个整体</h3>
+<pre>
+朴素问题: 父委派了子，后来还要发消息、拿结果
+朴素实现: 子 = 普通 session，父直接发消息
+三个安全前提把问题变复杂:
+  前提A 只有父能继续子   → ⑤ 授权 + ③ descriptor(恢复时验证谁)
+  前提B 父退子要清理      → ② ownedChildren + ④ drain
+  前提C 崩溃后能恢复      → ③ descriptor + ① Activation(驻留容器)
+拆掉任何一个，另外四个都失去意义 → 这就是「一个整体」的原因
+</pre>
+</section>
+
+<!-- ============ 元数据方案 ============ -->
+<section id="meta">
+<h2><span class="no">03</span>目标:平级 session + 标签/属性/约束</h2>
+<p class="lead">五机制语义全部可以用 DSH 现成元数据设施重建——专用协议变成通用声明式元数据。</p>
+
+<div class="legend">
+  <span><i style="background:#123a66"></i>header 静态属性</span>
+  <span><i style="background:#0f3d2e"></i>tags 分类标记</span>
+  <span><i style="background:#331c5c"></i>投影动态属性</span>
+  <span><i style="background:#4a3212"></i>插件层约束</span>
+</div>
+
+<table>
+<tr><th>subagent 机制语义</th><th>平级 session 元数据实现</th><th>设施</th><th>改动</th></tr>
+<tr><td>血缘(parentSession)</td><td>header <code>parentSession</code> + 创建期父校验(owner fence 已有)</td><td class="acc">header</td><td class="ok">零</td></tr>
+<tr><td>来源/模式(one-shot/continuable/delegated)</td><td>tags 约定(<code>delegated</code> / <code>task:&lt;planId&gt;</code>)</td><td class="acc">session-tags</td><td class="ok">零</td></tr>
+<tr><td>深度(delegationDepth)</td><td>header 持久深度 + 工具层校验</td><td class="acc">header</td><td class="warn">小(durableCreate 补写)</td></tr>
+<tr><td>状态(running/completed/failed)</td><td><b>delegation 投影 unit</b>(从日志推导、跨重启保持)</td><td class="acc">session-projection</td><td class="warn">插件新增</td></tr>
+<tr><td>结果摘要</td><td>同一投影:lastTurnEnd + lastAssistant</td><td class="acc">投影</td><td class="warn">插件新增</td></tr>
+<tr><td>等待/收集</td><td><code>session_wait</code>(单会话)+ <code>session_collect</code>(组约束)</td><td class="acc">插件</td><td class="warn">插件新增</td></tr>
+<tr><td>归因(父 vs 用户)</td><td><code>MessageSource</code> coordinator(声明合并)</td><td class="acc">llm 类型</td><td class="warn">上游小改</td></tr>
+<tr><td>清理策略</td><td>tags <code>~archived</code> + hiddenPrefixes + 后台扫描(可后置)</td><td class="acc">session-tags</td><td class="warn">插件新增</td></tr>
+<tr><td>续写约束</td><td>Config: <code>workspace</code>(默认)/<code>creator</code>/<code>anyone</code></td><td class="acc">插件 Config</td><td class="warn">插件新增</td></tr>
+</table>
+
+<h3>delegation 投影(替代 Activation 三态)</h3>
+<pre>
+ProjectionDefinition&lt;'delegation', DelegationState&gt;
+  init:  { status: 'idle', promptCount: 0 }
+  apply: turn/start            → status: 'running'
+         turn/end(completed)   → status: 'completed'
+         turn/end(error)       → status: 'failed'
+         assistant/message     → lastAssistantSeq = seq
+  view:  { status, lastTurnEnd?, promptCount, lastAssistantSeq? }
+  stateVersion: 1
+
+  运行效果: 状态自动推导、自动持久(投影缓存)、
+            变更自动推送 GUI(session/projection 帧)
+            → 崩溃/重启后从日志重建，零进程本地状态
+</pre>
+</section>
+
+<!-- ============ 收集约束 ============ -->
+<section id="collect">
+<h2><span class="no">04</span>收集约束:补上树的最后一个缺口</h2>
+<p class="lead">平级化拆掉树后，深度/资源/授权都有替代——唯独「等一组会话满足完成条件」没有。session_collect 用声明式谓词补上，但不恢复控制。</p>
+
+<div class="grid">
+  <div class="card">
+    <h4 class="acc">约束类型(并发原语的会话版)</h4>
+    <table>
+      <tr><th>约束</th><th>语义</th><th>≈ JS</th></tr>
+      <tr><td><code>wait: 'all'</code></td><td>全部终态后返回</td><td>Promise.all</td></tr>
+      <tr><td><code>wait: 'any'</code></td><td>任一终态即返回</td><td>Promise.race</td></tr>
+      <tr><td><code>wait: 'n'</code></td><td>完成 N 个返回(其余继续)</td><td>—</td></tr>
+      <tr><td><code>wait: 'first-failed'</code></td><td>任一 failed 即返回</td><td>—</td></tr>
+      <tr><td><code>on_failure</code></td><td>continue / cancel-rest</td><td>allSettled / Abort</td></tr>
+      <tr><td><code>timeout_ms</code></td><td>超时快照返回(不报错)</td><td>race+timeout</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h4 class="acc">调用形态</h4>
+<pre>
+session_collect({
+  root: 协调者 sessionId   // 或 tags: ['plan:p-42']
+  wait: 'all' | 'n',  n: 2,
+  on_failure: 'cancel-rest',
+  timeout_ms: 300_000
+}) → {
+  satisfied: true,
+  sessions: [{id, status, result}],
+  elapsed_ms
+}
+</pre>
+  </div>
+  <div class="card red">
+    <h4 class="bad">边界克制(ASM-007)</h4>
+    <p style="font-size:13px" class="dim">collect <b>不做</b>:依赖图(DAG)/调度/重试编排/工作流状态机 —— 那些留给 vibee 生态。<br><br>
+    血缘分树数据一直都在(<code>traceSession</code> 免费)，只是「等树」从隐式运行时机制变成显式声明式策略。<br><br>
+    未来 vibee 接入时，collect 是它可复用的执行原语——不会白做。</p>
+  </div>
+</div>
+</section>
+
+<!-- ============ 包级改造 ============ -->
+<section id="pkg">
+<h2><span class="no">05</span>包级改造全景</h2>
+
+<h3>依赖架构(定案后)</h3>
+<pre>
+┌─ 上游 env worktree(改基础包) ──────────────────────────────────┐
+│  subagent 家族:                                                │
+│    ✗ subagent-spawn / fork / inprocess   → 退役(被取代)        │
+│    ✓ subagent-session(新增)              → provider 'session'  │
+│        start() = InProcessApiClient(toFetchHandler(apiProxy))  │
+│                  → durableCreate + prompt + wait + read        │
+│        prepareContinuable() = 空 spec(续写走 session.prompt)   │
+│        fork 支持 = sessions.fork + attach                      │
+│    ✓ 外部 4 后端(acp/codex/claude-code/sdk) → 原样保留         │
+│    ✓ subagent(核心) 接口面保留 · manager 退役                  │
+│  apiproxy:  durableCreate 深度 / session.wait / coordinator    │
+│  bundle/base: 删 spawn/fork 行 → 加 subagent-session 行        │
+│               tool-subagent×2 / workflow / ralph → provider:   │
+│               session(5 处装配指向)                             │
+└────────────────────────────┬───────────────────────────────────┘
+                             │ 上游接口(provider 契约)
+┌────────────────────────────▼───────────────────────────────────┐
+│ 现有 session-tool 插件(全改进,不新建)                          │
+│  session-tool(契约): wait/collect/Config 类型                  │
+│  session-tool-local: delegation 投影 / collect / 约束          │
+│  tool-session: session_wait / session_collect / list 扩展      │
+│  不注册 provider;约束只覆盖插件工具路径(ASM-009)               │
+└────────────────────────────────────────────────────────────────┘
+</pre>
+
+<div class="legend">
+  <span><i style="background:#4a1d1d"></i>退役</span>
+  <span><i style="background:#123a66"></i>上游新增/保留</span>
+  <span><i style="background:#0f3d2e"></i>插件改进</span>
+</div>
+
+<table>
+<tr><th>包</th><th>处置</th><th>说明</th></tr>
+<tr><td><code>subagent-inprocess / spawn / fork</code></td><td class="tag-r">退役</td><td>one-shot 驱动器被 subagent-session 取代</td></tr>
+<tr><td><code>subagent-session</code>(新)</td><td class="tag-b">上游新增</td><td>provider 'session'，headless runner 现成模式</td></tr>
+<tr><td><code>subagent</code>(核心)</td><td class="tag-o">瘦身</td><td>接口面保留(provider/run/depth/composition)；manager/descriptor 退役</td></tr>
+<tr><td><code>tool-subagent</code></td><td class="tag-b">保留</td><td>工具名/schema 不变，provider 配置指向 session</td></tr>
+<tr><td><code>tool-subagent-control</code></td><td class="tag-o">改造</td><td>send_message→session.prompt；list_agents→session_list(P4)</td></tr>
+<tr><td><code>tool-subagent-report</code></td><td class="tag-o">决策</td><td>默认保留(子结果经会话日志已可达)</td></tr>
+<tr><td>外部 4 后端(acp/codex/claude-code/sdk)</td><td class="tag-b">原样</td><td>只实现 one-shot SubagentProvider 接口，零改动</td></tr>
+<tr><td><code>host/apiproxy</code></td><td class="tag-o">3 小改</td><td>durableCreate 深度 / session.wait / coordinator 归因</td></tr>
+<tr><td><code>bundle/base</code></td><td class="tag-o">装配</td><td>5 处 provider 指向改为 session</td></tr>
+<tr><td><code>workflow / tool-ralph</code></td><td class="tag-b">零改动</td><td>接口契约不变(provider 名配置变化而已)</td></tr>
+<tr><td><code>client/ui-subagent / hooks-claude</code></td><td class="tag-o">P4</td><td>origin 降级为分类、可见性 Config</td></tr>
+<tr><td><code>session-tool 4 包</code></td><td class="tag-g">改进</td><td>投影/collect/约束/wait 工具——全部本插件内</td></tr>
+</table>
+</section>
+
+<!-- ============ 任务路线 ============ -->
+<section id="roadmap">
+<h2><span class="no">06</span>任务路线图 P0-P5(23 任务)</h2>
+<div class="phase">
+  <div class="step"><b class="acc">P0</b><small>基线与决策</small><span class="t">T-1~3</span></div>
+  <div class="step"><b class="acc">P1</b><small>上游核心小改</small><span class="t">T-4~7</span></div>
+  <div class="step"><b class="acc">P2</b><small>插件元数据设施</small><span class="t">T-8~13</span></div>
+  <div class="step"><b class="ok">P3</b><small>换引擎(生态零破坏)</small><span class="t">T-14~17</span></div>
+  <div class="step"><b class="warn">P4</b><small>continuable 平级化</small><span class="t">T-18~21</span></div>
+  <div class="step"><b class="bad">P5</b><small>真实场景验收</small><span class="t">T-22~23</span></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h4 class="acc">P1 上游三小改</h4>
+    <p style="font-size:13.5px">① durableCreate 补 <code>delegationDepth</code> 写入<br>② MessageSource <code>coordinator</code> 归因<br>③ <code>session.wait</code> 端点(等单会话 idle)</p>
+  </div>
+  <div class="card">
+    <h4 class="acc">P2 插件元数据设施</h4>
+    <p style="font-size:13.5px">delegation 投影 unit → list 过滤扩展 → session_wait 工具 → 约束 Config → <b>session_collect 求值器</b> → 回归(含重启恢复)</p>
+  </div>
+  <div class="card">
+    <h4 class="ok">P3 换引擎</h4>
+    <p style="font-size:13.5px"><b>subagent-session 新包</b>(T-14)→ 结构化输出保留(T-15)→ workflow/ralph/外部 4 后端回归(T-16)→ 回归(T-17)</p>
+  </div>
+  <div class="card">
+    <h4 class="warn">P4 平级化收尾</h4>
+    <p style="font-size:13.5px">send_message/list_agents 走 session API(T-18)→ apiproxy domain + UI 兼容(T-19)→ continuation manager 退役(T-20)→ 回归(T-21)</p>
+  </div>
+  <div class="card">
+    <h4 class="bad">P5 验收</h4>
+    <p style="font-size:13.5px">5.2 真实场景全套(UF-001~007 矩阵)→ 最终回归 + 文档收尾</p>
+  </div>
+</div>
+
+<h3>关键交付物时序</h3>
+<pre>
+P1 ─── apiproxy: depth / wait / coordinator
+P2 ─── 插件: 投影 → 过滤 → wait 工具 → 约束 → collect
+P3 ─── 上游: subagent-session 包 + bundle/base 装配 5 处
+         workflow/ralph/外部后端 全量回归(行为无差异)
+P4 ─── 上游: control 工具改道 / manager 退役 / origin 降级
+P5 ─── 真实场景: headless 委派 + GUI 接管 + 重启恢复 + collect
+</pre>
+</section>
+
+<!-- ============ 决策清单 ============ -->
+<section id="decide">
+<h2><span class="no">07</span>待拍板决策(4 项)</h2>
+<p class="lead">全部已定案的问题见 spec 1.4(ASM-001~009)；以下 4 项仍需用户确认，P0 T-2 是唯一需要用户在场的任务。</p>
+
+<div class="decide">
+  <h4>决策 1:continuable 选项</h4>
+  <div class="kv">
+    <dt>选项 A(推荐)</dt><dd>send_message/list_agents 直接走 session API，续写开放，P4 一步收敛</dd>
+    <dt>选项 B</dt><dd>continuable 暂留旧实现(标记 deprecated)，新旧两套并存</dd>
+    <dt>推荐理由</dt><dd class="dim">避免两套语义并存(origin/授权/GUI 都分裂)；回归有全量测试兜底</dd>
+  </div>
+</div>
+
+<div class="decide">
+  <h4>决策 2:授权强度默认值</h4>
+  <div class="kv">
+    <dt>workspace(推荐)</dt><dd>同 workspace 可续写，与 GUI 现状一致，数据现成(header.cwd)</dd>
+    <dt>creator</dt><dd>仅创建者血缘链可续写(近似 subagent 语义，放宽为血缘链)</dd>
+    <dt>anyone</dt><dd>完全开放</dd>
+    <dt>注意</dt><dd class="dim">creator/anyone 只约束插件工具路径，subagent 工具路径保持 workspace 级(ASM-009)</dd>
+  </div>
+</div>
+
+<div class="decide">
+  <h4>决策 3:等待语义</h4>
+  <div class="kv">
+    <dt>单 session idle(推荐)</dt><dd>session.wait 只承诺该会话静默；等 N 个由协调者循环/collect 组合</dd>
+    <dt>整树静默</dt><dd>保留 whenIdle 子树语义——与平级模型自相矛盾(父不拥有孙)</dd>
+  </div>
+</div>
+
+<div class="decide">
+  <h4>决策 4:清理策略</h4>
+  <div class="kv">
+    <dt>三件套(推荐)</dt><dd>标记(~archived tags)+ 手动 + 超时扫描(可后置)</dd>
+    <dt>最简</dt><dd>只做标记+手动，废弃会话永久留在持久层</dd>
+  </div>
+</div>
+</section>
+
+<!-- ============ 对比总表 ============ -->
+<section id="compare">
+<h2><span class="no">08</span>现状 vs 目标 总对比</h2>
+<table>
+<tr><th>维度</th><th>现状(subagent 受控树)</th><th>目标(平级 session)</th></tr>
+<tr><td>子身份</td><td>session + Activation(进程本地驻留)</td><td>持久一等公民会话</td></tr>
+<tr><td>等待完成</td><td>整棵子树静默(whenIdle)</td><td>单会话 idle + collect 组约束</td></tr>
+<tr><td>结果收集</td><td>逐层 fold(子→父)</td><td>协调者直读 + collect 聚合</td></tr>
+<tr><td>父退出</td><td>级联停(drain)</td><td>子照跑,孤儿策略兜底</td></tr>
+<tr><td>续写授权</td><td>仅精确 live 父(实例级)</td><td>workspace 级(Config 可调)</td></tr>
+<tr><td>深度</td><td>delegationDepth 单调强制</td><td>header 持久 + 工具层校验</td></tr>
+<tr><td>崩溃恢复</td><td>descriptor 折叠 + 父授权</td><td>隐式 resume(免费)</td></tr>
+<tr><td>跨进程</td><td>仅 ACP/SDK one-shot</td><td>天然(进程内网关,双进程同构)</td></tr>
+<tr><td>取消</td><td>continuable 无公开取消</td><td>session.cancel + GUI Stop 现成</td></tr>
+<tr><td>GUI 可见性</td><td>隐藏行 + 只读子会话</td><td>全平级可见可接管(Config 可配)</td></tr>
+<tr><td>归因</td><td>coordinator MessageSource</td><td>同一机制(声明合并扩展)</td></tr>
+<tr><td>代码量</td><td>11 包 + continuation.ts 1213 行</td><td>上游 +1 包(薄) + 插件工具面</td></tr>
+</table>
+
+<h3>生态契约(零破坏清单)</h3>
+<div class="card green">
+  <div style="display:flex;flex-wrap:wrap;gap:6px">
+    <span class="pill b">subagent / subagent_fork 工具名+schema</span>
+    <span class="pill b">SubagentProvider / SubagentRun</span>
+    <span class="pill b">subagent.list/history/prompt RPC 形状</span>
+    <span class="pill b">workflow 引擎(provider 名配置变化)</span>
+    <span class="pill b">tool-ralph(structured 能力声明保留)</span>
+    <span class="pill b">外部 4 后端</span>
+    <span class="pill b">GUI ui-subagent 组件</span>
+    <span class="pill b">旧持久会话只读兼容</span>
+  </div>
+</div>
+</section>
+
+</div>
+
+<footer>
+  session-delegation · 讨论稿 v3 · 唯一事实源 plugin/docs/session-delegation/spec.md(0 FAIL / 13 PASS) · 生成于 DSH 调研会话
+</footer>
+
+</body>
+</html>
