@@ -1,0 +1,14 @@
+# UF-001 失败分支（子会话失败）验证（2026-08-12）
+
+## 场景
+子代理 turn/end reason = error/aborted 时，provider 返回 stopReason: 'error'，会话日志保留失败现场。
+
+## 验证方式
+- subagent-session run.ts：toStopReason 映射 error/interrupted -> 'error'、aborted -> 'aborted'；
+  超时/无终态 -> stopReason 'error' 且输出保留（subagent-session tests 4 例覆盖）
+- 真实回放：ralph 子代理结构化失败（session-92374e04...）——子会话日志保留失败现场
+  （两次校验失败重试记录），ralph 报 "child failed before producing a structured report" ✓
+- workflow 失败子代理 -> null（workflow-session.spec.ts 覆盖：error turn -> 脚本得 null）
+
+## 核对点
+- stopReason: 'error' ✓；失败现场在日志 ✓（coordinator 消息 + 两次 assistant 输出可见）

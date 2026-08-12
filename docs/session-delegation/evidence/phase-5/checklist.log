@@ -1,0 +1,29 @@
+# Phase 5 最终验收（T-023，2026-08-12）
+
+## 5.4 Review 专项检查（全部通过，spec 已勾选）
+1. [x] SubagentRun/SubagentResult/SubagentStopReason 形状不变 —— subagent-session run.ts 输出契约 +
+      tool-subagent/workflow 消费断言（env 单测）
+2. [x] subagent.list/history/prompt RPC 字段零删减 —— api-proxy-subagents.spec.ts 14 例 pin 形状
+3. [x] workflow/ralph session 配置无差异 —— ralph integration 9 例 + workflow-session 2 例；
+      装配行：bundle/base 3 处 + tool-ralph subagentProvider: session + standard/code/cordis 预设（T-022 修）
+4. [x] ASM-009 边界 —— session-tool-local Config.allowOthersToWrite 文档写明"上游 subagent
+      工具路径保持 workspace 级授权"；单测覆盖 creator 拒绝
+5. [x] INV-004 旧日志只读 —— list-children 62 例（subagent/descriptor fold）；descriptor.ts 类型保留
+6. [x] BR-004 跨重启投影 —— UF-004 restart.png；session.list 重启后可见 + transcript 完整
+7. [x] 约束矩阵 —— session-tool-local service.spec 38 例（workspace/creator/anyone × 深度 × 可见性）
+8. [x] 收集约束矩阵 —— collect.spec 6 例 + service.spec（all/any/n/first-failed × continue/cancel-rest
+      × timeout；无依赖图/调度/重试——实现为纯谓词求值，ASM-007 边界）
+9. [x] INV-001 零新增事件类型 —— 全程未新增 session/* 事件（归因走 MessageSource 合并：
+      coordinator / subagent-report 既有合并扩展）
+10. [x] continuation manager 无死代码 —— T-020 rg 验证 0 残留
+11. [x] 5.2 矩阵全部通过 + evidence 与 2.5 EVD 一致 —— validate_package.py 0 FAIL / 0 WARN
+12. [x] 2.3 入口接线清单 —— UF-001/002/003/004/005/007 真实入口回放（web 网关 + GUI + 协调者工具）；
+      UF-006 外部后端单测
+13. [x] BR/UF/INV 对照核销 —— 见 evidence/phase-5/verification.md
+
+## 两处 pnpm test
+- env：12507 例（T-021 全量；T-023 复跑确认，失败均为环境基线）
+- plugin：107/107 全绿（T-023 复跑）
+
+## 包校验
+python3 validate_package.py plugin/docs/session-delegation → 0 FAIL / 0 WARN / 13 PASS

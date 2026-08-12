@@ -20,5 +20,5 @@
 19,P4:continuable 平级化,apiproxy subagent domain 与 UI 兼容,spec.md#task-19,18,GUI 冒烟+契约测试通过,已完成,apiproxy subagent domain 改走 session 栈(血缘+标记目录/prompt→session.prompt/interrupt→lineage+cancel/移除 hasSubagentOwner 栅栏);env 5ca949e
 20,P4:continuable 平级化,continuation manager 退役,spec.md#task-20,18;19,pnpm test(env) 全绿+rg 无残留,已完成,continuation manager 退役(continuation/descriptor-seed/activation-setup-registry/child-agent 删除;provider.startContinuable 新接缝;report 全局化;inprocess/spawn/fork 包删除;ACP 桥改 listDescendants+cancel;api-catalog 重生成)
 21,P4:continuable 平级化,执行 Phase 4 回归验证,spec.md#task-21,18;19;20,env 全量+GUI 复跑+旧日志兼容,待开始,
-22,P5:真实场景验收,执行 spec 5.2 真实场景全套测试,spec.md#task-22,21,5.2 执行矩阵逐行通过且 evidence 落盘,待开始,名称含「真实场景」供校验脚本识别
-23,P5:真实场景验收,执行 Phase 5 回归验证(最终验收),spec.md#task-23,22,两处 pnpm test+validate 0 FAIL+5.4 自检,待开始,
+22,P5:真实场景验收,执行 spec 5.2 真实场景全套测试,spec.md#task-22,21,5.2 执行矩阵逐行通过且 evidence 落盘,已完成,5.2 矩阵全部行通过：UF-001/002（真实模型委派+续写+list_agents）、UF-003（session_list/wait）、UF-004（GUI 浏览器实测+重启截图+console 无应用错误）、UF-005（workflow 真实委派+ralph 失败分支+主路径单测）、UF-006（外部 4 后端单测）、UF-007（collect wait-all/wait-n 真实回放）；装配回归发现并修复 standard/code/cordis 预设与 examples 的 spawn/fork 残留
+23,P5:真实场景验收,执行 Phase 5 回归验证(最终验收),spec.md#task-23,22,两处 pnpm test+validate 0 FAIL+5.4 自检,已完成,两处 pnpm test 全量（env 12507 例 34 失败=环境基线；plugin 107/107）；validate_package.py 0 FAIL/0 WARN/13 PASS；5.4 专项检查 13 条全勾；BR/UF/INV 核销 evidence/phase-5/verification.md；spec Status → Done

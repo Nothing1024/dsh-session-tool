@@ -1,0 +1,12 @@
+# UF-007 失败分支（超时）验证（2026-08-12）
+
+## 场景
+会话长期 running 超过 timeout_ms：返回 {satisfied: false, sessions: 当前快照}（不报错）。
+
+## 验证方式
+- collect.spec.ts：`returns a timeout snapshot without error when the deadline passes` ✓
+- session-tool-local service.spec.ts 超时快照用例 ✓
+- 空集合 -> unsatisfied（单测覆盖）
+
+## 核对点
+- satisfied: false 快照返回不报错 ✓；无副作用（不 cancel）✓

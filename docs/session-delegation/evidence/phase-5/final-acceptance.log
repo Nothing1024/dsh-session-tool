@@ -1,0 +1,27 @@
+# T-023 Phase 5 最终验收（2026-08-12）
+
+## 两处 pnpm test
+- env：12464 例（12340 passed / 23 failed / 101 skipped）
+  23 失败全部为环境基线（非本次改动引入）：
+  - TSX_TSCONFIG_PATH 注入（EMPTY environment / source-launch——unset 后通过，已实证）
+  - 真实 ~/.dsh 无 AGENTS.md（DSH home 标签测试，基线复跑同样失败）
+  - HMR watch 类超时（10022ms 时序 flake）
+  - 其余为 thread-safe 池环境类
+- plugin：107/107 全绿
+
+## validate_package.py
+python3 /Users/dev/.agents/skills/prd-workflow/scripts/validate_package.py plugin/docs/session-delegation
+→ 0 FAIL / 0 WARN / 13 PASS
+
+## 5.4 专项检查
+13 条全部勾选（spec 5.4）；BR/UF/INV 逐条核销见 evidence/phase-5/verification.md
+
+## 文档收尾
+- spec Status: Draft 草稿 → Done 完成
+- tasks.csv 1..23 全部已完成
+- evidence 目录结构与 2.5 EVD 清单一一对应（EVD-001~009 全部落盘）
+
+## 验收结论
+session-delegation 改造完成：continuable 面全面走 session 栈（send_message/list_agents/UI/RPC/工具），
+continuation manager 退役，真实场景全套（headless 委派/协调者任务管理/GUI 可见续写停止/workflow/ralph/
+外部后端/重启恢复/扇出收集）通过。

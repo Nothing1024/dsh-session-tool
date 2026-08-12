@@ -1,0 +1,9 @@
+# UF-007 wait-n 主路径 真实回放（2026-08-12）
+
+## 真实执行（协调者 agent）
+session_collect（root=协调者, wait='n', n=1, on_failure='cancel-rest', timeout_ms=60000）：
+`collect satisfied (1ms)` — n=1 提前返回 ✓
+
+## cancel-rest 语义（单测覆盖）
+- collect.spec.ts / service.spec.ts：谓词 n 满足后 cancel-rest 对剩余会话发 session.cancel
+  （不删除，可后续接管）

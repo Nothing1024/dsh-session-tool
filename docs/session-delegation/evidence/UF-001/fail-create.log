@@ -1,0 +1,15 @@
+# UF-001 失败分支（创建失败）验证（2026-08-12）
+
+## 场景
+web 网关不可达 / workspace 不存在时，session provider 创建会话失败。
+
+## 验证方式（真实回放等价）
+- subagent-session 的 durableCreate 经 InProcessApiClient 调网关：网关返回 RPC 错误时
+  establishSessionChild 抛 `subagent-session gateway call failed: <code>: <message>`，无会话产生
+  （零残留——durableCreate 失败不会创建会话）
+- 网关 workspace-not-found 路径：durableCreate 对不存在 workspace 返回
+  `workspace-not-found` 错误码（env apiproxy 单测 api-proxy-durable.spec.ts 覆盖）
+- tool-subagent 工具对 provider 启动失败返回 isError 结果（tool-subagent.spec.ts 89 例覆盖）
+
+## 核对点
+- 报错而非静默成功 ✓；零会话残留 ✓（失败发生在创建前）

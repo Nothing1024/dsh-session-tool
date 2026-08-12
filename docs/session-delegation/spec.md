@@ -1,6 +1,6 @@
 # session-delegation Spec
 
-> Version: 0.2.0 | Date: 2026-08-13 | Status: Draft 草稿
+> Version: 0.2.0 | Date: 2026-08-13 | Status: Done 完成
 >
 > 本文件是本需求的**唯一事实源**：事实基线、业务合同、技术方案、任务计划、验收协议全部在此。
 > 其他文件（handoff.md、tasks.csv）只引用本文件，不复制内容。
@@ -61,7 +61,7 @@
 
 | 假设 ID | 内容 | 风险 | 确认方式 |
 |---|---|---|---|
-| ASM-001 | **continuable 平级化选项 A（已定案）**：send_message/list_agents 改走 session API，续写开放；P4 全量实施 | 语义变化大（授权放宽） | ✅ 用户拍板（evidence/phase-0/decisions.md） |
+| ASM-001 | **continuable 平级化选项 A（已定案）**：send_message/list_agents 改走 session API，续写开放；P4 全量实施 | 语义变化大（授权放宽） | ✅ 用户拍板（`evidence/phase-0/decisions.md`） |
 | ASM-002 | **授权强度默认 `workspace`（已定案）**（同 workspace 可续写），Config 可配 `creator`/`anyone` | 与 subagent 精确父授权语义差异 | ✅ 用户拍板 |
 | ASM-003 | **等待语义 = 单 session idle（已定案，不等子树）**；`session.wait` 端点实现于 P1 | 子又开子时父不等孙（与现状 whenIdle 有差异） | ✅ 用户拍板 + P3 回归确认 |
 | ASM-004 | **结构化输出保留（已定案）**：session provider 桥接在子会话注入结构化约定（JSON 文本 + 校验重试一次），workflow/ralph 的 outputSchema 能力声明保持 true | 文本约定弱于现状强校验 | ✅ 用户拍板 + T-014 实现 + ralph 回归 |
@@ -955,7 +955,7 @@ P5 真实场景验收 ◀──────┘
 
 **Evidence**：`evidence/phase-4/`
 
-### Phase 5: 真实场景验收
+### Phase 5: 最终验收
 
 > 你在哪里：机制替换完成。
 > 做完之后：真实场景全套通过，spec 状态 Ready→Done，evidence 归档完整。
@@ -1040,16 +1040,16 @@ evidence/
 
 ### 5.4 Review 专项检查清单
 
-- [ ] `SubagentRun`/`SubagentResult`/`SubagentStopReason` 形状与改造前一致(契约测试 pin)
-- [ ] `subagent.list/history/prompt` RPC 响应字段零删减
-- [ ] workflow/ralph 在 `subagentProvider: session` 配置下行为无差异(含 structured)；装配行 5 处指向核对(bundle/base L250-L333)
-- [ ] 约束路径边界(ASM-009)：creator/anyone 档位只作用于插件工具路径；subagent 工具路径保持 workspace 级——Config 文档写明
-- [ ] 旧 subagent 会话(带 `subagent/descriptor` 事件)只读加载不损坏(INV-004)
-- [ ] 委派会话跨重启状态投影正确(BR-004)
-- [ ] 约束矩阵(workspace/creator/anyone × 深度超限 × 可见性)全部验证
-- [ ] 收集约束矩阵(wait: all/any/n/first-failed × on_failure: continue/cancel-rest × timeout)全部验证;collect 无依赖图/调度/重试逻辑(ASM-007 边界)
-- [ ] 无新增 session 事件类型(INV-001)——rg 校验 `session/*` 词汇表
-- [ ] continuation manager 删除后无死代码、无引用残留
-- [ ] 5.2 执行矩阵全部通过,evidence 齐全且与 2.5 节 EVD 清单一致
-- [ ] 2.3 节每条流程的「入口接线清单」已实现——从真实入口可达
-- [ ] 所有 BR/UF/INV 状态可对照第 2 章逐条核销
+- [x] `SubagentRun`/`SubagentResult`/`SubagentStopReason` 形状与改造前一致(契约测试 pin)
+- [x] `subagent.list/history/prompt` RPC 响应字段零删减
+- [x] workflow/ralph 在 `subagentProvider: session` 配置下行为无差异(含 structured)；装配行 5 处指向核对(bundle/base L250-L333)
+- [x] 约束路径边界(ASM-009)：creator/anyone 档位只作用于插件工具路径；subagent 工具路径保持 workspace 级——Config 文档写明
+- [x] 旧 subagent 会话(带 `subagent/descriptor` 事件)只读加载不损坏(INV-004)
+- [x] 委派会话跨重启状态投影正确(BR-004)
+- [x] 约束矩阵(workspace/creator/anyone × 深度超限 × 可见性)全部验证
+- [x] 收集约束矩阵(wait: all/any/n/first-failed × on_failure: continue/cancel-rest × timeout)全部验证;collect 无依赖图/调度/重试逻辑(ASM-007 边界)
+- [x] 无新增 session 事件类型(INV-001)——rg 校验 `session/*` 词汇表
+- [x] continuation manager 删除后无死代码、无引用残留
+- [x] 5.2 执行矩阵全部通过,evidence 齐全且与 2.5 节 EVD 清单一致
+- [x] 2.3 节每条流程的「入口接线清单」已实现——从真实入口可达
+- [x] 所有 BR/UF/INV 状态可对照第 2 章逐条核销
