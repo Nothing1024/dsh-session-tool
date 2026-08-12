@@ -14,7 +14,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const WORKTREE = join(ROOT, '..', 'plugin-dev/session-tool-env')
+const WORKTREE = join(ROOT, '..', 'env/session-tool-env')
 
 const paths = {}
 
