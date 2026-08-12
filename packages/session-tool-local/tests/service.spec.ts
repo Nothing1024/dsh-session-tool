@@ -281,6 +281,145 @@ describe('SessionToolLocalService (remote)', () => {
     })
   })
 
+  describe('continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated)', () => {
+    /** Establish a caller session on a specific context. */
+    function callerOn(target: Context, id: string, cwd = '/proj') {
+      return target.sessions.create(SessionId(id), {
+        ...cwd === undefined ? {} : { meta: { cwd } },
+      })
+    }
+
+    it('creator mode admits only the lineage for write and wait', async () => {
+      const ctx2 = await compose(join(root, 'creator'), {
+        ...TOOL_CONFIG,
+        allowOthersToWrite: 'creator',
+      })
+      try {
+        callerOn(ctx2, 'root')
+        callerOn(ctx2, 'peer')
+        const child = ctx2.sessions.create(SessionId('delegated-child'), {
+          meta: { cwd: '/proj', parentSession: 'root' },
+        })
+        await ctx2.sessions.flush(child)
+        const client = sessionClient()
+        client.prompt.mockResolvedValue({ accepted: true })
+        client.wait.mockResolvedValue({ status: 'completed' })
+
+        // The lineage creator (root) may continue the child.
+        await expect(ctx2.sessionTool.write(agent('root'), SessionId('delegated-child'), 'go'))
+          .resolves.toBeDefined()
+        await expect(ctx2.sessionTool.wait(agent('root'), SessionId('delegated-child'), {}))
+          .resolves.toBeDefined()
+        // A peer (same workspace, not in the lineage) is rejected.
+        await expect(ctx2.sessionTool.write(agent('peer'), SessionId('delegated-child'), 'go'))
+          .rejects.toThrow(SessionToolUnauthorizedError)
+        await expect(ctx2.sessionTool.wait(agent('peer'), SessionId('delegated-child'), {}))
+          .rejects.toThrow(SessionToolUnauthorizedError)
+        expect(client.prompt).toHaveBeenCalledTimes(1)
+        expect(client.wait).toHaveBeenCalledTimes(1)
+      } finally {
+        await ctx2.fiber.dispose()
+      }
+    })
+
+    it('workspace mode admits same-workspace callers and rejects foreign workspaces', async () => {
+      const ctx2 = await compose(join(root, 'workspace'), {
+        ...TOOL_CONFIG,
+        allowOthersToWrite: 'workspace',
+      })
+      try {
+        callerOn(ctx2, 'root')
+        callerOn(ctx2, 'peer')
+        callerOn(ctx2, 'foreign-peer', '/other')
+        const target = ctx2.sessions.create(SessionId('delegated-target'), {
+          meta: { cwd: '/proj', parentSession: 'root' },
+        })
+        await ctx2.sessions.flush(target)
+        const client = sessionClient()
+        client.prompt.mockResolvedValue({ accepted: true })
+
+        // Same workspace: admitted.
+        await expect(ctx2.sessionTool.write(agent('peer'), SessionId('delegated-target'), 'go'))
+          .resolves.toBeDefined()
+        // Different workspace: rejected.
+        await expect(ctx2.sessionTool.write(agent('foreign-peer'), SessionId('delegated-target'), 'go'))
+          .rejects.toThrow(SessionToolUnauthorizedError)
+      } finally {
+        await ctx2.fiber.dispose()
+      }
+    })
+
+    it('anyone mode admits every caller', async () => {
+      const ctx2 = await compose(join(root, 'anyone'), {
+        ...TOOL_CONFIG,
+        allowOthersToWrite: 'anyone',
+      })
+      try {
+        callerOn(ctx2, 'root')
+        callerOn(ctx2, 'stranger')
+        const target = ctx2.sessions.create(SessionId('delegated-anyone'), {
+          meta: { cwd: '/proj', parentSession: 'root' },
+        })
+        await ctx2.sessions.flush(target)
+        const client = sessionClient()
+        client.prompt.mockResolvedValue({ accepted: true })
+        await expect(ctx2.sessionTool.write(agent('stranger'), SessionId('delegated-anyone'), 'go'))
+          .resolves.toBeDefined()
+      } finally {
+        await ctx2.fiber.dispose()
+      }
+    })
+
+    it('maxDelegationDepth rejects a creation deeper than the ceiling', async () => {
+      const ctx2 = await compose(join(root, 'depth'), {
+        ...TOOL_CONFIG,
+        maxDelegationDepth: 2,
+      })
+      try {
+        callerOn(ctx2, 'root')
+        const client = sessionClient()
+        client.durableCreate.mockResolvedValue({ sessionId: 'session-d' })
+        // depth 1 (0+1) and 2 are admitted; 3 is rejected.
+        await expect(ctx2.sessionTool.create(agent('root', 1), {}))
+          .resolves.toBeDefined()
+        await expect(ctx2.sessionTool.create(agent('root', 1), { delegationDepth: 2 }))
+          .resolves.toBeDefined()
+        await expect(ctx2.sessionTool.create(agent('root', 2), {}))
+          .rejects.toThrow(SessionToolUnauthorizedError)
+        expect(client.durableCreate).toHaveBeenCalledTimes(2)
+      } finally {
+        await ctx2.fiber.dispose()
+      }
+    })
+
+    it('showDelegated false hides delegated rows unless explicitly requested', async () => {
+      const ctx2 = await compose(join(root, 'visible'), {
+        ...TOOL_CONFIG,
+        showDelegated: false,
+      })
+      try {
+        callerOn(ctx2, 'root')
+        const delegated = ctx2.sessions.create(SessionId('delegated-hidden'), {
+          meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+        })
+        await ctx2.sessions.flush(delegated)
+        const client = sessionClient()
+        client.list.mockResolvedValue([
+          listRow('root', {}),
+          listRow('delegated-hidden', { parentSessionId: 'root', tags: ['delegated'] }),
+        ])
+
+        const hidden = await ctx2.sessionTool.list(agent('root'), { scope: 'all' })
+        expect(hidden.sessions.map(row => row.sessionId)).toEqual(['root'])
+        // An explicit delegated-origin filter still surfaces them.
+        const explicit = await ctx2.sessionTool.list(agent('root'), { scope: 'all', origin: 'delegated' })
+        expect(explicit.sessions.map(row => row.sessionId)).toEqual(['delegated-hidden'])
+      } finally {
+        await ctx2.fiber.dispose()
+      }
+    })
+  })
+
   describe('rename', () => {
     it('delegates to the gateway and echoes the accepted values', async () => {
       callerSession('caller')
@@ -442,10 +581,10 @@ describe('SessionToolLocalService (remote)', () => {
       })
       tagged.append('session/tags', { tags: ['delegated'], source: { kind: 'user' } })
       const deep = ctx.sessions.create(SessionId('deep'), {
-        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 2 },
+        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 2, createdAt: tagged.header.createdAt },
       })
       const plain = ctx.sessions.create(SessionId('plain'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: 'root', createdAt: tagged.header.createdAt },
       })
       sessionClient().list.mockResolvedValue([
         listRow('root', {}),

@@ -57,6 +57,17 @@ import type { DelegationStatus } from './delegation-projection.ts'
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
 
+/**
+ * Continuation-authorization strength for the plugin tool path (ASM-009):
+ * who may write to / wait on a delegated session created by another agent.
+ * `creator` admits only the lineage-chain creator; `workspace` (default)
+ * admits any same-workspace caller; `anyone` admits every caller. These
+ * levels constrain ONLY the plugin tool path (`session_write` /
+ * `session_wait`); the upstream subagent tool path keeps workspace-level
+ * authorization.
+ */
+export type AllowOthersToWrite = 'workspace' | 'creator' | 'anyone'
+
 /** Deployment-owned bounds and scope gates (no hardcoded tunables). */
 export interface Config {
   /** Agent `all`-scope gate: top-level callers only, any agent, or nobody. */
@@ -79,6 +90,26 @@ export interface Config {
    * HTTP carrier; a reachable gateway is required for those operations.
    */
   readonly webUrl: string
+  /**
+   * Continuation-authorization strength for the plugin tool path (default
+   * `workspace`): who may write to or wait on another agent's delegated
+   * session. `creator` restricts to the session's lineage creator;
+   * `workspace` admits same-workspace callers; `anyone` admits every caller.
+   */
+  readonly allowOthersToWrite: AllowOthersToWrite
+  /**
+   * Delegation-depth ceiling for the plugin tool path: `session_create`
+   * rejects a creation whose resolved depth (`caller depth + 1`) exceeds
+   * this bound. `undefined` (default) imposes no local ceiling — the web
+   * gateway still admits at most parent depth plus one.
+   */
+  readonly maxDelegationDepth?: number
+  /**
+   * Whether delegated sessions appear in `session_list` results (default
+   * `true`). `false` drops rows whose tag set carries `delegated` or whose
+   * header records a positive delegation depth.
+   */
+  readonly showDelegated: boolean
 }
 
 
@@ -96,6 +127,9 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     listMaxRows: z.number().step(1).min(1).default(100),
     hiddenPrefixes: z.array(z.string()).default(['~']),
     webUrl: z.string().default('http://127.0.0.1:3080'),
+    allowOthersToWrite: z.union([z.const('workspace'), z.const('creator'), z.const('anyone')]).default('workspace'),
+    maxDelegationDepth: z.number().step(1).min(1),
+    showDelegated: z.boolean().default(true),
   })
 
   private readonly config: Config
@@ -144,9 +178,16 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // owner-fence access and `own` scope listings; CLI creations are
     // top-level sessions unless a parent is named. A delegated session
     // records the caller's depth plus one unless an explicit depth is given
-    // (the gateway still admits at most parent depth plus one).
+    // (the gateway still admits at most parent depth plus one). The plugin
+    // depth ceiling is enforced here, before any gateway call.
     const childDepth = options.delegationDepth
       ?? (caller.kind === 'agent' ? caller.delegationDepth + 1 : undefined)
+    if (childDepth !== undefined && this.config.maxDelegationDepth !== undefined
+      && childDepth > this.config.maxDelegationDepth) {
+      throw new SessionToolUnauthorizedError(
+        `delegation depth ${childDepth} exceeds the configured maximum ${this.config.maxDelegationDepth}`,
+      )
+    }
     const created = await this.sessionClient.durableCreate({
       ...options.title === undefined ? {} : { title: options.title },
       ...options.parentSessionId !== undefined
@@ -191,7 +232,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // loop; the reply streams back through the gateway's event push and
     // lands in the session log. This settles on admission.
     const index = await this.headerIndex()
-    await this.assertAccess(caller, sessionId, index)
+    await this.assertContinuationAllowed(caller, sessionId, index)
     await this.sessionClient.prompt(sessionId, text)
     return { sessionId }
   }
@@ -253,6 +294,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     let visible = rows
     if (filter.includeHidden !== true) {
       visible = visible.filter(row => !isTitleHidden(row.title, this.config.hiddenPrefixes))
+    }
+    if (this.config.showDelegated === false && filter.origin !== 'delegated') {
+      // Visibility config: hide delegated sessions (tag `delegated` or a
+      // positive header depth) unless the caller explicitly asked for them.
+      visible = visible.filter(row => !this.isDelegated(row, index))
     }
     if (filter.status !== undefined) {
       // The delegation vocabulary (running/completed/failed/aborted) filters
@@ -317,6 +363,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   async wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult> {
     const index = await this.headerIndex()
     await this.assertAccess(caller, sessionId, index)
+    await this.assertContinuationAllowed(caller, sessionId, index)
     // Single-session settle through the gateway (the web process owns the
     // live agent): the wait follows THIS session's agent only and never its
     // descendants; a cold session is reported from its log immediately; a
@@ -434,6 +481,76 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       default:
         assertNever(this.config.allowAllScope, 'AllowAllScope')
     }
+  }
+
+  /**
+   * Continuation authorization for the plugin tool path (ASM-009): who may
+   * write to or wait on a delegated session. The CLI (human identity) always
+   * may; an agent may when it is the target itself or one of its ancestors
+   * (the existing lineage fence), or when the configured strength admits a
+   * non-lineage caller:
+   * - `workspace` (default): the caller's header cwd equals the target's
+   *   (same workspace);
+   * - `anyone`: every caller;
+   * - `creator`: no non-lineage caller (only the lineage chain may continue).
+   * The upstream subagent tool path (`subagent`/`send_message`) keeps the
+   * gateway's workspace-level authorization and never consults this config.
+   * @param caller - the calling agent or the CLI.
+   * @param targetId - the session to continue.
+   * @param index - the merged header index.
+   * @throws {SessionToolUnauthorizedError} when the caller is not admitted.
+   */
+  private assertContinuationAllowed(
+    caller: SessionToolCaller,
+    targetId: SessionId,
+    index: Map<SessionId, SessionHeader>,
+  ): void {
+    if (caller.kind === 'cli') return
+    // The lineage fence (self or ancestor) always admits; the config only
+    // widens it for non-lineage callers.
+    if (this.isAncestorOrSelf(caller.sessionId, targetId, index)) return
+    if (!index.has(targetId)) {
+      throw new SessionNotFoundError(`session "${targetId}" does not exist`)
+    }
+    switch (this.config.allowOthersToWrite) {
+      case 'anyone':
+        return
+      case 'creator':
+        throw new SessionToolUnauthorizedError(
+          `caller "${caller.sessionId}" is not in the lineage of session "${targetId}" (allowOthersToWrite: creator)`,
+        )
+      case 'workspace': {
+        const callerHeader = index.get(caller.sessionId)
+        const targetHeader = index.get(targetId)
+        if (callerHeader?.cwd !== undefined && callerHeader.cwd === targetHeader?.cwd) return
+        throw new SessionToolUnauthorizedError(
+          `caller "${caller.sessionId}" is not in the same workspace as session "${targetId}" (allowOthersToWrite: workspace)`,
+        )
+      }
+      /* v8 ignore next -- closed-union exhaustiveness guard */
+      default:
+        assertNever(this.config.allowOthersToWrite, 'AllowOthersToWrite')
+    }
+  }
+
+  /**
+   * Whether `callerId` is `targetId` itself or one of its ancestors, walking
+   * the durable `parentSession` lineage.
+   * @param callerId - the caller's session id.
+   * @param targetId - the target session id.
+   * @param index - the merged header index.
+   */
+  private isAncestorOrSelf(callerId: SessionId, targetId: SessionId, index: Map<SessionId, SessionHeader>): boolean {
+    if (targetId === callerId) return true
+    let current = index.get(targetId)
+    const seen = new Set<SessionId>()
+    while (current !== undefined && !seen.has(current.id)) {
+      seen.add(current.id)
+      const parent = current.parentSession
+      if (parent === callerId) return true
+      current = parent === undefined ? undefined : index.get(parent)
+    }
+    return false
   }
 
   // ---- session resolution ------------------------------------------------

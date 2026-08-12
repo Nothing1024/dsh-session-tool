@@ -30,6 +30,17 @@
         # authority. Workspace registration and management go over this
         # gateway's HTTP carrier; point it at the running web process.
         webUrl: 'http://127.0.0.1:3080'
+        # Continuation authorization for the plugin tool path (ASM-009):
+        # 'workspace' (default) admits same-workspace callers; 'creator'
+        # admits only the lineage creator; 'anyone' admits every caller.
+        # The upstream subagent tool path keeps workspace-level auth and
+        # never reads this value.
+        allowOthersToWrite: 'workspace'
+        # Delegation-depth ceiling for the plugin tool path; unset = no
+        # local ceiling (the web gateway still admits parent depth + 1).
+        # maxDelegationDepth: 8
+        # Whether delegated sessions appear in session_list (default true).
+        showDelegated: true
 
     - id: tool-session
       name: 'tool-session'
