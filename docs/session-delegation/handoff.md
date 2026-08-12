@@ -14,7 +14,7 @@
 | 资料 | 路径 | 状态 | 用途 |
 |---|---|---|---|
 | Spec（唯一事实源） | `spec.md` | found | 业务合同、技术方案、任务详情、验收协议 |
-| Tasks CSV（状态板） | `tasks.csv` | found | 22 任务状态跟踪 |
+| Tasks CSV（状态板） | `tasks.csv` | found | 23 任务状态跟踪 |
 | Evidence 目录 | `evidence/` | found | 证据归档 |
 
 缺失资料与假设：
@@ -23,6 +23,7 @@
 - ASM-002: 授权强度默认 workspace，Config 可配 creator/anyone，需 T-002 拍板
 - ASM-003: 等待语义 = 单 session idle（不等子树），需 T-002 拍板
 - ASM-005: 清理策略 = 标记+手动+超时三件套，超时任务可后置，需 T-002 拍板
+- ASM-007: 收集约束边界 = 只做完成条件求值（wait-all/any/n），不做依赖图/调度/重试编排
 
 ## 3. 开工上下文
 
@@ -58,6 +59,7 @@ P5 真实场景验收 ◀──────┘
 - BR-004: 完成状态必须可从会话日志推导（投影纯函数），跨重启保持
 - BR-005: 约束（授权强度/深度上限/可见性）在插件工具层执行，Config 决定
 - BR-006: 上游改动零新增事件类型（归因走 MessageSource 合并扩展）
+- BR-007: 收集约束声明式求值（wait-all/any/n + 失败策略 + 超时 + 聚合），不做依赖图/调度
 - INV-001: 会话日志 append-only、session/* 事件词汇不变
 - INV-002/003: subagent 工具名/schema 与 RPC 响应形状不变
 - INV-004: 旧 subagent 会话（含 subagent/descriptor 事件）只读兼容

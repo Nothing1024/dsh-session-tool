@@ -65,6 +65,7 @@
 | ASM-004 | **结构化输出**保留：session provider 桥接在子会话注入结构化约定（JSON 文本 + 校验重试），workflow/ralph 的 outputSchema 能力声明保持 true | 文本约定弱于现状强校验 | P3 任务 T-014 实现 + ralph 回归 |
 | ASM-005 | **清理策略** = 标记 + 手动 + 超时三件套（tags `~archived` + hiddenPrefixes + 后台扫描任务可后置） | 孤儿会话无自动回收 | P0 决策任务 T-002 + P2 后置 |
 | ASM-006 | 上游基线 = `env/session-tool-env` HEAD（534eb84）；subagent 源码基线 = `~/.dsh/source/current`（staging-20260811T020137Z） | 两处基线差异导致定位漂移 | P0 校准任务 T-001 |
+| ASM-007 | **收集约束边界**：`session_collect` 只做"完成条件声明式求值"（wait-all/any/n/first-failed + 失败策略 + 超时 + 聚合），**不做**依赖图（DAG）/调度/重试编排——那些留给后期 flow 生态，collect 作为 vibee 未来可复用的执行原语 | 边界膨胀成迷你工作流引擎 | P2 任务 T-012 契约注释 + 5.4 检查 |
 
 ---
 
@@ -82,6 +83,7 @@
 | BR-004 | 完成状态必须**可从会话日志推导**（投影纯函数），不依赖任何进程本地状态 | 进程重启后 `session_list` 仍显示 completed/failed | 重启后状态消失或需手动修复 | session-tool 投影 | unit + 重启验证 |
 | BR-005 | 约束（续写授权/深度上限）在**插件工具层执行**，强度由 Config 决定；默认不改变 web GUI 既有会话行为 | `allowOthersToWrite: 'workspace'` 下同 workspace 会话可续写 | 约束逻辑进入核心或影响非委派会话 | session-tool | unit |
 | BR-006 | 上游改动**零新增事件类型**（归因走 `MessageSource` 合并扩展；深度走既有 header 字段） | 父投递消息在子日志带 `coordinator` 归因 | 新增 `subagent/*` 式专用事件 | env worktree | typecheck + 测试 |
+| BR-007 | 收集约束必须**声明式求值**：对一组会话（血缘树或 tags 聚合）判定完成条件（`wait: all/any/n/first-failed` + `on_failure: continue/cancel-rest` + 超时），结果从会话日志/投影聚合；**禁止**内置依赖图/调度/重试编排 | `wait: 'all'` 下 3 个会话全部终态后返回聚合结果 | `wait: 'n'(2)` 下等全部 3 个才返回 | session-tool collect | unit + 冒烟 |
 
 ### 2.2 UF 用户验收场景（索引）
 
@@ -93,6 +95,7 @@
 | UF-004 | web GUI 运行中，委派会话存在 | 用户打开侧边栏/会话列表 | 委派会话可见（按配置），可打开、可续写、可停止；`origin` 仅作分类 | 人类用户 | 浏览器实测 | EVD-003 |
 | UF-005 | workflow 引擎配置 `subagentProvider: spawn` | 跑一个 workflow | 结果与改造前一致（含结构化输出场景） | 编排层 | workflow e2e | EVD-004 |
 | UF-006 | 外部 CLI 后端（acp/codex/claude-code/sdk）已装配 | 通过 `subagent` 工具调用任一后端 | 行为与改造前一致 | 模型 agent | 装配回归 | EVD-005 |
+| UF-007 | 协调者 agent 创建了 N 个委派会话（`tags:['delegated']`） | 调用 `session_collect`（wait-all / wait-n / 失败策略） | 按声明条件返回聚合结果（或按 n 提前返回、按策略取消其余） | 模型 agent | 插件 unit + headless 冒烟 | EVD-009 |
 
 ### 2.3 核心业务流程（步骤级交互脚本）
 
@@ -236,6 +239,48 @@ idle → creating → waiting(idle) → collected
 
 **失败分支**：N/A（外部后端不受本次改动影响，回归仅为确认；失败分支不适用，注明原因：它们不依赖被替换的 in-process 机制）。
 
+#### UF-007: 协调者扇出-收集（模型视角，类树收集约束）
+
+**前置状态**：协调者 agent 已创建 ≥2 个委派会话（同一血缘树或同一 `plan:<id>` tag）；`session_collect` 工具已装配。
+
+**成功主路径（wait-all）**：
+
+| 步骤 | 用户动作 | 界面即时反馈 | 系统行为 | 用户看到的结果 |
+|---|---|---|---|---|
+| 1 | 模型调用 `session_collect({root: 自己, wait: 'all', timeout_ms})` | — | 解析集合（血缘树）→ 订阅各会话投影状态 | — |
+| 2 | — | — | 逐个会话到达终态（completed/failed/aborted），谓词 all 满足 | — |
+| 3 | — | — | 聚合各会话结果摘要 | 返回 `{satisfied: true, sessions: [{id, status, result}], elapsed_ms}` |
+
+**成功主路径（wait-n 提前返回）**：
+
+| 步骤 | 用户动作 | 界面即时反馈 | 系统行为 | 用户看到的结果 |
+|---|---|---|---|---|
+| 1 | 模型调用 `session_collect({root, wait: 'n', n: 2, on_failure: 'cancel-rest'})` | — | 解析集合 + 订阅状态 | — |
+| 2 | 2 个会话终态 | — | 谓词 n 满足 → `cancel-rest` 取消剩余会话（`session.cancel`，不删除） | 返回 `{satisfied: true, sessions: [2 个结果 + 其余 cancelled]}` |
+
+**失败分支**：
+
+| 分支 | 触发条件 | 界面表现 | 系统行为 | 恢复路径 |
+|---|---|---|---|---|
+| 超时 | 会话长期 running 超过 `timeout_ms` | 返回 `{satisfied: false, sessions: 当前快照}`（不报错） | 无副作用 | 模型决定继续 collect 或逐个接管 |
+| 空集合 | root/tags 无匹配会话 | 返回空 sessions + `satisfied: false` | 无副作用 | 模型先 create |
+| 会话不存在 | 集合中某 id 已删 | 该项标记 `missing`（不整体失败） | 其余继续求值 | 模型核对清单 |
+
+**界面状态机**（collect 工具生命周期）：
+
+```text
+idle → resolving(集合) → waiting(订阅/轮询) → satisfied(聚合返回)
+                              │                    │
+                              ▼                    ▼
+                          timeout(快照返回)    (cancel-rest 时部分 cancelled)
+```
+
+**入口接线清单**：
+
+- 模型入口：`session_collect` 工具 → `ctx.sessionTool.collect`
+- 数据入口：`traceSession`（血缘树）+ delegation 投影（status）+ tags（聚合）——全部现成
+- 动作入口：`session.cancel`（cancel-rest）——现成
+
 ### 2.4 INV 不变量
 
 | 不变量 ID | 内容 | 关联 BR/UF | 验证方式 |
@@ -258,6 +303,7 @@ idle → creating → waiting(idle) → collected
 | EVD-006 | log | env 全量测试通过（基线 344+ 例） | `evidence/phase-1/` |
 | EVD-007 | log | 插件全量测试通过（基线 67+ 例） | `evidence/phase-2/` |
 | EVD-008 | log | 重启恢复验证：委派会话状态投影在重启后保持 | `evidence/phase-2/` |
+| EVD-009 | log/test | 协调者扇出-收集：wait-all 聚合 + wait-n 提前返回 + cancel-rest + 超时快照 | `evidence/UF-007/` |
 
 ### 2.6 角色与权限矩阵
 
@@ -336,8 +382,8 @@ After:
 | subagent 包: `subagent`(核心) | seam | continuation manager/descriptor/Activation 标记 deprecated(P3)→删除(P4)；接口面(provider/run/depth/composition)保留 |
 | subagent 包: `tool-subagent-control` | 模型工具 | `send_message`→session.prompt(coordinator)；`list_agents`→session_list(状态投影映射)（P4） |
 | subagent 包: `tool-subagent-report` | 报告通道 | 保留或退役（P0 决策；默认保留，子结果经会话日志已可达） |
-| session-tool 插件: `packages/session-tool-local` | provider/服务 | 注册 `delegation` 投影 unit；`session_wait` 实现；list 扩展投影/血缘过滤；Config 约束（授权强度/深度上限/可见性） |
-| session-tool 插件: `packages/tool-session` | 模型工具 | `session_create` 传来源/深度；`session_list` 加 status 过滤；新增 `session_wait`（可选）；schema 扩展 |
+| session-tool 插件: `packages/session-tool-local` | provider/服务 | 注册 `delegation` 投影 unit；`session_wait` 实现；list 扩展投影/血缘过滤；Config 约束（授权强度/深度上限/可见性）；**新增收集约束求值器 `collect`**（谓词求值 + 聚合 + cancel-rest） |
+| session-tool 插件: `packages/tool-session` | 模型工具 | `session_create` 传来源/深度；`session_list` 加 status 过滤；新增 `session_wait` 与 **`session_collect`**；schema 扩展 |
 | session-tool 插件: `packages/session-tool` | 契约 | 新增 wait/约束/投影相关类型与错误码 |
 | 上游 bundle: `bundle/base` | 装配 | 挂载行调整（P3/P4：spawn/fork 行换 session provider 行；tool-subagent-control 保留名字） |
 | 上游: `client/ui-subagent`、`hooks-claude` | 消费面 | P4：origin 降级为分类、可见性 Config；hooks 事件保留或映射 |
@@ -363,6 +409,8 @@ After:
 | `plugin/packages/session-tool-local/src/index.ts` | `assertCreateParent` / `list` / `read` / provider 实现 | `rg "assertCreateParent" plugin/packages/session-tool-local/src/index.ts` | L115-L195 | 约束/过滤实现点 |
 | `plugin/packages/tool-session/src/index.ts` | 5 工具定义 | `rg "name: 'session_" plugin/packages/tool-session/src/index.ts` | L55-L230 | 工具 schema 扩展点 |
 | `plugin/packages/session-tool-local/src/session-client.ts` | `SessionHttpClient`(durableCreate/prompt/list/rename) | `rg "durableCreate" plugin/packages/session-tool-local/src/session-client.ts` | 待勘察 | wait 客户端落点 |
+| `plugin/packages/session-tool-local/src/collect.ts`(新增) | 收集约束求值器 | `rg "collect" plugin/packages/session-tool-local/src/` | 新增文件 | 谓词求值/聚合/cancel-rest |
+| `plugin/packages/session-tool/src/index.ts` | `SessionToolCollectRequest/Result` 契约 | `rg "SessionToolCollect" plugin/packages/session-tool/src/index.ts` | 新增类型 | collect 契约 |
 | `packages/workflow/tool-ralph/src/index.ts` | `getProvider` / structured 能力检查 | `rg "supports structured output|getProvider" packages/workflow/tool-ralph/src/index.ts` | L221-L229 | 回归锚点 |
 
 ### 3.4 API / 数据 / 权限 / 路由影响
@@ -663,10 +711,41 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：creator 模式的"血缘链"判定用 header.parentSession 递归（复用 scope tree 扫描）；禁止把约束逻辑写进核心
 
-### Task 12: 执行 Phase 2 回归验证
+### Task 12: 实现收集约束求值器(session_collect)
+
+- **关联**：BR-007 / UF-007 / EVD-009
+- **前置任务**：8;10
+- **风险等级**：P1
+
+**为什么做**：平级化拆掉受控树后，收集约束（"等全部完成再返回"/"完成 N 个即返回"）是唯一未覆盖的树语义——用声明式约束求值器补上，血缘树数据仍在但"等树"从隐式机制变成显式谓词。
+
+**涉及文件与定位**：
+
+- `plugin/packages/session-tool-local/src/collect.ts`（新增）：约束求值器
+- `plugin/packages/session-tool/src/index.ts`：`SessionToolCollectRequest/Result` 契约类型
+- `plugin/packages/tool-session/src/index.ts`：`session_collect` 工具（schema + 渲染）
+- 数据面（全部现成）：`traceSession`（血缘树）、delegation 投影（Task 8 的 status）、tags（`delegated`/`plan:<id>`）、`session.cancel`（cancel-rest 动作）
+
+**具体操作**：
+
+1. 服务层 `collect(request)`：
+   - 集合解析：血缘树扫描（`root` sessionId 或 `tags` 聚合，二者其一）+ 可选 `filter: { status?, tags? }`
+   - 状态源：`ctx.sessionProjections` 的 `delegation` unit（onChanged 订阅，现成）或降级轮询（`readSession` 尾部）
+   - 谓词求值器（纯函数，独立可测）：`wait: 'all' | 'any' | 'n' | 'first-failed'` + `n?` + `on_failure: 'continue' | 'cancel-rest'` + `timeout_ms?`
+   - 完成动作：满足 → 聚合各会话结果（投影 lastTurnEnd + 日志尾部摘要）；超时 → 返回当前快照（不报错）；`cancel-rest` → 对未满足者逐个 `session.cancel`（现成）
+2. 工具面 `session_collect({root?, tags?, filter?, wait, n?, on_failure?, timeout_ms?})` → `{ satisfied, sessions: [{id, status, result}], elapsed_ms }`
+3. 约束边界（写入契约注释）：**不做**依赖图（DAG）/调度/重试编排——那些留给后期 flow 生态；collect 是执行面原语
+
+**验证**：`pnpm test`（plugin）→ 谓词求值器全矩阵（all/any/n/first-failed × continue/cancel-rest × timeout）单测；工具 schema/渲染用例；headless 冒烟：create×3 → collect(all) 聚合
+
+**Evidence**：`evidence/phase-2/collect.log`
+
+**注意事项**：谓词求值器必须是纯函数（输入集合快照 → 判定），订阅只做"状态变化触发重算"；`cancel-rest` 只取消未完成者、不删除会话；禁止把依赖图/调度逻辑混入本任务
+
+### Task 13: 执行 Phase 2 回归验证
 
 - **关联**：本 Phase 全部 BR/UF
-- **前置任务**：8;9;10;11
+- **前置任务**：8;9;10;11;12
 
 **验证**：`pnpm test`（plugin 全量 67+ 例）→ 全绿；重启恢复验证（EVD-008）：创建委派会话→杀进程→重启→`session_list` 状态正确
 
@@ -677,10 +756,10 @@ P5 真实场景验收 ◀──────┘
 > 你在哪里：插件元数据设施就绪。
 > 做完之后：spawn/fork 的 one-shot 走 session 栈实现，workflow/ralph/外部后端零行为差异。
 
-### Task 13: session provider 桥接(spawn/fork one-shot 换实现)
+### Task 14: session provider 桥接(spawn/fork one-shot 换实现)
 
 - **关联**：BR-001 / BR-002 / INV-002 / INV-003 / UF-001 / UF-005 / EVD-001 / EVD-004
-- **前置任务**：12
+- **前置任务**：13
 - **风险等级**：P0（本包核心）
 
 **为什么做**：把 one-shot 委派从 continuation manager 换到 session 栈，接口契约不变——这是"换引擎不换壳"的主体。
@@ -700,7 +779,7 @@ P5 真实场景验收 ◀──────┘
    - `wait(会话, { until: 'idle' })`
    - 读最后 `assistant/message` + `turn/end` reason → 组装 `SubagentRun` 形状（`{ id, localAgent: undefined, result, dispose }`——**注意 localAgent 语义**：不再是内存 Agent，dispose 为空操作或按决策定义）
 2. `SpawnProvider.start` / `ForkProvider.start` 改调新实现；`prepareContinuable` 按 P0 决策处理（选项 A：删；选项 B：保留）
-3. 能力声明不变（`outputSchema: true` 等——Task 14 保证）
+3. 能力声明不变（`outputSchema: true` 等——Task 15 保证）
 
 **验证**：subagent 包既有 one-shot 测试改接新实现后全绿；workflow e2e（UF-005）先行冒烟
 
@@ -708,10 +787,10 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：**`SubagentRun.localAgent` 语义变化是最大兼容风险**——检查 workflow-workerthread/ralph 是否消费 `localAgent`（rg 全仓）；若消费则需在 provider 层提供等价物或接受 `undefined` 并回归确认；禁止改变 `SubagentResult`/`SubagentStopReason` 形状
 
-### Task 14: 结构化输出保留(outputSchema 兼容)
+### Task 15: 结构化输出保留(outputSchema 兼容)
 
 - **关联**：ASM-004 / INV-005 / UF-005 / EVD-004
-- **前置任务**：13
+- **前置任务**：14
 - **风险等级**：P1
 
 **为什么做**：ralph 要求 provider `supports structured output`；session 栈无 subagent 的 structured_output 强校验工具，需用约定+校验替代。
@@ -733,10 +812,10 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：禁止悄悄把能力声明改为 false（ralph 会拒绝启动）；约定文本必须进 prompt 且子会话日志可复查
 
-### Task 15: workflow/ralph/外部 4 后端回归
+### Task 16: workflow/ralph/外部 4 后端回归
 
 - **关联**：BR-002 / INV-005 / UF-005 / UF-006 / EVD-004 / EVD-005
-- **前置任务**：13;14
+- **前置任务**：14;14
 - **风险等级**：P1
 
 **为什么做**：换引擎后编排层与外部后端是最大行为差异风险面，须全量回归。
@@ -760,10 +839,10 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：外部 4 后端若暴露 `localAgent` 依赖，单独记录为 P4 决策输入；禁止为通过测试修改外部后端代码
 
-### Task 16: 执行 Phase 3 回归验证
+### Task 17: 执行 Phase 3 回归验证
 
 - **关联**：本 Phase 全部 BR/UF
-- **前置任务**：13;14;15
+- **前置任务**：14;14;15
 
 **验证**：subagent 包全量测试 + workflow/ralph e2e + 外部 4 后端装配 → 全绿；`SubagentRun`/`SubagentResult` 形状契约测试通过
 
@@ -774,7 +853,7 @@ P5 真实场景验收 ◀──────┘
 > 你在哪里：one-shot 已平级化。
 > 做完之后：continuable 面（send_message/list_agents/UI）也走 session 栈，continuation manager 退役（按 P0 决策选项 A；选项 B 则本 Phase 降级为 deprecated 标记）。
 
-### Task 17: send_message/list_agents 改走 session API
+### Task 18: send_message/list_agents 改走 session API
 
 - **关联**：BR-001 / BR-002 / INV-002 / INV-003 / UF-002 / EVD-001
 - **前置任务**：16
@@ -800,7 +879,7 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：返回词汇"started/steered/not delivered"等现状渲染若被测试 pin 住，需保持渲染文本或同步更新测试并记录差异；禁止改变工具名
 
-### Task 18: apiproxy subagent domain 与 UI 兼容
+### Task 19: apiproxy subagent domain 与 UI 兼容
 
 - **关联**：BR-002 / INV-003 / UF-004 / EVD-003
 - **前置任务**：17
@@ -828,7 +907,7 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：RPC 响应字段一个都不能少（契约测试 pin 形状）；禁止在 P4 改 UI 视觉
 
-### Task 19: continuation manager 退役
+### Task 20: continuation manager 退役
 
 - **关联**：BR-001 / INV-004 / EVD-006
 - **前置任务**：17;18
@@ -848,7 +927,7 @@ P5 真实场景验收 ◀──────┘
 1. 先标记 deprecated（保留一版），跑全量测试确认无引用
 2. 删除 continuation.ts/descriptor 相关文件与导出；`subagent-inprocess` 删除
 3. `subagent/descriptor` 事件类型保留在类型层（旧日志只读兼容，INV-004）
-4. 清理 bundle/base 装配行（spawn/fork 的 provider 行按 Task 13/17 的实际落点调整）
+4. 清理 bundle/base 装配行（spawn/fork 的 provider 行按 Task 14/17 的实际落点调整）
 
 **验证**：`pnpm test`（env）→ 全绿；`rg "ContinuationManager|startContinuable" packages/` → 无残留；旧 subagent 会话日志加载测试通过（INV-004）
 
@@ -856,7 +935,7 @@ P5 真实场景验收 ◀──────┘
 
 **注意事项**：禁止删除 `subagent/descriptor` 事件类型定义（旧日志 fold 依赖）；删除前必须全仓 rg 引用确认
 
-### Task 20: 执行 Phase 4 回归验证
+### Task 21: 执行 Phase 4 回归验证
 
 - **关联**：本 Phase 全部 BR/UF
 - **前置任务**：17;18;19
@@ -870,7 +949,7 @@ P5 真实场景验收 ◀──────┘
 > 你在哪里：机制替换完成。
 > 做完之后：真实场景全套通过，spec 状态 Ready→Done，evidence 归档完整。
 
-### Task 21: 执行 spec 5.2 真实场景全套测试
+### Task 22: 执行 spec 5.2 真实场景全套测试
 
 - **关联**：全部用户可见 UF（UF-001~006）/ EVD-001~008
 - **前置任务**：20
@@ -880,7 +959,7 @@ P5 真实场景验收 ◀──────┘
 
 **Evidence**：`evidence/UF-*/`（见 5.2 矩阵）
 
-### Task 22: 执行 Phase 5 回归验证(最终验收,含文档收尾)
+### Task 23: 执行 Phase 5 回归验证(最终验收,含文档收尾)
 
 - **关联**：全部 BR/UF/INV/EVD
 - **前置任务**：21
@@ -932,6 +1011,9 @@ P5 真实场景验收 ◀──────┘
 | UF-004 失败分支(重启) | 浏览器 + 进程重启 | 2.3 对应分支 | 重启后会话仍在、状态投影正确 | `evidence/UF-004/restart.png` |
 | UF-005 主路径 | workflow e2e | 2.3 UF-005 | fan-out 3 结果一致;structured 可解析 | `evidence/UF-005/workflow.log` |
 | UF-006 主路径 | 装配测试 | 2.3 UF-006 | 外部 4 后端行为不变 | `evidence/UF-006/backends.log` |
+| UF-007 主路径(wait-all) | headless | 2.3 UF-007 wait-all 主路径 | 3 会话全部终态后聚合返回 | `evidence/UF-007/all.log` |
+| UF-007 主路径(wait-n) | headless | 2.3 UF-007 wait-n 主路径 | n=2 提前返回 + cancel-rest 取消剩余 | `evidence/UF-007/n.log` |
+| UF-007 失败分支(超时) | headless(慢会话) | 2.3 对应分支 | `satisfied:false` 快照返回不报错 | `evidence/UF-007/timeout.log` |
 
 **通过标准**:执行矩阵全部行通过且 evidence 齐全。任何一行失败 = 未完成,回到对应任务修复后重跑。
 
@@ -953,6 +1035,7 @@ evidence/
 - [ ] 旧 subagent 会话(带 `subagent/descriptor` 事件)只读加载不损坏(INV-004)
 - [ ] 委派会话跨重启状态投影正确(BR-004)
 - [ ] 约束矩阵(workspace/creator/anyone × 深度超限 × 可见性)全部验证
+- [ ] 收集约束矩阵(wait: all/any/n/first-failed × on_failure: continue/cancel-rest × timeout)全部验证;collect 无依赖图/调度/重试逻辑(ASM-007 边界)
 - [ ] 无新增 session 事件类型(INV-001)——rg 校验 `session/*` 词汇表
 - [ ] continuation manager 删除后无死代码、无引用残留
 - [ ] 5.2 执行矩阵全部通过,evidence 齐全且与 2.5 节 EVD 清单一致
