@@ -1,6 +1,6 @@
 # session-delegation Spec
 
-> Version: 0.1.0 | Date: 2026-08-13 | Status: Draft 草稿
+> Version: 0.2.0 | Date: 2026-08-13 | Status: Draft 草稿
 >
 > 本文件是本需求的**唯一事实源**：事实基线、业务合同、技术方案、任务计划、验收协议全部在此。
 > 其他文件（handoff.md、tasks.csv）只引用本文件，不复制内容。
@@ -42,7 +42,9 @@
 | subagent 家族 11 个包（subagent / -inprocess / -spawn / -fork / -acp / -codex / -claude-code / -dsh-sdk / tool-subagent / -control / -report） | `ls packages/subagent/`（staging-20260811T020137Z） | 11 包确认 |
 | continuation manager 实现 1213 行（Activation 接口含 `ownedChildren`/`accepted`/`disposal`/`poke`；`authorizeLineage` 双关卡；`watchSettlement` 三态循环；`drain`/`drainDescendants`） | `wc -l packages/subagent/subagent/src/continuation.ts` + `grep -n "async drain\|authorizeLineage\|watchSettlement"` | 五机制全部在 continuation.ts 确认 |
 | 反向依赖 10 个包：`bundle/base`、`host/apiproxy`、`client/ui-subagent`、`workflow/workflow-workerthread`、`workflow/tool-workflow`、`workflow/tool-ralph`、`hooks/hooks-claude`、`ui/jsonrpc`、`sdk/sdk-protocol`、`sdk/helper` | `grep -rln '"@deepseek-ai/dsh-subagent[^"]*"' packages apps --include=package.json` | 10 个消费者确认 |
-| bundle/base 挂 7 行 subagent 装配（subagent + spawn + fork + control×2 + tool-subagent×2） | `grep -n "subagent" packages/bundle/base/cordis.patch.yml` | L250-L287 确认 |
+| bundle/base 挂 7 行 subagent 装配（subagent + spawn + fork + control×2 + tool-subagent×2）+ workflow/ralph 装配行（provider 均指向 spawn） | `sed -n 240,340p packages/bundle/base/cordis.patch.yml` | L250-L333:subagent-spawn/fork、tool-subagent×2(provider: spawn/fork, backgroundMode: continuable)、workflow-workerthread(provider: spawn)、tool-ralph(subagentProvider: spawn) 共 5 处 provider 指向确认 |
+| headless 进程 = web composition 完整挂载（自带 apiProxy/httpServer，workflow/ralph/subagent 行都在） | `cat packages/bundle/headless/cordis.patch.yml` | "one-shot task mode over dsh-base + dsh-web-app. The web composition stays mounted" 确认 |
+| 进程内驱动会话的现成模式：`InProcessApiClient(toFetchHandler(ctx.apiProxy))` → sessions.create/prompt | `sed -n 148,172p packages/bundle/headless/src/index.ts` | L150-L167 确认（headless runner 模式） |
 | workflow 引擎与 ralph 依赖 subagent 接口面 + spawn provider（ralph 要求 structured output 且 fresh provider） | `grep -rn "subagent" packages/workflow/tool-ralph/src/index.ts` | `getProvider`/`supports structured output` 确认 |
 | `session.durableCreate` 端点已存在（含 `parentSessionId`/`title`/`tags`/`workspaceId`/`cwd`） | `grep -rn "durableCreate" env/session-tool-env/packages/host/apiproxy/src` + `git log --oneline -1`（534eb84） | 上游已具备创建+agent 待命+账写入 |
 | `session.prompt` 投递即返回 `{accepted: true}`（queue 模式，不等待模型回复） | `sed -n 1800,1880p packages/host/apiproxy/src/api-proxy.ts` | 无同步等待；完成检测需新增 |
@@ -478,11 +480,11 @@ P5 真实场景验收 ◀──────┘
 
 ### Task 2: 定案开放决策并更新 spec 假设清单
 
-- **关联**：ASM-001~005 / BR-005 / UF-002 / UF-004
+- **关联**：ASM-001~005 / BR-005 / UF-002 / UF-004 / EVD-005
 - **前置任务**：1
 - **风险等级**：P0
 
-**为什么做**：4 个开放决策（continuable A/B、授权强度、等待语义、清理策略）决定 P2-P4 全部任务形态；spec 1.4 当前为草案值。
+**为什么做**：6 项开放决策（continuable A/B、授权强度、等待语义、清理策略、结构化输出方案、report 工具去留）决定 P2-P4 全部任务形态；spec 1.4 当前为草案值。
 
 **涉及文件与定位**：
 
@@ -496,8 +498,10 @@ P5 真实场景验收 ◀──────┘
    - ASM-002：授权强度默认值（`workspace` / `creator` / `anyone`）
    - ASM-003：等待语义（单 session idle）+ `session.wait` 端点是否 P1 实现
    - ASM-005：清理策略（标记+手动+超时）及超时任务是否本包实现
-2. 将定案结果写回 spec 1.4 假设清单（结论列更新为最终值），同步更新 2.1 BR-005 与 2.3 UF-002/004 相关分支
-3. 若决策影响任务拆分（如选项 B → P4 降级），同步修订本第 4 章
+   - ASM-004：结构化输出方案确认（JSON 约定+校验重试 vs 需要保留强校验工具）
+   - report 工具去留：`tool-subagent-report` 默认保留（子结果经会话日志已可达），或退役
+2. 将定案结果写回 spec 1.4 假设清单（结论列更新为最终值），同步更新 2.1 BR-005/BR-007 与 2.3 UF-002/004 相关分支
+3. 若决策影响任务拆分（如选项 B → P4 降级；report 退役 → P4 加删除任务），同步修订本第 4 章
 
 **验证**：`python3 /Users/dev/.agents/skills/prd-workflow/scripts/validate_package.py plugin/docs/session-delegation` → 0 FAIL；spec 1.4 无"待确认"字样
 
@@ -779,7 +783,9 @@ P5 真实场景验收 ◀──────┘
 **具体操作**：
 
 1. 新包 `subagent-session`：`providerName: 'session'`，实现 `SubagentProvider`：
-   - `start(request)` = `new InProcessApiClient(toFetchHandler(ctx.apiProxy))` → `sessions.durableCreate({ parentSessionId, delegationDepth: depth+1, title, tags: ['delegated'] })`（fork 场景先 `sessions.fork` 再 attach）→ `sessions.prompt`（coordinator 归因）→ `sessions.wait` → 读最后 `assistant/message` + `turn/end` reason → 组装 `SubagentRun`（`{ id, localAgent: undefined, result, dispose }`）
+   - **深度校验在 provider 内实现**：读 `request.parent` 的 `session.header.delegationDepth`，child = depth+1，超限抛 `SubagentDepthError`（复用 `resolveChildDepth` 语义，参考 subagent-fork L38-L52 同款；此路径不经过插件 Config，与 ASM-009 一致）
+   - `start(request)` = `new InProcessApiClient(toFetchHandler(ctx.apiProxy))` → `sessions.durableCreate({ parentSessionId, delegationDepth: depth+1, title, tags: ['delegated'] })` → `sessions.prompt`（coordinator 归因）→ `sessions.wait` → 读最后 `assistant/message` + `turn/end` reason → 组装 `SubagentRun`（`{ id, localAgent: undefined, result, dispose }`）
+   - **fork 场景（待勘察）**：`sessions.fork` 走网关 RPC（apiproxy 是否有 fork 端点，T-001 勘察确认）；若无端点，退化为进程内 `ctx.sessions.fork(parent.session, boundary)`（本包在 web composition 内，store 现成）——两种路径 T-001 定案后择一
    - `prepareContinuable()` 返回空 spec（continuable 语义保留：续写走 `session.prompt`，send_message 经 tool-subagent-control 改走 session API——P4 Task 18）
    - 能力声明与 spawn 一致（`outputSchema: true` 等，Task 15 保证）；`inheritsParentContext: false`
 2. `bundle/base` 装配：删 subagent-spawn/fork 行 → 加 subagent-session 行；`tool-subagent`×2 `provider: session`（backgroundMode: continuable 保留）；`workflow-workerthread` `provider: session`；`tool-ralph` `subagentProvider: session`

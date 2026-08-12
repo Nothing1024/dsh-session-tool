@@ -86,7 +86,7 @@ footer{margin-top:60px;border-top:1px solid var(--line);padding-top:18px;color:v
       <span>来源: plugin/docs/session-delegation/spec.md</span>
       <span>任务: 23 条 P0-P5</span>
       <span>校验: 0 FAIL / 13 PASS</span>
-      <span>状态: 讨论阶段 · 4 决策待拍板</span>
+      <span>状态: 讨论阶段 · 6 决策待拍板</span>
     </div>
   </div>
 </header>
@@ -375,8 +375,8 @@ P5 ─── 真实场景: headless 委派 + GUI 接管 + 重启恢复 + collect
 
 <!-- ============ 决策清单 ============ -->
 <section id="decide">
-<h2><span class="no">07</span>待拍板决策(4 项)</h2>
-<p class="lead">全部已定案的问题见 spec 1.4(ASM-001~009)；以下 4 项仍需用户确认，P0 T-2 是唯一需要用户在场的任务。</p>
+<h2><span class="no">07</span>待拍板决策(6 项)</h2>
+<p class="lead">全部已定案的问题见 spec 1.4(ASM-001~009)；以下 6 项仍需用户确认，P0 T-2 是唯一需要用户在场的任务。</p>
 
 <div class="decide">
   <h4>决策 1:continuable 选项</h4>
@@ -410,6 +410,23 @@ P5 ─── 真实场景: headless 委派 + GUI 接管 + 重启恢复 + collect
   <div class="kv">
     <dt>三件套(推荐)</dt><dd>标记(~archived tags)+ 手动 + 超时扫描(可后置)</dd>
     <dt>最简</dt><dd>只做标记+手动，废弃会话永久留在持久层</dd>
+  </div>
+</div>
+
+<div class="decide">
+  <h4>决策 5:结构化输出方案(ASM-004)</h4>
+  <div class="kv">
+    <dt>JSON 约定+校验重试(推荐)</dt><dd>prompt 注入"最终答案必须 ```json" + 结果侧解析校验；能力声明保持 true</dd>
+    <dt>保留强校验</dt><dd>在 subagent-session 里注入轻量捕获工具(不复活整套 subagent 机制)</dd>
+    <dt>影响</dt><dd class="dim">workflow/ralph 的 structured 场景回归(P3 T-15)</dd>
+  </div>
+</div>
+
+<div class="decide">
+  <h4>决策 6:tool-subagent-report 去留</h4>
+  <div class="kv">
+    <dt>保留(推荐)</dt><dd>子→父报告通道保持现状，子结果经会话日志已可达</dd>
+    <dt>退役</dt><dd>P4 加删除任务，报告语义完全由会话日志替代</dd>
   </div>
 </div>
 </section>

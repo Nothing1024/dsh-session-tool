@@ -20,6 +20,8 @@
 缺失资料与假设：
 
 - ASM-001: continuable 平级化默认选项 A（send_message/list_agents 走 session API），需 T-002 用户拍板
+- ASM-004: 结构化输出 = JSON 约定+校验重试（能力声明保持 true），需 T-002 拍板
+- report 去留: tool-subagent-report 默认保留，需 T-002 拍板
 - ASM-002: 授权强度默认 workspace，Config 可配 creator/anyone，需 T-002 拍板
 - ASM-003: 等待语义 = 单 session idle（不等子树），需 T-002 拍板
 - ASM-005: 清理策略 = 标记+手动+超时三件套，超时任务可后置，需 T-002 拍板
