@@ -1,0 +1,27 @@
+# UF-004 GUI 实测 console 记录（2026-08-12，浏览器 Chrome DevTools MCP）
+
+## 环境
+- 独立 DSH_HOME=~/.dsh/e2e-home（独立 profile 'web'：dsh-base + dsh-web-app + session-tool 插件行）
+- 端口 3199（独立）；worktree CLI（env/session-tool-env/apps/cli/lib/bin.js）
+- 真实 DEEPSEEK_API_KEY（复制自 ~/.dsh/.env 到 e2e-home/.env）
+
+## Console 检查
+- 应用自身错误：0（唯一 error 来自浏览器扩展 Immersive Translate：dynamic-i18n version mismatch，与 DSH 无关）
+
+## 操作与结果（主路径）
+1. 打开 http://127.0.0.1:3199 → 内测声明 → 继续
+2. 侧边栏：新建会话；通过网关 RPC 创建 workspace（/tmp/dsh-e2e-ws）+ 委派会话（durableCreate, title='e2e-委派任务', tags=['delegated'], delegationDepth=1）
+3. 委派会话投递任务（session.prompt, coordinator, sender=协调者）→ 真实模型回复 "1+1等于2。"（turn/end completed）
+4. GUI 刷新 → 侧边栏可见委派会话（showDelegated 默认 true）
+5. 打开委派会话 → 完整 transcript（coordinator 注入可见）
+6. 发送 "很好。再回答一个问题：2+2等于几？" → 实时回复 "2+2等于4。"（2 轮 · 2 步）
+7. session.history 验证：委派消息 source=coordinator；GUI 续写 source=user（归因区分正确）
+
+## 重启场景（失败分支）
+1. 停 web 进程 → 重启（同命令同端口）
+2. session.list 返回 2 个会话（持久化恢复）
+3. GUI 刷新 → 侧边栏委派会话 + 协调者会话都在；打开委派会话 transcript 完整恢复（2 轮）
+4. 截图 success.png / restart.png
+
+## 结论
+- UF-004 主路径 + 重启分支通过；委派会话默认可见、可打开、可续写、可停止（cancel 由网关 session.cancel 提供，interrupt 路径 T-019 契约测试覆盖）

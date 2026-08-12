@@ -1,0 +1,18 @@
+# UF-007 协调者扇出-收集 真实回放（2026-08-12）
+
+## wait-all 主路径（真实）
+session_collect（root=协调者, wait='all', timeout_ms=60000）：
+```
+collect satisfied (6ms)
+session-92374e04... [completed] ```json {"status":"complete","evidence":"3×3 = 9...","nextSteps":[],"blocker":""}```
+session-fa852991... [completed] 9×9 等于 81。
+```
+- satisfied: true + 聚合结果（含 fenced JSON 摘要）✓
+
+## wait-n 主路径（真实）
+session_collect（root=协调者, wait='n', n=1, on_failure='cancel-rest', timeout_ms=60000）：
+`collect satisfied (1ms)` — n=1 提前返回 ✓
+
+## 超时/谓词矩阵（单测覆盖）
+- collect.spec.ts 6 例（wait-all 聚合/超时快照/tag 聚合/空集合 unsatisfied）
+- session-tool-local service.spec.ts 38 例（含 cancel-rest 等）

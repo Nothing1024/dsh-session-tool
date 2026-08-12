@@ -1,0 +1,29 @@
+# UF-001 主路径 真实回放（2026-08-12，真实模型 + 真实 web 网关）
+
+## 环境
+- 独立 DSH_HOME=~/.dsh/e2e-home；端口 3199；worktree CLI + worktree bundles + plugin 装配
+- 真实 DEEPSEEK_API_KEY；标准模式预设（装配行已修：tool-subagent/workflow/ralph -> provider: session）
+
+## 执行（协调者 agent 真实工具调用）
+协调者指令：委派『用一句话回答 7×8 等于几』→ list_agents → send_message『再回答 9×9 等于几？』→ session_list
+
+## 结果（子代理 session-fa852991-5f03-4649-8950-22218e714b36 日志）
+turn/start
+user/message | source: coordinator | sender: session-37a48dd3（协调者）| 用一句话回答 7×8 等于几
+assistant/message | 7×8 等于 56。
+turn/end (completed)
+turn/start
+user/message | source: coordinator | sender: session-37a48dd3 | 再回答：9×9 等于几？
+assistant/message | 9×9 等于 81。
+turn/end (completed)
+
+## 核对点
+- 工具返回结果形状与改造前一致：workflow "single-math-delegation" completed (1 agent)，Return value {a: "7×8 等于 56。"} ✓
+- 子会话持久存在（重启后 session.list 可见）✓
+- 日志含 coordinator 归因（source: coordinator + senderSessionId=协调者）✓
+- list_agents 返回 `session-fa852991... [complete]`（running/complete 词汇保持）✓
+- send_message 返回消息 id、续写消息入子会话并获回复 ✓
+
+## 失败分支
+- 创建失败：web 网关不可达场景在 T-022 由 RPC 层错误路径覆盖（session.create/durableCreate 错误码测试在 env 单测）
+- 子失败：turn/end reason=error -> provider stopReason:'error'（subagent-session run.ts 单测覆盖）

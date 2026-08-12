@@ -1,0 +1,23 @@
+# UF-005 workflow/ralph 回归 真实回放（2026-08-12）
+
+## workflow 主路径（协调者 agent 真实调用）
+workflow 工具（script: const a = await agent('用一句话回答 7×8 等于几'); return {a}）：
+`workflow "single-math-delegation" completed (1 agent). Return value: { "a": "7×8 等于 56。" }`
+- 引擎经 session provider 创建平级持久会话（session-fa852991...，parentSession=协调者）
+- 子代理输出持久于会话日志（coordinator 归因），重启后可读
+
+## ralph 失败分支（真实回放）
+ralph（objective='用一句话回答 3×3 等于几', maxRounds=1）：
+`Error: Ralph round 1 child failed before producing a structured report. No previous handoff was available.`
+- 子代理成功启动（session provider）并算出答案（3×3=9）
+- 结构化报告字段与 schema 不符（子代理输出 answer 字段而非 summary）→ 校验失败 → 重试一次仍失败 → 报 failed
+- 行为符合失败分支语义："子模型不遵守 JSON 约定 → provider 报错重试 → 重试后失败"
+
+## ralph 主路径（结构化成功）由 env 单测覆盖
+- packages/workflow/tool-ralph/tests/integration.spec.ts 9 例全绿（fenced JSON 正确字段名 → 2 轮完成）
+- packages/workflow/workflow-workerthread/tests/workflow-session.spec.ts 2 例全绿（fan-out 3 + 失败→null）
+
+## 装配回归发现与修复（本次 T-022 实测暴露）
+- standard/code/cordis 预设（apps/cli/config/agent-presets/）中 tool-subagent/workflow/ralph 仍配
+  provider: spawn/fork → 已修为 session（否则 web 预设下委派报 "no subagent provider registered for spawn"）
+- examples 的 depth-two/headless 配置同样修复

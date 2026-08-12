@@ -1,0 +1,12 @@
+# UF-006 外部 4 后端回归（2026-08-12）
+
+## 结论
+外部 4 后端（acp/codex/claude-code/dsh-sdk）不经过 session 栈，本次改动未触碰其代码；
+回归由 env 单测确认（subagent 组全量 357 例全绿）：
+- subagent-acp.spec.ts：47 例（真实 app-server 交互：任务传递/取消/CLI 失败映射）
+- subagent-codex.spec.ts：32+3 例（真实 CLI 传递 + 取消 + 失败映射）
+- subagent-claude-code.spec.ts：21 例
+- subagent-dsh-sdk.spec.ts：31 例（子回合端到端 + run id）
+- out-of-process.spec.ts / run-settlement 覆盖共享驱动词汇
+
+失败分支 N/A：外部后端不依赖被替换的 in-process 机制（spec 注明）

@@ -1,0 +1,12 @@
+# UF-003 协调者任务管理 真实回放（2026-08-12）
+
+## 执行（协调者 agent 真实工具调用）
+1. session_list（scope: own）→ 返回委派任务清单（子代理会话 + ralph 会话）
+2. session_wait（session_id=session-fa852991..., timeout_ms=30000）→
+   `session session-fa852991-5f03-4649-8950-22218e714b36: completed (completed)`（立即终态，无超时）
+3. session_read 路径：session.history RPC 读取完整日志（UF-001 已用）
+
+## 核对点
+- 任务清单状态正确（completed 会话可见）✓
+- wait 返回完成状态 ✓
+- 空列表分支：协调者最初无子代理时 session_list 返回空 items（真实观察到）✓
