@@ -126,6 +126,62 @@ export interface SessionToolWaitResult {
   readonly lastTurnEndReason?: string
 }
 
+/**
+ * Completion predicate for {@link SessionToolService.collect} — the
+ * declarative "when may I return" condition over a session set:
+ * - `all`: every member reached a terminal status;
+ * - `any`: at least one member reached a terminal status;
+ * - `n`: at least `n` members reached a terminal status;
+ * - `first-failed`: at least one member failed.
+ * The evaluator is a pure function over a status snapshot (ASM-007); it
+ * never builds dependency graphs, schedules work, or retries.
+ */
+export type SessionToolCollectWait = 'all' | 'any' | 'n' | 'first-failed'
+
+/** Failure policy after the predicate satisfied: `continue` leaves the rest running; `cancel-rest` cancels the unfinished members (never deletes them). */
+export type SessionToolCollectOnFailure = 'continue' | 'cancel-rest'
+
+/** Request for {@link SessionToolService.collect}: the session set is the lineage tree rooted at `root`, or the tag aggregation named by `tags` (exactly one of the two). */
+export interface SessionToolCollectRequest {
+  /** Lineage-tree root: the set is the root and every transitive descendant. */
+  readonly root?: SessionId
+  /** Tag aggregation: the set is every session carrying all listed tags. */
+  readonly tags?: readonly string[]
+  /** Optional set filter by projection status and/or tag intersection. */
+  readonly filter?: {
+    readonly status?: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+    readonly tags?: readonly string[]
+  }
+  /** Completion predicate. */
+  readonly wait: SessionToolCollectWait
+  /** Member count for `wait: 'n'` (required then, ignored otherwise). */
+  readonly n?: number
+  /** Failure policy after the predicate satisfied; defaults to `continue`. */
+  readonly onFailure?: SessionToolCollectOnFailure
+  /** Deadline in milliseconds; on expiry the call returns the current snapshot without error. */
+  readonly timeoutMs?: number
+}
+
+/** One collected session's entry in {@link SessionToolCollectResult}. */
+export interface SessionToolCollectSession {
+  /** The member session id. */
+  readonly sessionId: SessionId
+  /** Terminal projection status, or `running` while a turn is open. */
+  readonly status: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+  /** Text summary of the last assistant message, when one exists. */
+  readonly result?: string
+}
+
+/** Result of {@link SessionToolService.collect}. */
+export interface SessionToolCollectResult {
+  /** Whether the predicate held (always `false` on timeout or empty set). */
+  readonly satisfied: boolean
+  /** Snapshot entries in set order. */
+  readonly sessions: readonly SessionToolCollectSession[]
+  /** Wall-clock milliseconds the collect waited. */
+  readonly elapsedMs: number
+}
+
 /** Listing scopes: the caller's own tree, one named tree, or every materialized session. */
 export type SessionToolListScope = 'own' | 'tree' | 'all'
 
@@ -335,6 +391,21 @@ export interface SessionToolService {
    * @returns the terminal status and the last turn-end reason kind.
    */
   wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult>
+
+  /**
+   * Collect a set of sessions under one declarative completion predicate —
+   * the coordinator's fan-out gather. The set is a lineage tree (`root`) or
+   * a tag aggregation (`tags`); the predicate (`wait`) is evaluated purely
+   * over each member's log-derived status until it holds or the deadline
+   * passes. On satisfaction, `onFailure: 'cancel-rest'` cancels the
+   * unfinished members (never deletes them). This is an execution primitive:
+   * it builds no dependency graphs, schedules nothing, and retries nothing
+   * (ASM-007) — orchestration belongs to the future flow ecosystem.
+   * @param caller - the calling agent or the CLI.
+   * @param request - set resolution, predicate, and deadline.
+   * @returns the aggregate snapshot and whether the predicate held.
+   */
+  collect(caller: SessionToolCaller, request: SessionToolCollectRequest): Promise<SessionToolCollectResult>
 
   /**
    * Rename a session and/or replace its tag set.

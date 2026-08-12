@@ -53,6 +53,16 @@ import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
 import { delegationProjectionDefinition } from './delegation-projection.ts'
 import type { DelegationStatus } from './delegation-projection.ts'
+import {
+  evaluateCollectPredicate,
+  isTerminalStatus,
+  type CollectMemberSnapshot,
+} from './collect.ts'
+import type {
+  SessionToolCollectRequest,
+  SessionToolCollectResult,
+  SessionToolCollectSession,
+} from 'session-tool'
 
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
@@ -362,7 +372,6 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
   async wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult> {
     const index = await this.headerIndex()
-    await this.assertAccess(caller, sessionId, index)
     await this.assertContinuationAllowed(caller, sessionId, index)
     // Single-session settle through the gateway (the web process owns the
     // live agent): the wait follows THIS session's agent only and never its
@@ -378,6 +387,45 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       ...settled.lastTurnEndReason === undefined
         ? {}
         : { lastTurnEndReason: settled.lastTurnEndReason.kind },
+    }
+  }
+
+  async collect(caller: SessionToolCaller, request: SessionToolCollectRequest): Promise<SessionToolCollectResult> {
+    if ((request.root === undefined) === (request.tags === undefined)) {
+      throw new SessionEmptyContentError('collect requires exactly one of root or tags')
+    }
+    if (request.wait === 'n' && (request.n === undefined || request.n < 1)) {
+      throw new SessionEmptyContentError('collect wait "n" requires a positive n')
+    }
+    // Resolve the member set once: a lineage tree (the root and every
+    // transitive descendant) or a tag aggregation over the gateway rows,
+    // then the optional status/tag set filter.
+    const index = await this.headerIndex()
+    const memberIds = await this.resolveCollectSet(caller, request, index)
+    if (memberIds.length === 0) {
+      // An empty set cannot satisfy any predicate; report the empty snapshot.
+      return { satisfied: false, sessions: [], elapsedMs: 0 }
+    }
+
+    const started = Date.now()
+    const deadline = request.timeoutMs
+    const onFailure = request.onFailure ?? 'continue'
+    for (;;) {
+      const members = await this.collectSnapshot(memberIds)
+      if (evaluateCollectPredicate(members, request.wait, request.n)) {
+        if (onFailure === 'cancel-rest') {
+          // Cancel the unfinished members only; never delete them.
+          const unfinished = members.filter(member => !isTerminalStatus(member.status))
+          await Promise.allSettled(unfinished.map(member => this.sessionClient.cancel(member.sessionId)))
+        }
+        return { satisfied: true, sessions: await this.collectResultRows(memberIds), elapsedMs: Date.now() - started }
+      }
+      if (deadline !== undefined && Date.now() - started >= deadline) {
+        // Timeout returns the current snapshot without error; the sessions
+        // stay live and resumable.
+        return { satisfied: false, sessions: await this.collectResultRows(memberIds), elapsedMs: Date.now() - started }
+      }
+      await sleep(COLLECT_POLL_MS)
     }
   }
 
@@ -556,6 +604,113 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   // ---- session resolution ------------------------------------------------
 
   /**
+   * Resolve the collect member set: a lineage tree (the root and every
+   * transitive descendant, scope-fenced) or a tag aggregation over the
+   * gateway rows, then the optional status/tag set filter. The set is
+   * resolved ONCE; only statuses are polled after.
+   * @param caller - the calling agent or the CLI.
+   * @param request - the collect request (exactly one of root/tags).
+   * @param index - the merged header index.
+   * @returns the member session ids after the optional filter.
+   */
+  private async resolveCollectSet(
+    caller: SessionToolCaller,
+    request: SessionToolCollectRequest,
+    index: Map<SessionId, SessionHeader>,
+  ): Promise<SessionId[]> {
+    let ids: SessionId[]
+    if (request.root !== undefined) {
+      // Tree resolution reuses the list scope machinery: the root must
+      // exist for every caller and the caller must be the root or one of
+      // its ancestors. The SET is the root's workers — every transitive
+      // descendant, excluding the root itself (the coordinator waits on its
+      // delegated tasks, not on its own session).
+      if (!index.has(request.root)) {
+        throw new SessionNotFoundError(`session "${request.root}" does not exist`)
+      }
+      await this.assertAccess(caller, request.root, index)
+      ids = descendantsOf(index, indexChildren(index), [request.root]).filter(id => id !== request.root)
+    } else {
+      // Tag aggregation: every gateway row carrying all listed tags.
+      const requiredTags = request.tags ?? []
+      const rows = await this.sessionClient.list()
+      ids = rows
+        .filter(row => requiredTags.every(tag => (row.tags ?? []).includes(tag)))
+        .map(row => row.sessionId as SessionId)
+      // The caller must be able to reach the aggregate: the gateway rows are
+      // the web view; the local fence walks the header lineage per member.
+      await Promise.all(ids.map(id => this.assertAccess(caller, id, index).catch(() => undefined)))
+    }
+    if (request.filter === undefined) return ids
+    // The optional set filter narrows members by tag intersection and/or
+    // projection status, evaluated once at resolution time.
+    let filtered = ids
+    if (request.filter.tags !== undefined && request.filter.tags.length > 0) {
+      const required = request.filter.tags
+      filtered = filtered.filter(id => required.every(tag => this.tagsOf(id).includes(tag)))
+    }
+    if (request.filter.status !== undefined) {
+      const wanted = request.filter.status
+      const statuses = await Promise.all(filtered.map(async id => [id, await this.delegationStatusOf(id)] as const))
+      filtered = statuses.filter(([, status]) => status === wanted).map(([id]) => id)
+    }
+    return filtered
+  }
+
+  /** Read a session's folded tags from the live log (absent for cold sessions). */
+  private tagsOf(id: SessionId): readonly string[] {
+    const live = this.ctx.sessions.get(id)
+    if (live === undefined) return []
+    let tags: readonly string[] = []
+    for (const event of live.events) {
+      if (event.type === 'session/tags') tags = event.data.tags
+    }
+    return tags
+  }
+
+  /**
+   * Read the delegation statuses of the collect member set (the projection
+   * fold over live events or persisted log tails).
+   * @param memberIds - the resolved member set.
+   * @returns one status snapshot per member.
+   */
+  private async collectSnapshot(memberIds: readonly SessionId[]): Promise<CollectMemberSnapshot[]> {
+    const snapshots = await Promise.all(memberIds.map(async (sessionId) => {
+      const status = await this.delegationStatusOf(sessionId)
+      return { sessionId: String(sessionId), status: status ?? 'idle' }
+    }))
+    return snapshots
+  }
+
+  /**
+   * Aggregate the collect result rows: each member's status plus the last
+   * assistant message text, when one exists.
+   * @param memberIds - the resolved member set.
+   * @returns the result rows in set order.
+   */
+  private async collectResultRows(memberIds: readonly SessionId[]): Promise<SessionToolCollectSession[]> {
+    const rows = await Promise.all(memberIds.map(async (sessionId) => {
+      const status = await this.delegationStatusOf(sessionId)
+      const lastText = await this.lastAssistantText(sessionId)
+      return {
+        sessionId,
+        status: status === undefined || status === 'idle' ? 'running' as const : status,
+        ...lastText === undefined ? {} : { result: lastText },
+      }
+    }))
+    return rows
+  }
+
+  /** Read the last assistant text block of a session's log, when one exists. */
+  private async lastAssistantText(sessionId: SessionId): Promise<string | undefined> {
+    const live = this.ctx.sessions.get(sessionId)
+    const events = live?.events
+    if (events !== undefined) return lastAssistantTextOf(events)
+    const inspected = await this.inspectSession(sessionId)
+    return inspected === undefined ? undefined : lastAssistantTextOf(inspected.events)
+  }
+
+  /**
    * Derive a session's delegation status from its log: the projection unit's
    * pure fold over the live events when the session is attached, or the
    * persisted log tail otherwise (the documented degradation when the
@@ -689,4 +844,26 @@ function foldDelegationStatus(events: readonly SessionEvent[]): DelegationStatus
   let state = delegationProjectionDefinition.init()
   for (const event of events) state = delegationProjectionDefinition.apply(state, event)
   return delegationProjectionDefinition.view(state).status
+}
+
+/** Collect poll interval (ms): the status snapshot cadence while waiting. */
+const COLLECT_POLL_MS = 250
+
+/** Sleep helper for the collect poll loop. */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/** Read the last assistant text block of an event prefix, when one exists. */
+function lastAssistantTextOf(events: readonly SessionEvent[]): string | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i]
+    if (event?.type !== 'assistant/message') continue
+    const text = event.data.message.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('')
+    if (text !== '') return text
+  }
+  return undefined
 }

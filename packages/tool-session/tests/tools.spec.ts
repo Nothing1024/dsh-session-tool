@@ -27,6 +27,7 @@ function register(): { defs: Map<string, ToolDefinition>; sessionTool: Record<st
     write: vi.fn(),
     list: vi.fn(),
     wait: vi.fn(),
+    collect: vi.fn(),
     rename: vi.fn(),
   }
   const defs = new Map<string, ToolDefinition>()
@@ -47,10 +48,10 @@ async function run(definition: ToolDefinition, args: unknown, sessionTool: unkno
 }
 
 describe('tool-session', () => {
-  it('registers exactly the six session tools with generic call views', () => {
+  it('registers exactly the seven session tools with generic call views', () => {
     const { defs } = register()
     expect([...defs.keys()].sort()).toEqual(
-      ['session_create', 'session_list', 'session_read', 'session_rename', 'session_wait', 'session_write'],
+      ['session_collect', 'session_create', 'session_list', 'session_read', 'session_rename', 'session_wait', 'session_write'],
     )
     const validArgs: Record<string, Record<string, unknown>> = {
       session_create: {},
@@ -58,6 +59,7 @@ describe('tool-session', () => {
       session_write: { session_id: 's1', content: 'x' },
       session_list: {},
       session_wait: { session_id: 's1' },
+      session_collect: { wait: 'all' },
       session_rename: { session_id: 's1' },
     }
     for (const [name, definition] of defs) {
@@ -177,6 +179,59 @@ describe('tool-session', () => {
       {},
     )
     expect(value).toEqual({ session_id: 'session-9', status: 'timeout' })
+  })
+
+  it('session_collect forwards the predicate and projects the aggregate', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.collect.mockResolvedValue({
+      satisfied: true,
+      elapsedMs: 120,
+      sessions: [
+        { sessionId: SessionId('s1'), status: 'completed', result: 'ok' },
+        { sessionId: SessionId('s2'), status: 'failed' },
+      ],
+    })
+    const value = await run(defs.get('session_collect')!, {
+      root: 'root',
+      filter_status: 'running',
+      filter_tags: ['plan'],
+      wait: 'all',
+      on_failure: 'cancel-rest',
+      timeout_ms: 5000,
+    }, sessionTool)
+    expect(sessionTool.collect).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent' }),
+      {
+        root: 'root',
+        filter: { status: 'running', tags: ['plan'] },
+        wait: 'all',
+        onFailure: 'cancel-rest',
+        timeoutMs: 5000,
+      },
+    )
+    expect(value).toEqual({
+      satisfied: true,
+      elapsed_ms: 120,
+      sessions: [
+        { session_id: 's1', status: 'completed', result: 'ok' },
+        { session_id: 's2', status: 'failed' },
+      ],
+    })
+  })
+
+  it('session_collect forwards a tag aggregation and wait n', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.collect.mockResolvedValue({ satisfied: false, elapsedMs: 9, sessions: [] })
+    const value = await run(defs.get('session_collect')!, {
+      tags: ['plan'],
+      wait: 'n',
+      n: 2,
+    }, sessionTool)
+    expect(sessionTool.collect).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent' }),
+      { tags: ['plan'], wait: 'n', n: 2 },
+    )
+    expect(value).toEqual({ satisfied: false, elapsed_ms: 9, sessions: [] })
   })
 
   it('session_list forwards filters and projects rows', async () => {

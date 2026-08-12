@@ -164,6 +164,20 @@ export class SessionHttpClient extends AbstractApiClient {
     })
   }
 
+  /**
+   * Cancel a session's active turn, preserving pending inbox work that
+   * resumes in FIFO order after cancellation settles. The session is kept,
+   * never deleted.
+   * @param sessionId - target session.
+   * @returns the admission result.
+   */
+  async cancel(sessionId: string): Promise<{ accepted: true }> {
+    return await this.invoke('session.cancel', async () => {
+      const response = await this.sessions.cancel({ sessionId: sessionId as never })
+      return this.unwrap(response)
+    })
+  }
+
   /** List every served session (web view: cwd-bearing sessions) with title/tags projections. */
   async list(): Promise<readonly SessionListRow[]> {
     return await this.invoke('session.list', async () => {

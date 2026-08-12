@@ -232,6 +232,99 @@ export function apply(ctx: Context): void {
   }))
 
   ctx.tools.register(defineTool({
+    name: 'session_collect',
+    description:
+      'Collect a set of sessions under one declarative completion predicate — the coordinator\'s fan-out gather. '
+      + 'The set is a lineage tree (root, you and your descendants) or a tag aggregation (tags). The predicate '
+      + '(wait: all/any/n/first-failed) is evaluated purely over each member\'s log-derived status until it holds '
+      + 'or timeout_ms passes; on satisfaction, on_failure "cancel-rest" cancels the unfinished members (never '
+      + 'deletes them). This is an execution primitive: no dependency graphs, no scheduling, no retries.',
+    parameters: {
+      root: { type: 'string', description: 'Lineage-tree root: the set is the root and every transitive descendant (exactly one of root/tags).' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Tag aggregation: every session carrying all listed tags (exactly one of root/tags).' },
+      filter_status: {
+        type: 'string',
+        enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens'],
+        description: 'Optional set filter by delegation status.',
+      },
+      filter_tags: { type: 'array', items: { type: 'string' }, description: 'Optional set filter by tag intersection.' },
+      wait: {
+        type: 'string',
+        required: true,
+        enum: ['all', 'any', 'n', 'first-failed'],
+        description: 'Completion predicate: all terminal, any terminal, at least n terminal, or any failed.',
+      },
+      n: { type: 'number', description: 'Member count for wait "n" (required then).' },
+      on_failure: {
+        type: 'string',
+        enum: ['continue', 'cancel-rest'],
+        description: 'After satisfaction: continue leaves the rest running; cancel-rest cancels the unfinished members (default continue).',
+      },
+      timeout_ms: { type: 'number', description: 'Deadline; on expiry returns the current snapshot without error.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          satisfied: { type: 'boolean', required: true },
+          elapsed_ms: { type: 'integer', required: true },
+          sessions: {
+            type: 'array',
+            required: true,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                session_id: { type: 'string', required: true },
+                status: {
+                  type: 'string',
+                  required: true,
+                  enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens'],
+                },
+                result: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `collect ${value.satisfied ? 'satisfied' : 'unsatisfied'} (${value.elapsed_ms}ms)\n`
+          + value.sessions.map(row => `${row.session_id} [${row.status}]${row.result === undefined ? '' : ` ${row.result}`}`).join('\n'),
+      }],
+    },
+    async execute(args, exec) {
+      const result = await ctx.sessionTool.collect(callerOf(exec), {
+        ...args.root !== undefined ? { root: SessionId(args.root) } : {},
+        ...args.tags !== undefined ? { tags: args.tags } : {},
+        ...args.filter_status !== undefined || args.filter_tags !== undefined
+          ? {
+            filter: {
+              ...args.filter_status !== undefined ? { status: args.filter_status } : {},
+              ...args.filter_tags !== undefined ? { tags: args.filter_tags } : {},
+            },
+          }
+          : {},
+        wait: args.wait,
+        ...args.n !== undefined ? { n: args.n } : {},
+        ...args.on_failure !== undefined ? { onFailure: args.on_failure } : {},
+        ...args.timeout_ms !== undefined ? { timeoutMs: args.timeout_ms } : {},
+      })
+      return {
+        satisfied: result.satisfied,
+        elapsed_ms: result.elapsedMs,
+        sessions: result.sessions.map(row => ({
+          session_id: row.sessionId,
+          status: row.status,
+          ...row.result === undefined ? {} : { result: row.result },
+        })),
+      }
+    },
+    presentCall: args => sessionCard('Collect sessions', args.wait),
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'session_write',
     description:
       'Send one prompt into a session conversation (yours or a descendant\'s). The web gateway resumes the '

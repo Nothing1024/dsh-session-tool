@@ -495,6 +495,148 @@ describe('SessionToolLocalService (remote)', () => {
     })
   })
 
+  describe('collect', () => {
+    /** Three delegated children under the caller with distinct terminal statuses. */
+    async function delegatedTree(): Promise<{
+      done: SessionId
+      failedId: SessionId
+      runningId: SessionId
+    }> {
+      callerSession('root')
+      const done = ctx.sessions.create(SessionId('collect-done'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      done.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      done.append('assistant/message', {
+        turn: 1,
+        step: 1,
+        message: { role: 'assistant', content: [{ type: 'text', text: 'finished work' }], source: { provider: 'p', model: 'm' } },
+      }, { surfaceOp: 'append' })
+      done.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      const failedId = ctx.sessions.create(SessionId('collect-failed'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      failedId.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      failedId.append('turn/end', {
+        turn: 1,
+        reason: { kind: 'error', error: { message: 'boom', code: 'X' } },
+      })
+      const runningId = ctx.sessions.create(SessionId('collect-running'), {
+        meta: { cwd: '/proj', parentSession: 'root' },
+      })
+      runningId.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      await ctx.sessions.flush(done)
+      await ctx.sessions.flush(failedId)
+      await ctx.sessions.flush(runningId)
+      sessionClient().list.mockResolvedValue([
+        listRow('root', {}),
+        listRow('collect-done', { parentSessionId: 'root' }),
+        listRow('collect-failed', { parentSessionId: 'root' }),
+        listRow('collect-running', { parentSessionId: 'root' }),
+      ])
+      return { done: done.id, failedId: failedId.id, runningId: runningId.id }
+    }
+
+    it('wait-all aggregates when every member is terminal', async () => {
+      const { done } = await delegatedTree()
+      // The running child becomes terminal before the poll deadline.
+      const running = ctx.sessions.get(SessionId('collect-running'))!
+      setTimeout(() => {
+        running.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      }, 50)
+      const result = await ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'),
+        wait: 'all',
+        timeoutMs: 5000,
+      })
+      expect(result.satisfied).toBe(true)
+      const rows = result.sessions
+      // The set is the root's workers only (the root itself is excluded).
+      expect(rows.map(row => row.sessionId)).toEqual(['collect-done', 'collect-failed', 'collect-running'])
+      expect(rows.map(row => row.status)).toEqual(['completed', 'failed', 'completed'])
+      expect(rows.find(row => row.sessionId === done)?.result).toBe('finished work')
+    })
+
+    it('wait-n returns early and cancel-rest cancels the unfinished members', async () => {
+      const { done, failedId, runningId } = await delegatedTree()
+      sessionClient().cancel.mockResolvedValue({ accepted: true })
+      const result = await ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'),
+        wait: 'n',
+        n: 2,
+        onFailure: 'cancel-rest',
+        timeoutMs: 5000,
+      })
+      // done + failed are terminal → n=2 satisfied immediately; the running
+      // member is cancelled (never deleted).
+      expect(result.satisfied).toBe(true)
+      expect(sessionClient().cancel).toHaveBeenCalledWith('collect-running')
+      expect(sessionClient().cancel).not.toHaveBeenCalledWith('collect-done')
+      expect(ctx.sessions.get(runningId)).toBeDefined()
+      expect(ctx.sessions.get(done)).toBeDefined()
+      expect(ctx.sessions.get(failedId)).toBeDefined()
+    })
+
+    it('first-failed satisfies on the failed member', async () => {
+      const { failedId } = await delegatedTree()
+      const result = await ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'),
+        wait: 'first-failed',
+        timeoutMs: 5000,
+      })
+      expect(result.satisfied).toBe(true)
+      expect(result.sessions.find(row => row.sessionId === failedId)?.status).toBe('failed')
+    })
+
+    it('returns a timeout snapshot without error when the deadline passes', async () => {
+      await delegatedTree()
+      // The running member never finishes; the 100ms deadline expires.
+      const result = await ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'),
+        wait: 'all',
+        timeoutMs: 100,
+      })
+      expect(result.satisfied).toBe(false)
+      expect(result.sessions.map(row => row.status)).toContain('running')
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(100)
+    })
+
+    it('resolves a tag aggregation and reports an empty set as unsatisfied', async () => {
+      callerSession('root')
+      sessionClient().list.mockResolvedValue([
+        listRow('tagged-a', { parentSessionId: 'root', tags: ['plan', 'delegated'] }),
+        listRow('tagged-b', { parentSessionId: 'root', tags: ['plan'] }),
+      ])
+      const aggregated = await ctx.sessionTool.collect(agent('root'), {
+        tags: ['plan'],
+        wait: 'any',
+        timeoutMs: 500,
+      })
+      expect(aggregated.satisfied).toBe(false)
+      expect(aggregated.sessions.length).toBe(2)
+
+      const empty = await ctx.sessionTool.collect(agent('root'), {
+        tags: ['missing'],
+        wait: 'all',
+        timeoutMs: 100,
+      })
+      expect(empty.satisfied).toBe(false)
+      expect(empty.sessions).toEqual([])
+    })
+
+    it('requires exactly one of root or tags, and a positive n for wait n', async () => {
+      callerSession('root')
+      await expect(ctx.sessionTool.collect(agent('root'), { wait: 'all' } as never))
+        .rejects.toThrow(SessionEmptyContentError)
+      await expect(ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'), tags: ['x'], wait: 'all',
+      } as never)).rejects.toThrow(SessionEmptyContentError)
+      await expect(ctx.sessionTool.collect(agent('root'), {
+        root: SessionId('root'), wait: 'n',
+      })).rejects.toThrow(SessionEmptyContentError)
+    })
+  })
+
   describe('list', () => {
     it('lists the caller tree for scope own, with hidden titles excluded by default', async () => {
       const rootAt = Date.now()

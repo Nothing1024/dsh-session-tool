@@ -1,0 +1,15 @@
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 5ms
+ ✓ packages/tool-session/tests/tools.spec.ts (17 tests) 39ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (38 tests) 1622ms
+       ✓ wait-all aggregates when every member is terminal  335ms
+       ✓ returns a timeout snapshot without error when the deadline passes  327ms
+       ✓ resolves a tag aggregation and reports an empty set as unsatisfied  506ms
+
+ Test Files  3 passed (3)
+      Tests  61 passed (61)
+   Start at  19:11:10
+   Duration  2.35s (transform 727ms, setup 0ms, import 1.06s, tests 1.67s, environment 0ms)
+

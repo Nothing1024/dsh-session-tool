@@ -125,6 +125,18 @@ describe('SessionHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it('cancel posts the session id and echoes the admission', async () => {
+    const fetchMock = stubFetch((url, body) => {
+      expect(url.pathname).toBe('/api/session.cancel')
+      expect(body.payload).toEqual({ sessionId: 'session-1' })
+      return okResponse(body.rpcId, { accepted: true })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.cancel('session-1')
+    expect(result).toEqual({ accepted: true })
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it('list folds title/tags projections onto the rows', async () => {
     stubFetch((_url, body) => okResponse(body.rpcId, {
       items: [
