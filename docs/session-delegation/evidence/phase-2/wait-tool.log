@@ -1,0 +1,12 @@
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/tool-session/tests/tools.spec.ts (15 tests) 20ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (12 tests) 25ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (27 tests) 198ms
+
+ Test Files  3 passed (3)
+      Tests  54 passed (54)
+   Start at  18:59:02
+   Duration  588ms (transform 591ms, setup 0ms, import 821ms, tests 243ms, environment 0ms)
+

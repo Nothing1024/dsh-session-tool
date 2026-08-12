@@ -51,6 +51,12 @@ export interface SessionToolCreateOptions {
    * list; a cwd-less session stays a local durable log).
    */
   readonly cwd?: string
+  /**
+   * Delegation depth recorded in the new header. The web gateway admits at
+   * most the caller's own depth plus one; a delegated session created by an
+   * agent without an explicit value inherits `caller.depth + 1`.
+   */
+  readonly delegationDepth?: number
 }
 
 /** Result of {@link SessionToolService.create}. */
@@ -93,6 +99,31 @@ export interface SessionToolReadResult {
 export interface SessionToolWriteResult {
   /** The written session id. */
   readonly sessionId: SessionId
+}
+
+/** Terminal delegation statuses reported by {@link SessionToolService.wait}. */
+export type SessionToolWaitStatus = 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
+
+/** Options for {@link SessionToolService.wait}. */
+export interface SessionToolWaitOptions {
+  /**
+   * Settle point: `idle` (the default) waits for the session's agent to go
+   * idle; `turn-end` waits for the open turn to close. Single-session
+   * semantics: descendants are never awaited.
+   */
+  readonly until?: 'idle' | 'turn-end'
+  /** Deadline in milliseconds; on expiry the call reports `timeout` without error. */
+  readonly timeoutMs?: number
+}
+
+/** Result of {@link SessionToolService.wait}. */
+export interface SessionToolWaitResult {
+  /** The waited session id. */
+  readonly sessionId: SessionId
+  /** The terminal status once the wait settled, or `timeout`. */
+  readonly status: SessionToolWaitStatus
+  /** Kind of the last `turn/end` reason, when one has ended. */
+  readonly lastTurnEndReason?: string
 }
 
 /** Listing scopes: the caller's own tree, one named tree, or every materialized session. */
@@ -289,6 +320,21 @@ export interface SessionToolService {
    * @returns the visible rows and the next cursor.
    */
   list(caller: SessionToolCaller, filter: SessionToolListFilter): Promise<SessionToolListResult>
+
+  /**
+   * Wait for a session's agent to settle and report its terminal status —
+   * the model-side completion detection for delegated tasks. Single-session
+   * semantics: the wait follows THIS session's agent only and never its
+   * descendants. A cold session (no live agent) is reported from its log and
+   * settles immediately; a deadline expiry reports `timeout` without error
+   * and the session stays live and resumable.
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session; the caller must be the session itself
+   *   or one of its ancestors.
+   * @param options - settle point and deadline.
+   * @returns the terminal status and the last turn-end reason kind.
+   */
+  wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult>
 
   /**
    * Rename a session and/or replace its tag set.

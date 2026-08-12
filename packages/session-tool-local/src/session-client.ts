@@ -91,6 +91,7 @@ export class SessionHttpClient extends AbstractApiClient {
     tags?: readonly string[]
     workspaceId?: string
     cwd?: string
+    delegationDepth?: number
   }): Promise<DurableCreateResult> {
     return await this.invoke('session.durableCreate', async () => {
       const response = await this.sessions.durableCreate({
@@ -100,6 +101,7 @@ export class SessionHttpClient extends AbstractApiClient {
         ...options.tags === undefined ? {} : { tags: [...options.tags] },
         ...options.workspaceId === undefined ? {} : { workspaceId: options.workspaceId as never },
         ...options.cwd === undefined ? {} : { cwd: options.cwd },
+        ...options.delegationDepth === undefined ? {} : { delegationDepth: options.delegationDepth },
       })
       const value = this.unwrap(response)
       return {

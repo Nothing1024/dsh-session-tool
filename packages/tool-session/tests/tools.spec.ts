@@ -26,6 +26,7 @@ function register(): { defs: Map<string, ToolDefinition>; sessionTool: Record<st
     read: vi.fn(),
     write: vi.fn(),
     list: vi.fn(),
+    wait: vi.fn(),
     rename: vi.fn(),
   }
   const defs = new Map<string, ToolDefinition>()
@@ -46,16 +47,17 @@ async function run(definition: ToolDefinition, args: unknown, sessionTool: unkno
 }
 
 describe('tool-session', () => {
-  it('registers exactly the five session tools with generic call views', () => {
+  it('registers exactly the six session tools with generic call views', () => {
     const { defs } = register()
     expect([...defs.keys()].sort()).toEqual(
-      ['session_create', 'session_list', 'session_read', 'session_rename', 'session_write'],
+      ['session_create', 'session_list', 'session_read', 'session_rename', 'session_wait', 'session_write'],
     )
     const validArgs: Record<string, Record<string, unknown>> = {
       session_create: {},
       session_read: { session_id: 's1' },
       session_write: { session_id: 's1', content: 'x' },
       session_list: {},
+      session_wait: { session_id: 's1' },
       session_rename: { session_id: 's1' },
     }
     for (const [name, definition] of defs) {
@@ -139,6 +141,42 @@ describe('tool-session', () => {
       session_id: 'session-9',
       messages: [{ seq: 0, role: 'user' }, { seq: 1, role: 'tool' }],
     })
+  })
+
+  it('session_wait forwards timeout and until and projects the terminal status', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.wait.mockResolvedValue({
+      sessionId: SessionId('session-9'),
+      status: 'completed',
+      lastTurnEndReason: 'completed',
+    })
+    const value = await run(defs.get('session_wait')!, {
+      session_id: 'session-9',
+      timeout_ms: 5000,
+      until: 'idle',
+    }, sessionTool)
+    expect(sessionTool.wait).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent' }),
+      'session-9',
+      { timeoutMs: 5000, until: 'idle' },
+    )
+    expect(value).toEqual({
+      session_id: 'session-9',
+      status: 'completed',
+      last_turn_end_reason: 'completed',
+    })
+  })
+
+  it('session_wait maps a timeout status and an absent reason', async () => {
+    const { defs, sessionTool } = register()
+    sessionTool.wait.mockResolvedValue({ sessionId: SessionId('session-9'), status: 'timeout' })
+    const value = await run(defs.get('session_wait')!, { session_id: 'session-9' }, sessionTool)
+    expect(sessionTool.wait).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'agent' }),
+      'session-9',
+      {},
+    )
+    expect(value).toEqual({ session_id: 'session-9', status: 'timeout' })
   })
 
   it('session_list forwards filters and projects rows', async () => {

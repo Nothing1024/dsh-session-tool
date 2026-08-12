@@ -58,6 +58,7 @@ function sessionClient() {
     prompt: ReturnType<typeof vi.fn>
     list: ReturnType<typeof vi.fn>
     rename: ReturnType<typeof vi.fn>
+    wait: ReturnType<typeof vi.fn>
   }
 }
 
@@ -109,11 +110,13 @@ describe('SessionToolLocalService (remote)', () => {
         parentSessionId: SessionId('caller'),
         cwd: '/proj',
       })
+      // An agent caller's creation records its own depth plus one.
       expect(sessionClient().durableCreate).toHaveBeenCalledWith({
         title: 'my session',
         parentSessionId: 'caller',
         tags: ['wip'],
         cwd: '/proj',
+        delegationDepth: 1,
       })
       expect(created.sessionId).toBe('session-9')
     })
@@ -124,11 +127,28 @@ describe('SessionToolLocalService (remote)', () => {
       await ctx.sessionTool.create(agent('caller'), { title: 'child' })
       expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.objectContaining({
         parentSessionId: 'caller',
+        delegationDepth: 1,
       }))
       sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-2' })
       await ctx.sessionTool.create(CLI, { title: 'top' })
       expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.not.objectContaining({
         parentSessionId: expect.anything(),
+      }))
+      // The CLI (human identity) records no depth.
+      expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.not.objectContaining({
+        delegationDepth: expect.anything(),
+      }))
+    })
+
+    it('honours an explicit delegation depth and carries a deeper caller depth', async () => {
+      callerSession('caller')
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-1' })
+      await ctx.sessionTool.create(agent('caller', 2), {
+        title: 'deep',
+        delegationDepth: 3,
+      })
+      expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.objectContaining({
+        delegationDepth: 3,
       }))
     })
 
@@ -289,6 +309,50 @@ describe('SessionToolLocalService (remote)', () => {
       sessionClient().rename.mockRejectedValue(new SessionToolError('invalid tag set', 'tag-invalid'))
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), { tags: [' ', ''] }))
         .rejects.toMatchObject({ code: 'tag-invalid' })
+    })
+  })
+
+  describe('wait', () => {
+    it('delegates to the gateway and maps the terminal status', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      await ctx.sessions.flush(target)
+      sessionClient().wait.mockResolvedValue({
+        status: 'completed',
+        lastTurnEndReason: { kind: 'completed' },
+      })
+      const result = await ctx.sessionTool.wait(agent('caller'), SessionId('session-1'), {
+        until: 'idle',
+        timeoutMs: 5000,
+      })
+      expect(sessionClient().wait).toHaveBeenCalledWith('session-1', { until: 'idle', timeoutMs: 5000 })
+      expect(result).toEqual({
+        sessionId: 'session-1',
+        status: 'completed',
+        lastTurnEndReason: 'completed',
+      })
+    })
+
+    it('defaults the options and maps a timeout status through', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      await ctx.sessions.flush(target)
+      sessionClient().wait.mockResolvedValue({ status: 'timeout' })
+      const result = await ctx.sessionTool.wait(agent('caller'), SessionId('session-1'), {})
+      expect(sessionClient().wait).toHaveBeenCalledWith('session-1', {})
+      expect(result).toEqual({ sessionId: 'session-1', status: 'timeout' })
+    })
+
+    it('enforces the access fence before delegating', async () => {
+      callerSession('caller')
+      callerSession('other')
+      const foreign = ctx.sessions.create(SessionId('foreign'), {
+        meta: { cwd: '/proj', parentSession: 'other' },
+      })
+      await ctx.sessions.flush(foreign)
+      await expect(ctx.sessionTool.wait(agent('caller'), SessionId('foreign'), {}))
+        .rejects.toThrow(SessionToolUnauthorizedError)
+      expect(sessionClient().wait).not.toHaveBeenCalled()
     })
   })
 

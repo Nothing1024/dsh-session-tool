@@ -175,6 +175,63 @@ export function apply(ctx: Context): void {
   }))
 
   ctx.tools.register(defineTool({
+    name: 'session_wait',
+    description:
+      'Wait for a session\'s agent to settle and report its terminal status — the completion detection for a '
+      + 'delegated task (a coordinator waiting on its workers). The wait follows THIS session\'s agent only and '
+      + 'never its descendants; a session with no live agent is reported from its log immediately; a deadline '
+      + 'expiry reports "timeout" without error and the session stays resumable. Poll with session_list '
+      + '(status running/completed/failed/aborted) as an alternative to blocking.',
+    parameters: {
+      session_id: SESSION_ID_SCHEMA,
+      timeout_ms: {
+        type: 'number',
+        description: 'Deadline in milliseconds; on expiry the call reports status "timeout" without error.',
+      },
+      until: {
+        type: 'string',
+        enum: ['idle', 'turn-end'],
+        description: 'Settle point: "idle" (default) waits for the agent to go idle; "turn-end" waits for the open turn to close.',
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          session_id: { type: 'string', required: true },
+          status: {
+            type: 'string',
+            required: true,
+            enum: ['idle', 'completed', 'failed', 'aborted', 'timeout'],
+          },
+          last_turn_end_reason: {
+            type: 'string',
+            description: 'Kind of the last turn/end reason, when one has ended.',
+          },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `session ${value.session_id}: ${value.status}`
+          + (value.last_turn_end_reason === undefined ? '' : ` (${value.last_turn_end_reason})`),
+      }],
+    },
+    async execute(args, exec) {
+      const result = await ctx.sessionTool.wait(callerOf(exec), SessionId(args.session_id), {
+        ...args.timeout_ms !== undefined ? { timeoutMs: args.timeout_ms } : {},
+        ...args.until !== undefined ? { until: args.until } : {},
+      })
+      return {
+        session_id: result.sessionId,
+        status: result.status,
+        ...result.lastTurnEndReason === undefined ? {} : { last_turn_end_reason: result.lastTurnEndReason },
+      }
+    },
+    presentCall: args => sessionCard(`Wait for session ${args.session_id}`, args.timeout_ms),
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'session_write',
     description:
       'Send one prompt into a session conversation (yours or a descendant\'s). The web gateway resumes the '

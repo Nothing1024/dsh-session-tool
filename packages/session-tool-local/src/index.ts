@@ -38,6 +38,8 @@ import type {
   SessionToolRenameOptions,
   SessionToolRenameResult,
   SessionToolService,
+  SessionToolWaitOptions,
+  SessionToolWaitResult,
   SessionToolWorkspaceAddOptions,
   SessionToolWorkspaceAddResult,
   SessionToolWorkspaceDeleteResult,
@@ -140,7 +142,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // it live, so every GUI client sees it immediately. An agent caller's
     // creations join its own tree by default (parent = the caller), keeping
     // owner-fence access and `own` scope listings; CLI creations are
-    // top-level sessions unless a parent is named.
+    // top-level sessions unless a parent is named. A delegated session
+    // records the caller's depth plus one unless an explicit depth is given
+    // (the gateway still admits at most parent depth plus one).
+    const childDepth = options.delegationDepth
+      ?? (caller.kind === 'agent' ? caller.delegationDepth + 1 : undefined)
     const created = await this.sessionClient.durableCreate({
       ...options.title === undefined ? {} : { title: options.title },
       ...options.parentSessionId !== undefined
@@ -149,6 +155,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
           ? { parentSessionId: caller.sessionId }
           : {},
       ...options.tags === undefined ? {} : { tags: options.tags },
+      ...childDepth === undefined ? {} : { delegationDepth: childDepth },
       ...bound === undefined
         ? options.cwd === undefined ? {} : { cwd: options.cwd }
         : { workspaceId: bound.workspaceId },
@@ -304,6 +311,26 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       sessionId,
       ...accepted.title === undefined ? {} : { title: accepted.title },
       ...accepted.tags === undefined ? {} : { tags: [...accepted.tags] },
+    }
+  }
+
+  async wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult> {
+    const index = await this.headerIndex()
+    await this.assertAccess(caller, sessionId, index)
+    // Single-session settle through the gateway (the web process owns the
+    // live agent): the wait follows THIS session's agent only and never its
+    // descendants; a cold session is reported from its log immediately; a
+    // deadline expiry reports `timeout` without error.
+    const settled = await this.sessionClient.wait(sessionId, {
+      ...options.until === undefined ? {} : { until: options.until },
+      ...options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs },
+    })
+    return {
+      sessionId,
+      status: settled.status,
+      ...settled.lastTurnEndReason === undefined
+        ? {}
+        : { lastTurnEndReason: settled.lastTurnEndReason.kind },
     }
   }
 
