@@ -1,0 +1,23 @@
+序号,Phase,名称,详情锚点,前置任务,验证命令,状态,备注
+1,P0:基线与决策,校准上游与插件基线,spec.md#task-1,无,pnpm test(两处) 与基线记录一致,待开始,
+2,P0:基线与决策,定案开放决策并更新 spec 假设,spec.md#task-2,1,validate_package.py 0 FAIL,待开始,continuable A/B 与授权强度需用户拍板
+3,P0:基线与决策,执行 Phase 0 回归验证,spec.md#task-3,1;2,pnpm test(两处) 全绿,待开始,
+4,P1:上游核心小改,durableCreate 补 delegationDepth 写入,spec.md#task-4,3,pnpm test(env) 新增用例通过,待开始,
+5,P1:上游核心小改,MessageSource 增加 coordinator 归因,spec.md#task-5,3,pnpm test(env) 归因用例通过,待开始,
+6,P1:上游核心小改,新增 session.wait 端点,spec.md#task-6,4,pnpm test(env)+headless wait 冒烟,待开始,
+7,P1:上游核心小改,执行 Phase 1 回归验证,spec.md#task-7,4;5;6,pnpm test(env 全量 344+ 例) 全绿,待开始,
+8,P2:插件元数据设施,注册 delegation 投影 unit,spec.md#task-8,7,pnpm test(plugin) 投影用例通过,待开始,
+9,P2:插件元数据设施,session_list 扩展投影血缘过滤,spec.md#task-9,8,pnpm test(plugin) 过滤用例通过,待开始,
+10,P2:插件元数据设施,session_wait 工具与 create 传参,spec.md#task-10,8,pnpm test(plugin)+headless 冒烟,待开始,
+11,P2:插件元数据设施,约束 Config 授权深度可见性,spec.md#task-11,9,pnpm test(plugin) 矩阵用例通过,待开始,
+12,P2:插件元数据设施,执行 Phase 2 回归验证,spec.md#task-12,8;9;10;11,pnpm test(plugin 全量)+重启恢复验证,待开始,
+13,P3:换引擎,session provider 桥接 one-shot,spec.md#task-13,12,subagent 测试+workflow e2e 冒烟,待开始,localAgent 语义变化是最大风险
+14,P3:换引擎,结构化输出保留 outputSchema 兼容,spec.md#task-14,13,ralph e2e structured 通过,待开始,
+15,P3:换引擎,workflow/ralph/外部后端回归,spec.md#task-15,13;14,各 e2e 全绿无行为差异,待开始,
+16,P3:换引擎,执行 Phase 3 回归验证,spec.md#task-16,13;14;15,subagent 全量+生态 e2e 全绿,待开始,
+17,P4:continuable 平级化,send_message/list_agents 改走 session API,spec.md#task-17,16,control 测试改造后全绿+冒烟,待开始,按 ASM-001 选项 A
+18,P4:continuable 平级化,apiproxy subagent domain 与 UI 兼容,spec.md#task-18,17,GUI 冒烟+契约测试通过,待开始,
+19,P4:continuable 平级化,continuation manager 退役,spec.md#task-19,17;18,pnpm test(env) 全绿+rg 无残留,待开始,
+20,P4:continuable 平级化,执行 Phase 4 回归验证,spec.md#task-20,17;18;19,env 全量+GUI 复跑+旧日志兼容,待开始,
+21,P5:真实场景验收,执行 spec 5.2 真实场景全套测试,spec.md#task-21,20,5.2 执行矩阵逐行通过且 evidence 落盘,待开始,名称含「真实场景」供校验脚本识别
+22,P5:真实场景验收,执行 Phase 5 回归验证(最终验收),spec.md#task-22,21,两处 pnpm test+validate 0 FAIL+5.4 自检+文档收尾,待开始,
