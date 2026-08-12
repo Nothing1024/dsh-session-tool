@@ -1,0 +1,26 @@
+# T-021 Phase 4 回归验证（2026-08-12）
+
+## env 全量（pnpm test）
+- 12507 例：12372 passed / 34 failed / 101 skipped
+- 34 失败全部为环境基线，非本 Phase 引入：
+  - thread-safe 环境类（预存在基线）
+  - "worker spawns with an EMPTY environment"：harness 注入 TSX_TSCONFIG_PATH（scrub 有意放行）
+  - "labels the default DSH home"：真实 ~/.dsh 无 AGENTS.md（基线复跑同样失败，已用 git stash 验证）
+  - UserPromptSubmit hook 超时类（时序 flake）
+- 本 Phase 修复的失败：gen-tool-catalog 5 例（scripts/gen-tool-catalog.ts 引用已删 installReportTool -> 改为全局 report 注册）
+
+## GUI 复跑（pnpm run test:gui）
+- 3425 passed / 1 skipped，全绿（client packages + host packages，含 ui-subagent 30 例）
+
+## 旧日志兼容（INV-004）
+- list-children.spec.ts 62 例全绿：subagent/descriptor 事件 fold（老 origin:'subagent' 子会话）分类不变
+- subagent/descriptor 事件类型 + foldSubagentDescriptor 保留（descriptor.ts 未删）
+- client runtime context-provenance（'subagent-report' source）通过
+
+## 死代码检查
+- pnpm run knip：0 问题（清理 3 个 unused devDeps：dsh-agent-presets / dsh-session-persistence-jsonl / dsh-tool-subagent-control）
+- env -u TSX_TSCONFIG_PATH pnpm run verify-cordis-api：87 处生成区域 up to date
+
+## 已知限制（记入后续）
+- examples（acp-agent/headless-agent/jsonrpc-agent）的委派场景需 apiProxy 网关；示例 cordis.yml 已换 session provider，
+  snapshot/e2e 套件（test:snapshot / test:e2e gate）需网关装配 + 重录，属 T-022/后续收尾

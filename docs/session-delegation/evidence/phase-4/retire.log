@@ -1,0 +1,29 @@
+# T-020 continuation manager 退役验证（2026-08-12）
+
+## 删除面
+- packages/subagent/subagent/src/continuation.ts (1285 行)
+- packages/subagent/subagent/src/descriptor-seed.ts / activation-setup-registry.ts / child-agent.ts
+- packages/subagent/subagent/tests/continuation.spec.ts / activation-setup-registry.spec.ts
+- packages/subagent/subagent-inprocess / subagent-spawn / subagent-fork（整包删除，含 README/测试/装配）
+- SubagentService 导出：startContinuable/followup/interrupt/reportFrom/registerContinuableSetup/drainContinuableDescendants
+
+## 新接缝
+- SubagentProvider.startContinuable?(request): Promise<SubagentContinuableStart>（session provider 实现：durableCreate + coordinator prompt，子会话继承父 cwd）
+- tool-subagent 后台 continuable 分支改调 provider.startContinuable
+- tool-subagent-report 全局注册 + deliverReport（'subagent-report' source 保留）
+- ACP 桥 quiesce 改 listDescendants + cancel（子在前）
+- workflow/ralph 默认 provider spawn -> session
+- api-catalog.ts / docs/subsystems 重生成（gen-cordis-api）
+
+## rg 验证（无残留）
+ContinuationManager|drainContinuableDescendants|registerContinuableSetup|prepareContinuable|
+ContinuableCreateSpec|seedDescriptorTurn|childSessionMeta|applyChildComposition|
+resolveChildAgentOptions|SubagentFollowupOptions|SubagentInterruptAuthority|ContinuableStartSpec
+-> No matches found（packages/ 全部 *.ts）
+
+## 回归
+- packages/subagent+workflow+acp+scaffold+core/tools+tool-cordis：1397 例，2 失败 = 环境基线
+  （EMPTY environment=TSX_TSCONFIG_PATH harness 注入；linked-NPM-closure=删除包目录残留 node_modules，已清理）
+- env 全量 pnpm test：12507 例，34 失败均为环境基线（thread-safe 环境类 + DSH home 真实目录 + hook 超时）
+- 旧日志兼容：list-children.spec.ts 62 例（descriptor fold/老 origin 子会话分类）全绿；
+  subagent/descriptor 事件类型与 foldSubagentDescriptor 保留（INV-004）
