@@ -1,23 +1,48 @@
-# UF-005 workflow/ralph 回归 真实回放（2026-08-12）
+# UF-005 workflow fan-out 3 现场回放（2026-08-13）
 
-## workflow 主路径（协调者 agent 真实调用）
-workflow 工具（script: const a = await agent('用一句话回答 7×8 等于几'); return {a}）：
-`workflow "single-math-delegation" completed (1 agent). Return value: { "a": "7×8 等于 56。" }`
-- 引擎经 session provider 创建平级持久会话（session-fa852991...，parentSession=协调者）
-- 子代理输出持久于会话日志（coordinator 归因），重启后可读
+## 场景
+workflow 脚本并行 `agent()` × 3，session provider 建 3 个平级持久会话并收集结果。
 
-## ralph 失败分支（真实回放）
-ralph（objective='用一句话回答 3×3 等于几', maxRounds=1）：
-`Error: Ralph round 1 child failed before producing a structured report. No previous handoff was available.`
-- 子代理成功启动（session provider）并算出答案（3×3=9）
-- 结构化报告字段与 schema 不符（子代理输出 answer 字段而非 summary）→ 校验失败 → 重试一次仍失败 → 报 failed
-- 行为符合失败分支语义："子模型不遵守 JSON 约定 → provider 报错重试 → 重试后失败"
+## 环境
+- DSH_HOME=/Users/dev/.dsh/review-fix-home；web http://127.0.0.1:3299（进程内 apiProxy）
+- 协调者会话经 `session.durableCreate` + `session.prompt` 落在 **web 进程**（headless `dsh run` 无 apiProxy，subagent-session 会报缺网关；见下方对照）
 
-## ralph 主路径（结构化成功）由 env 单测覆盖
-- packages/workflow/tool-ralph/tests/integration.spec.ts 9 例全绿（fenced JSON 正确字段名 → 2 轮完成）
-- packages/workflow/workflow-workerthread/tests/workflow-session.spec.ts 2 例全绿（fan-out 3 + 失败→null）
+## 对照：headless `dsh run`（apiProxy 缺席）
 
-## 装配回归发现与修复（本次 T-022 实测暴露）
-- standard/code/cordis 预设（apps/cli/config/agent-presets/）中 tool-subagent/workflow/ralph 仍配
-  provider: spawn/fork → 已修为 session（否则 web 预设下委派报 "no subagent provider registered for spawn"）
-- examples 的 depth-two/headless 配置同样修复
+`dsh run --profile headless` 协调者确实调用了 workflow，script 含 3 个 `agent()`，但子 agent 启动失败：
+
+```
+agent() could not start a child: ... the apiProxy service is absent — the session backend needs the web gateway
+  (mount @deepseek-ai/dsh-host-apiproxy, which the web-app layer of installed profiles provides)
+```
+
+headless bundle 当前不挂 Host/HTTP/apiProxy（`packages/bundle/headless/README.md`）。fan-out 必须在 web composition 上跑。
+
+## 现场（web 进程协调者）
+
+协调者 `session-89d5c1d1-f362-436c-b3d5-502ec37cbf0b` title=`review-fix-f003-workflow`
+wait → `status: completed`
+
+协调者回复：
+```
+The workflow ran exactly once with the requested meta and script. Result:
+- a: 11+11 is 22.
+- b: 12 + 12 = 24.
+- c: 13 + 13 = 26.
+```
+
+3 个子会话（parentSession=协调者，均 completed）：
+
+| sessionId | 最后 assistant | 归因 |
+|---|---|---|
+| session-e5b01a97-d67c-4fe9-b503-576b74200ce4 | 11+11 is 22. | source.kind=coordinator, senderSessionId=协调者 |
+| session-c354961b-d75f-418b-a0b1-c86e4b98daf5 | 12 + 12 = 24. | 同上 |
+| session-f679474f-b7b0-49c3-8839-f707a891174f | 13 + 13 = 26. | 同上 |
+
+原始 JSON：`~/.dsh/review-fix-home/f003-out.json`
+
+## 核对点
+- fan-out 3，不是 1 个 math agent ✓
+- 3 子会话持久、血缘指向协调者 ✓
+- 收集结果 22/24/26 ✓
+- 子日志 coordinator 归因 ✓

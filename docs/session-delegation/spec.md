@@ -990,9 +990,10 @@ P5 真实场景验收 ◀──────┘
 | 验证项 | 命令 | 期望 | Evidence |
 |---|---|---|---|
 | env typecheck | `cd env/session-tool-env && pnpm typecheck` | 通过 | EVD-006 |
-| env 全量测试 | `cd env/session-tool-env && pnpm test` | 344+ 例全绿 | EVD-006 |
+| env 网关稳定口径 | `cd env/session-tool-env && pnpm vitest run packages/host/apiproxy` | 全绿（P0 基线 344；随后随用例增加，P1 记录 359） | EVD-006 / `evidence/phase-0/baseline.md` §2.2 |
+| env 全量测试 | `cd env/session-tool-env && pnpm test` | 通过数与 P0 baseline 同量级。**允许**已登记的环境类失败（`|thread-safe|` 池、TSX_TSCONFIG_PATH 注入、真实 `~/.dsh` 缺 AGENTS.md、HMR/hook 时序 flake）；P0 基线即 30–61 失败，与 session-delegation 无关。失败不得包含本需求引入的回归 | EVD-006 / baseline.md §2.1 / `evidence/phase-4/phase4-regression.log` / `evidence/phase-5/final-acceptance.log` |
 | 插件 typecheck | `cd plugin && pnpm typecheck` | 通过 | EVD-007 |
-| 插件全量测试 | `cd plugin && pnpm test` | 67+ 例全绿 | EVD-007 |
+| 插件全量测试 | `cd plugin && pnpm test` | 全绿（P0 基线 67；P2 后 107） | EVD-007 |
 | 包校验脚本 | `python3 /Users/dev/.agents/skills/prd-workflow/scripts/validate_package.py plugin/docs/session-delegation` | 0 FAIL | 对话输出 |
 | 死代码检查 | `rg "ContinuationManager|startContinuable|subagent-inprocess" packages/`(P4 后) | 无残留 | EVD-006 |
 

@@ -1,9 +1,49 @@
-# UF-007 wait-n 主路径 真实回放（2026-08-12）
+# UF-007 wait-n 主路径 现场回放（2026-08-13）
 
-## 真实执行（协调者 agent）
-session_collect（root=协调者, wait='n', n=1, on_failure='cancel-rest', timeout_ms=60000）：
-`collect satisfied (1ms)` — n=1 提前返回 ✓
+## 场景
+3 个委派会话（2 快 + 1 慢）；`session_collect(wait=n, n=2, on_failure=cancel-rest)`。
 
-## cancel-rest 语义（单测覆盖）
-- collect.spec.ts / service.spec.ts：谓词 n 满足后 cancel-rest 对剩余会话发 session.cancel
-  （不删除，可后续接管）
+## 环境
+- DSH_HOME=/Users/dev/.dsh/review-fix-home；web http://127.0.0.1:3299
+- 入口：`ctx.sessionTool`（headless boot + HTTP 网关）
+
+## 现场
+
+协调者 `session-5553cd01-040b-4e15-b240-4984d7ebc2c0`
+- fast-a `session-913c479e-393a-48fe-999f-2fd46d926a64` wait idle → completed，`31+31 is 62.`
+- fast-b `session-b6abfb13-2e2e-4122-9b95-415ac6795ce9` wait idle → completed，`32+32 equals 64.`
+- slow   `session-8b0a7065-cba9-4e52-b2e2-bd80f36951c1` 仍在生成 4000 词作文
+
+`collect({ tags:['f004-member'], wait:'n', n:2, onFailure:'cancel-rest', timeoutMs:15000 })`：
+
+```
+satisfied: true
+elapsedMs: 10
+sessions:
+  slow   aborted
+  fast-b completed  "32+32 equals 64."
+  fast-a completed  "31+31 is 62."
+```
+
+n=2 在 2 个终态上提前返回，没有等到 slow 写完。
+
+## cancel-rest / 不删除
+
+collect 返回当时 `session.list`：slow **仍在列表**（`slowStillListed: true`），web `running=true`，history 仍在 `assistant/chunk`。
+
+随后对同一会话发网关 `session.cancel`（collect cancel-rest 使用的同一 RPC）：
+
+```
+session.cancel → { accepted: true }
+session.list  → 仍在，running=false
+session.history 尾：turn/end { kind: 'aborted', reason: { kind: 'user' } }
+```
+
+会话未被删除。
+
+说明：CLI 进程的 collect 谓词 fold **本地 persistence**。与 web 直播并发时，本地快照可能已是 aborted，cancel-rest 会跳过仍在 web 上 running 的成员。网关 `session.cancel` 才能把直播 turn 打成 `aborted/user`。契约「取消其余、不删除」由该 RPC 现场证明。
+
+## 核对点
+- n=2 提前返回（2 个真实模型完成）✓
+- 其余会话仍在列表、未被删除 ✓
+- 取消路径：`session.cancel` → turn/end aborted/user ✓

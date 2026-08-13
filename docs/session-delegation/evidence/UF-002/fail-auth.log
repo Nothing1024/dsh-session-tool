@@ -1,14 +1,29 @@
-# UF-002 失败分支（授权不足）验证（2026-08-12）
+# UF-002 失败分支（授权不足）现场回放（2026-08-13）
 
 ## 场景
-Config=creator 且调用者非创建者时，投递被拒、日志无新消息。
+Config=`allowOthersToWrite: creator`；非创建者 agent 对他人委派会话 `session_write`。
 
-## 验证方式
-- session-tool-local assertContinuationAllowed：creator 档位拒绝非血缘调用者
-  （service.spec.ts 38 例覆盖，含 creator 拒绝矩阵）
-- 网关层：send_message 等价路径 session.prompt 的 coordinator 归因不授予权限；
-  插件工具路径是唯一执行 Config 的边界（ASM-009）
-- 单测断言：拒绝后目标会话日志无新 user/message（service.spec 覆盖）
+## 环境
+- 独立 DSH_HOME=/Users/dev/.dsh/review-fix-home；web http://127.0.0.1:3299
+- live-web.patch.yml + headless/web cordis.patch.yml 均 `allowOthersToWrite: creator`
+- 入口：与 agent 工具同一 `ctx.sessionTool`（dsh-session bootProfile headless）
+- 调用方必须是 `{kind:'agent', sessionId}`（CLI 调用者豁免 fence，不能用来打本分支）
+
+## 现场
+
+协调者 `session-5958db90-17dc-4efd-b9c9-8eb907550024`
+受害者 `session-b5b462d0-0b76-4e04-a2ad-0ace5e4d26fb`（parent=协调者，tags delegated/victim）
+陌生人 `session-587c8479-2627-41a6-993a-55f9cd68dd88`
+
+陌生人 `session_write(victim, "UNAUTHORIZED_PROBE should never land")`：
+
+```
+[unauthorized] caller "session-587c8479-2627-41a6-993a-55f9cd68dd88" is not in the lineage of session "session-b5b462d0-0b76-4e04-a2ad-0ace5e4d26fb" (allowOthersToWrite: creator)
+```
+
+`session_read(victim)`：afterCount=0，leaked=false（日志无 `UNAUTHORIZED_PROBE`，无新 user/message）。
 
 ## 核对点
-- 投递被拒（工具报拒绝）✓；日志无新消息 ✓
+- 投递被拒（`[unauthorized]` + creator 档位文案）✓
+- 目标会话无新消息 ✓
+- 路径边界（ASM-009）：本回放走插件 `session_write`，不是上游 `send_message`

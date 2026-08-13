@@ -17,17 +17,17 @@
 | Tasks CSV（状态板） | `tasks.csv` | found | 23 任务状态跟踪 |
 | Evidence 目录 | `evidence/` | found | 证据归档 |
 
-缺失资料与假设：
+假设状态（全部已拍板，见 `evidence/phase-0/decisions.md` 与 spec 1.4；**T-002 已完成，无需再拍板**）：
 
-- ASM-001: continuable 平级化默认选项 A（send_message/list_agents 走 session API），需 T-002 用户拍板
-- ASM-004: 结构化输出 = JSON 约定+校验重试（能力声明保持 true），需 T-002 拍板
-- report 去留: tool-subagent-report 默认保留，需 T-002 拍板
-- ASM-002: 授权强度默认 workspace，Config 可配 creator/anyone，需 T-002 拍板
-- ASM-003: 等待语义 = 单 session idle（不等子树），需 T-002 拍板
-- ASM-005: 清理策略 = 标记+手动+超时三件套，超时任务可后置，需 T-002 拍板
-- ASM-007: 收集约束边界 = 只做完成条件求值（wait-all/any/n），不做依赖图/调度/重试编排
-- ASM-008: provider 桥接落点 = 上游新包 subagent-session（bundle/base 装配行指向它；插件不注册 provider）
-- ASM-009: 约束路径边界 = creator/anyone 只作用于插件工具路径，subagent 工具路径保持 workspace 级
+- ASM-001: continuable 平级化选项 A（send_message/list_agents 走 session API）✅
+- ASM-002: 授权强度默认 workspace，Config 可配 creator/anyone ✅
+- ASM-003: 等待语义 = 单 session idle（不等子树）✅
+- ASM-004: 结构化输出 = JSON 约定+校验重试（能力声明保持 true）✅
+- ASM-005: 清理策略 = 标记+手动+超时三件套，超时扫描可后置 ✅
+- report 去留: tool-subagent-report 默认保留 ✅
+- ASM-007: 收集约束边界 = 只做完成条件求值（wait-all/any/n），不做依赖图/调度/重试编排 ✅
+- ASM-008: provider 桥接落点 = 上游新包 subagent-session（bundle/base 装配行指向它；插件不注册 provider）。headless bundle **不**挂 apiProxy；workflow fan-out 需 web composition ✅
+- ASM-009: 约束路径边界 = creator/anyone 只作用于插件工具路径，subagent 工具路径保持 workspace 级 ✅
 
 ## 3. 开工上下文
 
@@ -79,7 +79,7 @@ P5 真实场景验收 ◀──────┘
 - 不得新增 session 事件类型（归因走 MessageSource 声明合并）
 - 不得删除 `subagent/descriptor` 事件类型定义（旧日志 fold 依赖）
 - 不得只跑单测就宣称完成——完成的唯一标准是 spec.md 第 5.2 节真实场景全套测试
-- 不得在 P0 决策（T-002）定案前推进 P2-P4 任务
+- 不得把 env 全量 `pnpm test` 的环境类失败当成 session-delegation 回归（口径见 spec 5.1）
 
 ## 4. 开工前初始化
 
@@ -105,7 +105,7 @@ WHILE 存在待开始或进行中的任务:
    10. Phase 回归通过后，输出 Phase summary，再进入下一 Phase
 ```
 
-不要中途问"是否继续"。除非所有剩余任务都被阻塞，否则继续推进。**T-002 是唯一需要用户在场的任务**（4 个开放决策拍板），阻塞时先执行不依赖它的任务。
+不要中途问"是否继续"。除非所有剩余任务都被阻塞，否则继续推进。开放决策已在 T-002 拍板，后续任务不再阻塞于用户在场。
 
 ## 6. 排障顺序
 

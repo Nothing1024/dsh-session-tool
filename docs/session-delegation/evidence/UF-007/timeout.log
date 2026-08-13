@@ -1,12 +1,32 @@
-# UF-007 失败分支（超时）验证（2026-08-12）
+# UF-007 失败分支（超时）现场回放（2026-08-13）
 
 ## 场景
-会话长期 running 超过 timeout_ms：返回 {satisfied: false, sessions: 当前快照}（不报错）。
+会话在 timeout_ms 内未全部终态：返回 `{satisfied:false, sessions:当前快照}`，不抛错、不 cancel。
 
-## 验证方式
-- collect.spec.ts：`returns a timeout snapshot without error when the deadline passes` ✓
-- session-tool-local service.spec.ts 超时快照用例 ✓
-- 空集合 -> unsatisfied（单测覆盖）
+## 环境
+- DSH_HOME=/Users/dev/.dsh/review-fix-home；web http://127.0.0.1:3299
+- 入口：`ctx.sessionTool.collect`
+
+## 现场（未投递的非终态会话）
+
+创建 `review-fix-f004-timeout-idle` `session-5bb5fc5b-ee08-4f1a-9906-c3b823847e03`（tags `f004-timeout-idle`），**不** prompt。
+`collect({ tags:['f004-timeout-idle'], wait:'all', timeoutMs:3500 })`：
+
+```
+satisfied: false
+elapsedMs: 3548
+wallMs: 3562
+sessions: [{ sessionId: session-5bb5fc5b-..., status: "running" }]
+```
+
+无异常抛出。idle 在 collect 结果行映射为 `running`（`collectResultRows`）；谓词侧 idle 非终态，故 wait-all 打满 timeout。
+
+## 对照：对 web 上仍在跑的会话立刻 collect
+
+`review-fix-f004-timeout-running` 在 `session.list running=true` 之后立刻 `wait:all timeoutMs:3500`：
+本地 fold 3–4ms 报 `aborted` 且 `satisfied:true`。原因同上：CLI collect 不读网关 `running` 旗标，fold 本地日志；与 web 直播不一致时不能当作超时场景。
 
 ## 核对点
-- satisfied: false 快照返回不报错 ✓；无副作用（不 cancel）✓
+- `satisfied: false` 快照返回不报错 ✓
+- elapsed ≈ timeoutMs（3548 / 3500）✓
+- 无副作用（未对该 idle 会话发 cancel）✓

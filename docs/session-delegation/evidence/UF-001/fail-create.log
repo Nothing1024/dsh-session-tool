@@ -1,15 +1,33 @@
-# UF-001 失败分支（创建失败）验证（2026-08-12）
+# UF-001 失败分支（创建失败）现场回放（2026-08-13）
 
-## 场景
-web 网关不可达 / workspace 不存在时，session provider 创建会话失败。
+## 环境
+- 独立 DSH_HOME=/Users/dev/.dsh/review-fix-home；web 未启动；session-tool-local webUrl=http://127.0.0.1:3999
+- 入口：dsh-session（headless profile，与 agent 工具同一 ctx.sessionTool）
+- 同时用 curl 打死端口，证明不是 CLI 包装层假失败
 
-## 验证方式（真实回放等价）
-- subagent-session 的 durableCreate 经 InProcessApiClient 调网关：网关返回 RPC 错误时
-  establishSessionChild 抛 `subagent-session gateway call failed: <code>: <message>`，无会话产生
-  （零残留——durableCreate 失败不会创建会话）
-- 网关 workspace-not-found 路径：durableCreate 对不存在 workspace 返回
-  `workspace-not-found` 错误码（env apiproxy 单测 api-proxy-durable.spec.ts 覆盖）
-- tool-subagent 工具对 provider 启动失败返回 isError 结果（tool-subagent.spec.ts 89 例覆盖）
+## 1. curl 死端口（对照）
+```
+curl: (7) Failed to connect to 127.0.0.1 port 3999 after 0 ms: Couldn't connect to server
+```
+
+## 2. dsh-session session create（现场）
+```
+dsh-session: [web-unreachable] web gateway unreachable for session.durableCreate: fetch failed
+exit 1
+```
+
+## 3. 零会话残留
+```
+sessions dir:
+(no sessions directory or empty)
+dsh-session list (also web-unreachable):
+dsh-session: [web-unreachable] web gateway unreachable for session.list: fetch failed
+list exit 1
+```
 
 ## 核对点
-- 报错而非静默成功 ✓；零会话残留 ✓（失败发生在创建前）
+- 报错含 [web-unreachable] ✓
+- exit != 0 ✓
+- 无会话文件残留 ✓
+- 说明：subagent-session 在 headless/web 进程内走 InProcessApiClient(apiProxy)，不经过 HTTP webUrl；
+  spec 5.2 的 web-unreachable 落在插件工具/CLI 的 HTTP carrier 上。本回放即该入口。

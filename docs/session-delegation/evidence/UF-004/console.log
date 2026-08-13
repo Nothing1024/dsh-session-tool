@@ -23,5 +23,12 @@
 3. GUI 刷新 → 侧边栏委派会话 + 协调者会话都在；打开委派会话 transcript 完整恢复（2 轮）
 4. 截图 success.png / restart.png
 
+## 2026-08-13 补跑（F-005）
+- 独立 DSH_HOME=/Users/dev/.dsh/review-fix-home；端口 3299
+- 停原 web → 再起 `dsh web --port 3299` → Playwright 打开 GUI
+- 侧边栏 `review-fix-ws` 可见 `review-fix-f004-fast-a` 等委派会话
+- 打开 `review-fix-f004-fast-a`：transcript「31+31 is 62。」完整；pageerror 0
+- 替换 `restart.png`（可辨认侧边栏 + 打开会话）
+
 ## 结论
 - UF-004 主路径 + 重启分支通过；委派会话默认可见、可打开、可续写、可停止（cancel 由网关 session.cancel 提供，interrupt 路径 T-019 契约测试覆盖）
