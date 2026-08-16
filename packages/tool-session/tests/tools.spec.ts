@@ -1,7 +1,7 @@
 // tool-session: the five session_* tools register with the documented
 // schemas, generic render intent, and execute mapping onto ctx.sessionTool.
 import { describe, expect, it, vi } from 'vitest'
-import type { Context } from 'cordis'
+import type { Context } from '@deepseek-ai/cordis'
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { SessionId } from '@deepseek-ai/dsh-session'

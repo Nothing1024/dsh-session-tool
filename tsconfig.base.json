@@ -1,20 +1,31 @@
 {
-  // Type-check plane: extends the linked worktree's base for its strict
-  // compiler options, then overrides `paths` (child configs win per key) with
-  // the generated artifact-plane map — every @deepseek-ai/dsh-* and vendored
-  // framework import resolves to the worktree's BUILT lib/types declarations,
-  // so tsc never descends into worktree sources (whose own tsconfigs differ).
-  // Regenerate the paths map with: node scripts/generate-tsconfig-paths.mjs
-  "extends": [
-    "../env/session-tool-env/tsconfig.base.json",
-    "./tsconfig.paths.json"
-  ],
+  // Self-contained type-check plane for the session-tool plugin (npm-based).
+  // Platform @deepseek-ai/* resolve through the hoisted node_modules
+  // (pinned 0.1.0-rc.6); @deepseek-ai/cordis is the ecosystem Context/Service
+  // identity. allowImportingTsExtensions + rewriteRelativeImportExtensions
+  // keep src's real .ts import specifiers working while tsc still emits
+  // .js-suffixed d.ts.
   "compilerOptions": {
-    "composite": false,
-    "incremental": false,
-    "noEmit": true,
-    "declaration": false,
-    "declarationMap": false,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023"],
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "types": ["node"]
   }
 }

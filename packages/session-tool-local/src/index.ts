@@ -11,7 +11,7 @@
  * @module session-tool-local
  */
 
-import { Context, Service } from 'cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { assertNever } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'

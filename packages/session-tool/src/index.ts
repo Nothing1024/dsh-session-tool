@@ -452,7 +452,7 @@ export interface SessionToolService {
   workspaceDelete(caller: SessionToolCaller, workspaceId: string): Promise<SessionToolWorkspaceDeleteResult>
 }
 
-declare module 'cordis' {
+declare module '@deepseek-ai/cordis' {
   interface Context {
     sessionTool: SessionToolService
   }

@@ -18,7 +18,7 @@ import { writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
-import type { Context } from 'cordis'
+import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@cordisjs/plugin-include'
 import {
   boot,
@@ -31,8 +31,8 @@ import {
   PROFILE_PATCH_FILENAME,
   type Profile,
 } from '@deepseek-ai/dsh-app-boot'
-import { resolveDshHome } from '@deepseek-ai/dsh-paths'
-import { DSH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-environment'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { SessionToolError } from 'session-tool'
 import type {
@@ -143,7 +143,7 @@ export async function bootProfile(profileName: string, patchFiles: readonly stri
   const composed = composeProfile(profileName, patchFiles)
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
   const ctx = await boot(NAME, rootConfig, structuredClone(stripOneShotRunner(composed.patches)), async (hostCtx) => {
-    hostCtx.provide(DSH_ENVIRONMENT_KEY, loadLayeredEnv(NAME))
+    hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(NAME))
   })
   liveCtx = ctx
   return ctx
