@@ -56,6 +56,7 @@ function sessionClient() {
   return constructor.mock.instances.at(-1) as {
     durableCreate: ReturnType<typeof vi.fn>
     prompt: ReturnType<typeof vi.fn>
+    subagentPrompt: ReturnType<typeof vi.fn>
     list: ReturnType<typeof vi.fn>
     rename: ReturnType<typeof vi.fn>
     wait: ReturnType<typeof vi.fn>
@@ -279,6 +280,41 @@ describe('SessionToolLocalService (remote)', () => {
       await expect(ctx.sessionTool.write(agent('child'), SessionId('root'), 'nope'))
         .rejects.toThrow(SessionToolUnauthorizedError)
     })
+
+    it('writes a badged rc.6 child through subagent.prompt, not session.prompt', async () => {
+      callerSession('root')
+      const child = ctx.sessions.create(SessionId('child'), {
+        meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+      })
+      await ctx.sessions.flush(child)
+      const client = sessionClient()
+      client.subagentPrompt.mockResolvedValue({ accepted: true })
+      const result = await ctx.sessionTool.write(agent('root'), SessionId('child'), 'go')
+      expect(result).toEqual({ sessionId: 'child' })
+      expect(client.subagentPrompt).toHaveBeenCalledWith('root', 'child', 'go')
+      expect(client.prompt).not.toHaveBeenCalled()
+    })
+
+    it('keeps the fence before the subagent door and rejects a missing parent', async () => {
+      callerSession('root')
+      callerSession('peer')
+      const child = ctx.sessions.create(SessionId('child'), {
+        meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+      })
+      await ctx.sessions.flush(child)
+      const client = sessionClient()
+      client.subagentPrompt.mockResolvedValue({ accepted: true })
+      await expect(ctx.sessionTool.write(agent('peer'), SessionId('child'), 'go'))
+        .rejects.toThrow(SessionToolUnauthorizedError)
+      expect(client.subagentPrompt).not.toHaveBeenCalled()
+      const orphan = ctx.sessions.create(SessionId('orphan'), {
+        meta: { cwd: '/proj', origin: 'subagent', delegationDepth: 1 },
+      })
+      await ctx.sessions.flush(orphan)
+      await expect(ctx.sessionTool.write(CLI, SessionId('orphan'), 'go'))
+        .rejects.toThrow(SessionNotFoundError)
+      expect(client.subagentPrompt).not.toHaveBeenCalled()
+    })
   })
 
   describe('continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated)', () => {
@@ -344,6 +380,15 @@ describe('SessionToolLocalService (remote)', () => {
         // Different workspace: rejected.
         await expect(ctx2.sessionTool.write(agent('foreign-peer'), SessionId('delegated-target'), 'go'))
           .rejects.toThrow(SessionToolUnauthorizedError)
+        // A badged rc.6 child uses the subagent door after the same fence.
+        const badged = ctx2.sessions.create(SessionId('badged-child'), {
+          meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+        })
+        await ctx2.sessions.flush(badged)
+        client.subagentPrompt.mockResolvedValue({ accepted: true })
+        await expect(ctx2.sessionTool.write(agent('peer'), SessionId('badged-child'), 'go'))
+          .resolves.toBeDefined()
+        expect(client.subagentPrompt).toHaveBeenCalledWith('root', 'badged-child', 'go')
       } finally {
         await ctx2.fiber.dispose()
       }

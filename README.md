@@ -20,6 +20,8 @@ session-tool/
 
 ## 安装到 profile（agent 工具面）
 
+rc.6 固定演练环境见 **`env/README.md`**。通用配方是 skill [`dsh-plugin-debug-env`](../../../.agents/skills/dsh-plugin-debug-env/SKILL.md)（`/dsh-plugin-debug-env`）。
+
 ```sh
 # 1. 先构建本项目与 worktree 依赖
 (cd ../plugin-dev/session-tool-env && pnpm install && pnpm run build:lib:host && pnpm run build:lib:client)

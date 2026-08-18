@@ -9,7 +9,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "build": "pnpm -r run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "env:setup": "sh env/setup.sh",
+    "env:boot": "sh env/boot.sh"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
@@ -18,5 +20,8 @@
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "cordis": "npm:@deepseek-ai/cordis@4.0.1"
   }
 }

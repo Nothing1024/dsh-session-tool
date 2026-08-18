@@ -1,0 +1,12 @@
+packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+allowBuilds:
+  node-pty: true
+  koffi: true
+  esbuild: true
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': true
+  protobufjs: true

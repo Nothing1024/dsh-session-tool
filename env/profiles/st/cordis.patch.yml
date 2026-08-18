@@ -1,0 +1,10 @@
+# User overlay for profile `st`. Keep empty.
+# tool-session already ships session-tags / session-tool-local / tool-session
+# via its own bundle patch. Do not re-insert those rows here (double mount).
+#
+# Only overlay when the web port is not 3080, e.g.:
+# - update:
+#     - id: session-tool-local
+#       config:
+#         webUrl: 'http://127.0.0.1:3083'
+[]

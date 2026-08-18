@@ -1,5 +1,5 @@
 // SessionHttpClient: the full fetch-carrier round trip against a stubbed
-// global fetch — durableCreate/prompt/list/rename payloads, ok/error
+// global fetch — rc.6 create/rename/list/history/prompt payloads, ok/error
 // narrowing, projection folding, and the failure mapping onto the
 // session-tool error seam.
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -52,17 +52,18 @@ describe('SessionHttpClient', () => {
     vi.unstubAllGlobals()
   })
 
-  it('durableCreate posts title, tags, lineage, and workspace to the gateway', async () => {
+  it('durableCreate posts create then rename; drops tags and lineage', async () => {
+    const methods: string[] = []
     const fetchMock = stubFetch((url, body) => {
-      expect(url.href).toBe(`${BASE}/api/session.durableCreate`)
-      expect(body.method).toBe('session.durableCreate')
-      expect(body.payload).toEqual({
-        title: 't',
-        parentSessionId: 'caller',
-        tags: ['a', 'b'],
-        workspaceId: 'ws-1',
-      })
-      return okResponse(body.rpcId, { sessionId: 'session-9', title: 't', tags: ['a', 'b'] })
+      methods.push(body.method)
+      if (body.method === 'session.create') {
+        expect(url.href).toBe(`${BASE}/api/session.create`)
+        expect(body.payload).toEqual({ workspaceId: 'ws-1' })
+        return okResponse(body.rpcId, { sessionId: 'session-9' })
+      }
+      expect(url.href).toBe(`${BASE}/api/session.rename`)
+      expect(body.payload).toEqual({ sessionId: 'session-9', title: 't' })
+      return okResponse(body.rpcId, { title: 't', seq: 1 })
     })
     const client = new SessionHttpClient(BASE)
     const result = await client.durableCreate({
@@ -70,9 +71,11 @@ describe('SessionHttpClient', () => {
       parentSessionId: 'caller',
       tags: ['a', 'b'],
       workspaceId: 'ws-1',
+      delegationDepth: 1,
     })
-    expect(result).toEqual({ sessionId: 'session-9', title: 't', tags: ['a', 'b'] })
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(result).toEqual({ sessionId: 'session-9', title: 't' })
+    expect(methods).toEqual(['session.create', 'session.rename'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('durableCreate posts a bare cwd request when nothing optional is given', async () => {
@@ -102,25 +105,51 @@ describe('SessionHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
-  it('wait posts the settle options and echoes the terminal status', async () => {
+  it('subagentPrompt posts the continuable parent/child address', async () => {
     const fetchMock = stubFetch((url, body) => {
-      expect(url.pathname).toBe('/api/session.wait')
-      expect(body.payload).toEqual({ sessionId: 'session-1', until: 'idle', timeoutMs: 5000 })
-      return okResponse(body.rpcId, { status: 'completed', lastTurnEndReason: { kind: 'completed' } })
+      expect(url.pathname).toBe('/api/subagent.prompt')
+      expect(body.payload).toEqual({
+        parentSessionId: 'root',
+        childSessionId: 'child',
+        mode: 'continuable',
+        content: [{ type: 'text', text: 'go' }],
+      })
+      return okResponse(body.rpcId, { messageId: 'msg-1' })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.subagentPrompt('root', 'child', 'go')
+    expect(result).toEqual({ accepted: true })
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('wait polls list then history and maps a completed turn/end', async () => {
+    const methods: string[] = []
+    const fetchMock = stubFetch((_url, body) => {
+      methods.push(body.method)
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      expect(body.method).toBe('session.history')
+      expect(body.payload).toEqual({ sessionId: 'session-1' })
+      return okResponse(body.rpcId, {
+        events: [{ event: { type: 'turn/end', seq: 2, time: 1, data: { turn: 1, reason: { kind: 'completed' } } } }],
+        hasMore: false,
+      })
     })
     const client = new SessionHttpClient(BASE)
     const result = await client.wait('session-1', { until: 'idle', timeoutMs: 5000 })
     expect(result).toEqual({ status: 'completed', lastTurnEndReason: { kind: 'completed' } })
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(methods).toEqual(['session.list', 'session.history'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('wait defaults the options and maps a timeout status through', async () => {
+  it('wait reports timeout when the session is still running and the deadline is 0', async () => {
     const fetchMock = stubFetch((_url, body) => {
-      expect(body.payload).toEqual({ sessionId: 'session-1' })
-      return okResponse(body.rpcId, { status: 'timeout' })
+      expect(body.method).toBe('session.list')
+      return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: true })] })
     })
     const client = new SessionHttpClient(BASE)
-    const result = await client.wait('session-1')
+    const result = await client.wait('session-1', { timeoutMs: 0 })
     expect(result).toEqual({ status: 'timeout' })
     expect(fetchMock).toHaveBeenCalledOnce()
   })
@@ -168,16 +197,26 @@ describe('SessionHttpClient', () => {
     ])
   })
 
-  it('rename posts title and tags and echoes the accepted values', async () => {
+  it('rename posts only the title and echoes tags locally', async () => {
     const fetchMock = stubFetch((url, body) => {
       expect(url.pathname).toBe('/api/session.rename')
-      expect(body.payload).toEqual({ sessionId: 'session-1', title: 'new', tags: ['x'] })
-      return okResponse(body.rpcId, { title: 'new', tags: ['x'], seq: 7 })
+      expect(body.payload).toEqual({ sessionId: 'session-1', title: 'new' })
+      return okResponse(body.rpcId, { title: 'new', seq: 7 })
     })
     const client = new SessionHttpClient(BASE)
     const result = await client.rename('session-1', { title: 'new', tags: ['x'] })
     expect(result).toEqual({ title: 'new', tags: ['x'], seq: 7 })
     expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('rename with tags only does not call the gateway', async () => {
+    const fetchMock = stubFetch(() => {
+      throw new Error('unexpected gateway call')
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.rename('session-1', { tags: ['x'] })
+    expect(result).toEqual({ tags: ['x'], seq: 0 })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('translates a title-invalid business error onto the seam code', async () => {
@@ -188,12 +227,126 @@ describe('SessionHttpClient', () => {
     expect((failure as SessionToolError).code).toBe('title-invalid')
   })
 
-  it('translates a tag-invalid business error onto the seam code', async () => {
-    stubFetch((_url, body) => errorResponse(body.rpcId, 'tag-invalid', 'bad tags', { sessionId: 'session-1' }))
+  it('translates a title-invalid error from the create follow-up rename', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.create') {
+        return okResponse(body.rpcId, { sessionId: 'session-9' })
+      }
+      return errorResponse(body.rpcId, 'title-invalid', 'bad title', { sessionId: 'session-9' })
+    })
     const client = new SessionHttpClient(BASE)
-    const failure = await client.durableCreate({ tags: [''] }).catch((error: unknown) => error)
+    const failure = await client.durableCreate({ title: '  ' }).catch((error: unknown) => error)
     expect(failure).toBeInstanceOf(SessionToolError)
-    expect((failure as SessionToolError).code).toBe('tag-invalid')
+    expect((failure as SessionToolError).code).toBe('title-invalid')
+  })
+
+  it('wait reports idle when the session is not running and has no turn/end', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return okResponse(body.rpcId, { events: [], hasMore: false })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'idle' })
+  })
+
+  it('wait maps an aborted turn/end onto aborted', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return okResponse(body.rpcId, {
+        events: [{ event: { type: 'turn/end', seq: 2, time: 1, data: { turn: 1, reason: { kind: 'aborted' } } } }],
+        hasMore: false,
+      })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'aborted', lastTurnEndReason: { kind: 'aborted' } })
+  })
+
+  it('wait maps an unknown turn/end kind onto failed', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return okResponse(body.rpcId, {
+        events: [{ event: { type: 'turn/end', seq: 2, time: 1, data: { turn: 1, reason: { kind: 'blocked' } } } }],
+        hasMore: false,
+      })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'failed', lastTurnEndReason: { kind: 'blocked' } })
+  })
+
+  it('wait until turn-end returns idle when the session is cold', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return okResponse(body.rpcId, { events: [], hasMore: false })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1', { until: 'turn-end', timeoutMs: 0 })
+    expect(result).toEqual({ status: 'idle' })
+  })
+
+  it('wait treats a session-not-found history as no turn/end', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return errorResponse(body.rpcId, 'session-not-found', 'missing', { sessionId: 'session-1' })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'idle' })
+  })
+
+  it('wait until turn-end settles on a reason even while running', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: true })] })
+      }
+      return okResponse(body.rpcId, {
+        events: [{ event: { type: 'turn/end', seq: 2, time: 1, data: { turn: 1, reason: { kind: 'interrupted' } } } }],
+        hasMore: false,
+      })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1', { until: 'turn-end', timeoutMs: 1000 })
+    expect(result).toEqual({ status: 'aborted', lastTurnEndReason: { kind: 'interrupted' } })
+  })
+
+  it('wait sleeps then times out while the session stays running', async () => {
+    stubFetch((_url, body) => {
+      expect(body.method).toBe('session.list')
+      return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: true })] })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1', { timeoutMs: 20 })
+    expect(result).toEqual({ status: 'timeout' })
+  })
+
+  it('wait ignores a turn/end event with a non-object payload', async () => {
+    stubFetch((_url, body) => {
+      if (body.method === 'session.list') {
+        return okResponse(body.rpcId, { items: [summary({ sessionId: 'session-1', running: false })] })
+      }
+      return okResponse(body.rpcId, {
+        events: [
+          { event: { type: 'user/message', seq: 1, time: 1, data: {} } },
+          { event: { type: 'turn/end', seq: 2, time: 1, data: null } },
+        ],
+        hasMore: false,
+      })
+    })
+    const client = new SessionHttpClient(BASE)
+    const result = await client.wait('session-1')
+    expect(result).toEqual({ status: 'idle' })
   })
 
   it('maps a refused connection to web-unreachable', async () => {

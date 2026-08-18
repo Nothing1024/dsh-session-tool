@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - vendor/session-tags
 allowBuilds:
   esbuild: true
   koffi: true

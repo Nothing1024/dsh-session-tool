@@ -1,0 +1,11 @@
+# Plugin-private LAN overlay. Generic bind + randomUUID come from
+# dsh-plugin-debug-env/references/lan.patch.yml via boot-lan.sh --overlay.
+- id: session-tool-local
+  config:
+    allowAllScope: 'top-level'
+    cliAllowAll: true
+    readMaxBlocks: 500
+    listMaxRows: 100
+    webUrl: !!js process.env.DSH_LAN_WEB_URL ?? process.env.DSH_SESSION_WEB_URL ?? 'http://127.0.0.1:3083'
+    allowOthersToWrite: 'workspace'
+    showDelegated: true

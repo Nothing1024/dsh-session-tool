@@ -1,0 +1,13 @@
+{
+  "id": "dsh-external/tool-session",
+  "version": "0.1.0",
+  "main": "./lib/index.js",
+  "description": "Session management tools: session_create/read/write/list/rename/wait/collect over ctx.sessionTool.",
+  "engines": {
+    "dsh": ">=0.0.1"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  }
+}

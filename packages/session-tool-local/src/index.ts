@@ -243,7 +243,20 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // lands in the session log. This settles on admission.
     const index = await this.headerIndex()
     await this.assertContinuationAllowed(caller, sessionId, index)
-    await this.sessionClient.prompt(sessionId, text)
+    const header = index.get(sessionId)
+    // Badge selects the door, not the kind: origin=subagent is rc.6's
+    // spawn stamp. session.prompt answers agent-busy on those children.
+    if (header?.origin === 'subagent') {
+      const parent = header.parentSession
+      if (parent === undefined) {
+        throw new SessionNotFoundError(
+          `subagent session "${sessionId}" has no parentSession; cannot address subagent.prompt`,
+        )
+      }
+      await this.sessionClient.subagentPrompt(parent, sessionId, text)
+    } else {
+      await this.sessionClient.prompt(sessionId, text)
+    }
     return { sessionId }
   }
 

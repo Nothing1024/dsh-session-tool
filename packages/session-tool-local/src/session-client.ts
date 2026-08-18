@@ -7,6 +7,11 @@
  * host-apiproxy `AbstractApiClient`, imported through the `./client` subpath
  * so no host-side implementation is pulled into this headless process.
  *
+ * rc.6 has no `session.durableCreate` / `session.wait`. This adapter keeps
+ * the SessionHttpClient surface and maps those calls onto `session.create`
+ * + `session.rename` and a `session.list` poll. parentSessionId, tags, and
+ * delegationDepth have no create/rename field on rc.6 and are not sent.
+ *
  * Transport failures surface as `SessionWebUnreachableError`; the gateway's
  * business errors surface as `SessionToolError` with the wire code.
  * @module session-tool-local
@@ -57,6 +62,9 @@ const SESSION_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = {
   'workspace-not-found': 'workspace-not-found',
 }
 
+/** Poll interval for the rc.6 wait substitute (`session.list` running bit). */
+const WAIT_POLL_MS = 250
+
 /**
  * The session gateway client: an `AbstractApiClient` subclass whose only
  * aspects are the transport (global fetch) and the base URL (the configured
@@ -80,9 +88,9 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Create a durable session WITHOUT starting an agent: the session lands in
-   * the web process's live store (published to every GUI client) and is
-   * flushed to persistence. A later `prompt` resumes it into a conversation.
+   * Create a durable session WITHOUT starting a turn. rc.6 `session.create`
+   * only accepts workspace/cwd/sessionId/agentPreset; a requested title is
+   * applied by a follow-up `session.rename`.
    */
   async durableCreate(options: {
     sessionId?: string
@@ -93,22 +101,18 @@ export class SessionHttpClient extends AbstractApiClient {
     cwd?: string
     delegationDepth?: number
   }): Promise<DurableCreateResult> {
-    return await this.invoke('session.durableCreate', async () => {
-      const response = await this.sessions.durableCreate({
+    return await this.invoke('session.create', async () => {
+      const created = this.unwrap(await this.sessions.create({
         ...options.sessionId === undefined ? {} : { sessionId: options.sessionId as never },
-        ...options.title === undefined ? {} : { title: options.title },
-        ...options.parentSessionId === undefined ? {} : { parentSessionId: options.parentSessionId as never },
-        ...options.tags === undefined ? {} : { tags: [...options.tags] },
         ...options.workspaceId === undefined ? {} : { workspaceId: options.workspaceId as never },
         ...options.cwd === undefined ? {} : { cwd: options.cwd },
-        ...options.delegationDepth === undefined ? {} : { delegationDepth: options.delegationDepth },
-      })
-      const value = this.unwrap(response)
-      return {
-        sessionId: value.sessionId,
-        ...value.title === undefined ? {} : { title: value.title },
-        ...value.tags === undefined ? {} : { tags: [...value.tags] },
-      }
+      }))
+      if (options.title === undefined) return { sessionId: created.sessionId }
+      const renamed = this.unwrap(await this.sessions.rename({
+        sessionId: created.sessionId,
+        title: options.title,
+      }))
+      return { sessionId: created.sessionId, title: renamed.title }
     })
   }
 
@@ -133,15 +137,28 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Wait for a session's agent to settle, then report its terminal status.
-   * Single-session semantics: the wait never follows descendants. `until`
-   * selects the settle point (`idle` by default); `timeoutMs` bounds the wait
-   * and reports `timeout` without error. A cold session (no live agent) is
-   * reported from its log and settles immediately.
-   * @param sessionId - target session.
-   * @param options - optional settle point and deadline.
-   * @returns the terminal status and the last turn-end reason kind, when one
-   *   has ended.
+   * Deliver a prompt to a continuable rc.6 subagent child. The gateway
+   * rejects `session.prompt` on these sessions (`agent-busy`); the address
+   * is the durable parent/child pair, not the session-only door.
+   */
+  async subagentPrompt(parentSessionId: string, childSessionId: string, content: string): Promise<{ accepted: true }> {
+    return await this.invoke('subagent.prompt', async () => {
+      const response = await this.subagents.prompt({
+        parentSessionId: parentSessionId as never,
+        childSessionId: childSessionId as never,
+        mode: 'continuable',
+        content: [{ type: 'text', text: content }],
+      })
+      this.unwrap(response)
+      return { accepted: true }
+    })
+  }
+
+  /**
+   * Wait for a session's agent to settle. rc.6 has no `session.wait`; this
+   * polls `session.list` `running` and reads the last `turn/end` from
+   * `session.history`. A cold session settles immediately. `timeoutMs`
+   * bounds the wait and reports `timeout` without error.
    */
   async wait(sessionId: string, options: {
     until?: 'idle' | 'turn-end'
@@ -150,16 +167,17 @@ export class SessionHttpClient extends AbstractApiClient {
     status: 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
     lastTurnEndReason?: { kind: string }
   }> {
-    return await this.invoke('session.wait', async () => {
-      const response = await this.sessions.wait({
-        sessionId: sessionId as never,
-        ...options.until === undefined ? {} : { until: options.until },
-        ...options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs },
-      })
-      const value = this.unwrap(response)
-      return {
-        status: value.status,
-        ...value.lastTurnEndReason === undefined ? {} : { lastTurnEndReason: value.lastTurnEndReason },
+    return await this.invoke('session.list', async () => {
+      const deadline = options.timeoutMs === undefined
+        ? Number.POSITIVE_INFINITY
+        : Date.now() + options.timeoutMs
+      const until = options.until ?? 'idle'
+      for (;;) {
+        const settled = await this.settleFromGateway(sessionId, until)
+        if (settled !== undefined) return settled
+        if (Date.now() >= deadline) return { status: 'timeout' }
+        await sleep(Math.min(WAIT_POLL_MS, Math.max(0, deadline - Date.now())))
+        if (Date.now() >= deadline) return { status: 'timeout' }
       }
     })
   }
@@ -198,25 +216,64 @@ export class SessionHttpClient extends AbstractApiClient {
     })
   }
 
-  /** Rename a session and/or replace its tag set (at least one required). */
+  /**
+   * Rename a session. rc.6 `session.rename` accepts only `title`. Tags have
+   * no RPC and are echoed in the result without a wire write (Step A).
+   */
   async rename(sessionId: string, options: { title?: string; tags?: readonly string[] }): Promise<{
     title?: string
     tags?: readonly string[]
     seq: number
   }> {
     return await this.invoke('session.rename', async () => {
-      const response = await this.sessions.rename({
-        sessionId: sessionId as never,
-        ...options.title === undefined ? {} : { title: options.title },
-        ...options.tags === undefined ? {} : { tags: [...options.tags] },
-      })
-      const value = this.unwrap(response)
+      if (options.title !== undefined) {
+        const value = this.unwrap(await this.sessions.rename({
+          sessionId: sessionId as never,
+          title: options.title,
+        }))
+        return {
+          title: value.title,
+          ...options.tags === undefined ? {} : { tags: [...options.tags] },
+          seq: value.seq,
+        }
+      }
       return {
-        ...value.title === undefined ? {} : { title: value.title },
-        ...value.tags === undefined ? {} : { tags: [...value.tags] },
-        seq: value.seq,
+        ...options.tags === undefined ? {} : { tags: [...options.tags] },
+        seq: 0,
       }
     })
+  }
+
+  /** One list/history cut: undefined means the wait should keep polling. */
+  private async settleFromGateway(sessionId: string, until: 'idle' | 'turn-end'): Promise<{
+    status: 'idle' | 'completed' | 'failed' | 'aborted'
+    lastTurnEndReason?: { kind: string }
+  } | undefined> {
+    const { items } = this.unwrap(await this.sessions.list({}))
+    const running = items.find(item => item.sessionId === sessionId)?.running === true
+    if (until === 'turn-end') {
+      const reason = await this.readLastTurnEndReason(sessionId)
+      if (reason === undefined) return running ? undefined : { status: 'idle' }
+      return { status: statusFromTurnEnd(reason.kind), lastTurnEndReason: reason }
+    }
+    if (running) return undefined
+    const reason = await this.readLastTurnEndReason(sessionId)
+    if (reason === undefined) return { status: 'idle' }
+    return { status: statusFromTurnEnd(reason.kind), lastTurnEndReason: reason }
+  }
+
+  /** Latest `turn/end` reason on the session log, or undefined if none/missing. */
+  private async readLastTurnEndReason(sessionId: string): Promise<{ kind: string } | undefined> {
+    const response = await this.sessions.history({ sessionId: sessionId as never })
+    if (!response.result.ok && response.result.error.code === 'session-not-found') {
+      return undefined
+    }
+    let found: { kind: string } | undefined
+    for (const entry of this.unwrap(response).events) {
+      const kind = turnEndKind(entry.event)
+      if (kind !== undefined) found = { kind }
+    }
+    return found
   }
 
   /**
@@ -249,4 +306,21 @@ export class SessionHttpClient extends AbstractApiClient {
       { cause: error },
     )
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function statusFromTurnEnd(kind: string): 'completed' | 'failed' | 'aborted' {
+  if (kind === 'completed') return 'completed'
+  if (kind === 'aborted' || kind === 'interrupted') return 'aborted'
+  return 'failed'
+}
+
+function turnEndKind(event: { type: string; data?: unknown }): string | undefined {
+  if (event.type !== 'turn/end') return undefined
+  if (event.data === null || typeof event.data !== 'object') return undefined
+  const kind = (event.data as { reason?: { kind?: unknown } }).reason?.kind
+  return typeof kind === 'string' ? kind : undefined
 }

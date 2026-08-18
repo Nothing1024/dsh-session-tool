@@ -3,3 +3,11 @@ lib/
 *.tsbuildinfo
 .DS_Store
 demo-home/
+env/profiles/*/node_modules/
+env/profiles/*/pnpm-lock.yaml
+env/sessions/
+env/storages/
+env/settings.yaml
+
+
+env/lan-uuid
