@@ -9,6 +9,12 @@ env/sessions/
 env/storages/
 env/settings.yaml
 env/.env
-
-
+env/session-tool/
+env/profiles/headless/
 env/lan-uuid
+
+# tsdown/tsc emit belongs in lib/; keep src/ as TypeScript only
+packages/*/src/*.js
+packages/*/src/*.d.ts
+packages/*/src/*.js.map
+packages/*/src/*.d.ts.map
