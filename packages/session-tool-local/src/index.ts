@@ -244,7 +244,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     const index = await this.headerIndex()
     await this.assertContinuationAllowed(caller, sessionId, index)
     const header = index.get(sessionId)
-    // Badge selects the door, not the kind: origin=subagent is rc.6's
+    // Badge selects the door, not the kind: origin=subagent is rc.7's
     // spawn stamp. session.prompt answers agent-busy on those children.
     if (header?.origin === 'subagent') {
       const parent = header.parentSession

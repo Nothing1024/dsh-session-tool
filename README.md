@@ -15,25 +15,20 @@ session-tool/
 │   ├── session-tool-local/   # Provider：基于 DSH 会话栈实现（fence/冷恢复/scope 门槛）
 │   ├── tool-session/         # bundle：5 个 session_* 工具 + cordis.patch.yml
 │   └── session-tool-cli/     # bin：dsh-session（辅助 CLI，薄壳）
-└── scripts/generate-tsconfig-paths.mjs   # 生成 worktree 构建产物 paths 映射
+└── env/                          # 仓内 DSH_HOME（boot.sh）
 ```
 
-## 安装到 profile（agent 工具面）
+## 安装 / 调试
 
-rc.6 固定演练环境见 **`env/README.md`**。通用配方是 skill [`dsh-plugin-debug-env`](../../../.agents/skills/dsh-plugin-debug-env/SKILL.md)（`/dsh-plugin-debug-env`）。
+仓内 `env/` 就是 `DSH_HOME`，见 `env/README.md`。不要再找 worktree 或 LAN skill。
 
 ```sh
-# 1. 先构建本项目与 worktree 依赖
-(cd ../plugin-dev/session-tool-env && pnpm install && pnpm run build:lib:host && pnpm run build:lib:client)
-pnpm -r run build
-
-# 2. 把 bundle 装进 profile（headless 或任意 profile）
-dsh plugin --profile headless add \
-  packages/tool-session packages/session-tool-local packages/session-tool \
-  ../plugin-dev/session-tool-env/packages/session/session-tags
+pnpm install && pnpm run build
+sh env/setup.sh
+sh env/boot.sh
 ```
 
-之后 `dsh run`（agent）即可用 `session_create` / `session_read` / `session_write` / `session_list` / `session_rename` 五个工具；hiddenPrefixes 等配置在 profile 的 `cordis.patch.yml`（bundle 默认 `~` 前缀隐藏）。
+起来之后 agent 可用 `session_*` 工具。hiddenPrefixes 等在 bundle 的 `cordis.patch.yml`。
 
 ## CLI 用法
 
@@ -49,7 +44,7 @@ dsh-session workspace rename <workspace_id> --title <title> [--profile <name>]
 dsh-session workspace delete <workspace_id> [--profile <name>]
 ```
 
-- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点默认指向 `../env/session-tool-env`（`DSH_SESSION_ANCHOR` 可覆盖）；
+- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点可用 `DSH_SESSION_ANCHOR` 覆盖；
 - 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON（workspace 子命令为 CLI 自有 JSON 投影）；
 - CLI 是人工身份（`kind: cli`），豁免 owner fence；`own` scope 仅 agent 可用。
 
@@ -66,11 +61,8 @@ workspace 注册表归 **web 进程**（`dsh web`）所有；本插件的 worksp
 
 ```sh
 pnpm install
-node scripts/generate-tsconfig-paths.mjs   # worktree 构建产物变动后重生成
-pnpm -r run typecheck
-pnpm -r run build
-npx vitest run                             # 58 例（服务 34 + 工具 12 + HTTP 客户端 11 + CLI e2e 1）
-DSH_SNAPSHOT=record npx vitest run packages/session-tool-cli/tests/e2e.spec.ts   # 重录 e2e fixture
+pnpm run build
+pnpm test
 ```
 
 ## 关键设计（详见 docs/design.md）

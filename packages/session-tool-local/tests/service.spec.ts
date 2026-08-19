@@ -281,7 +281,7 @@ describe('SessionToolLocalService (remote)', () => {
         .rejects.toThrow(SessionToolUnauthorizedError)
     })
 
-    it('writes a badged rc.6 child through subagent.prompt, not session.prompt', async () => {
+    it('writes a badged rc.7 child through subagent.prompt, not session.prompt', async () => {
       callerSession('root')
       const child = ctx.sessions.create(SessionId('child'), {
         meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
@@ -380,7 +380,7 @@ describe('SessionToolLocalService (remote)', () => {
         // Different workspace: rejected.
         await expect(ctx2.sessionTool.write(agent('foreign-peer'), SessionId('delegated-target'), 'go'))
           .rejects.toThrow(SessionToolUnauthorizedError)
-        // A badged rc.6 child uses the subagent door after the same fence.
+        // A badged rc.7 child uses the subagent door after the same fence.
         const badged = ctx2.sessions.create(SessionId('badged-child'), {
           meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
         })

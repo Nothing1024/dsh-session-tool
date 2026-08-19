@@ -33,4 +33,4 @@ if [ "${1:-}" = "--lan" ]; then
   SKILL=$(find_skill)
   exec "$SKILL/scripts/boot-lan.sh" --home "$ROOT" --profile st --overlay "$ROOT/lan.patch.yml" "$@"
 fi
-exec npx --yes @deepseek-ai/dsh@0.1.0-rc.6 --profile st --port 3080 "$@"
+exec npx --yes @deepseek-ai/dsh@0.1.0-rc.7 --profile st --port 3080 "$@"

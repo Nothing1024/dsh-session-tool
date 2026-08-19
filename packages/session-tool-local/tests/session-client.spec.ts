@@ -1,5 +1,5 @@
 // SessionHttpClient: the full fetch-carrier round trip against a stubbed
-// global fetch — rc.6 create/rename/list/history/prompt payloads, ok/error
+// global fetch — rc.7 create/rename/list/history/prompt payloads, ok/error
 // narrowing, projection folding, and the failure mapping onto the
 // session-tool error seam.
 import { afterEach, describe, expect, it, vi } from 'vitest'

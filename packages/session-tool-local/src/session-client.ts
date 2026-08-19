@@ -7,10 +7,10 @@
  * host-apiproxy `AbstractApiClient`, imported through the `./client` subpath
  * so no host-side implementation is pulled into this headless process.
  *
- * rc.6 has no `session.durableCreate` / `session.wait`. This adapter keeps
+ * rc.7 has no `session.durableCreate` / `session.wait`. This adapter keeps
  * the SessionHttpClient surface and maps those calls onto `session.create`
  * + `session.rename` and a `session.list` poll. parentSessionId, tags, and
- * delegationDepth have no create/rename field on rc.6 and are not sent.
+ * delegationDepth have no create/rename field on rc.7 and are not sent.
  *
  * Transport failures surface as `SessionWebUnreachableError`; the gateway's
  * business errors surface as `SessionToolError` with the wire code.
@@ -62,7 +62,7 @@ const SESSION_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = {
   'workspace-not-found': 'workspace-not-found',
 }
 
-/** Poll interval for the rc.6 wait substitute (`session.list` running bit). */
+/** Poll interval for the rc.7 wait substitute (`session.list` running bit). */
 const WAIT_POLL_MS = 250
 
 /**
@@ -88,7 +88,7 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Create a durable session WITHOUT starting a turn. rc.6 `session.create`
+   * Create a durable session WITHOUT starting a turn. rc.7 `session.create`
    * only accepts workspace/cwd/sessionId/agentPreset; a requested title is
    * applied by a follow-up `session.rename`.
    */
@@ -137,7 +137,7 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Deliver a prompt to a continuable rc.6 subagent child. The gateway
+   * Deliver a prompt to a continuable rc.7 subagent child. The gateway
    * rejects `session.prompt` on these sessions (`agent-busy`); the address
    * is the durable parent/child pair, not the session-only door.
    */
@@ -155,7 +155,7 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Wait for a session's agent to settle. rc.6 has no `session.wait`; this
+   * Wait for a session's agent to settle. rc.7 has no `session.wait`; this
    * polls `session.list` `running` and reads the last `turn/end` from
    * `session.history`. A cold session settles immediately. `timeoutMs`
    * bounds the wait and reports `timeout` without error.
@@ -217,7 +217,7 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Rename a session. rc.6 `session.rename` accepts only `title`. Tags have
+   * Rename a session. rc.7 `session.rename` accepts only `title`. Tags have
    * no RPC and are echoed in the result without a wire write (Step A).
    */
   async rename(sessionId: string, options: { title?: string; tags?: readonly string[] }): Promise<{
