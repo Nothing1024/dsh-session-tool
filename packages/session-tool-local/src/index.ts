@@ -18,11 +18,12 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { get as getMarks, isTitleHidden, normalizeMarks, put as putMarks } from 'session-marks'
+import { get as getMarks, isTitleHidden, normalizeMarks, put as putMarks, TagInvalidError } from 'session-marks'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
   SessionScopeDeniedError,
+  SessionTagInvalidError,
   SessionToolUnauthorizedError,
 } from 'session-tool'
 import type {
@@ -203,7 +204,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (incoming !== undefined || delegated) {
       const merged = [...(incoming ?? [])]
       if (delegated) merged.push('kind:delegated')
-      normalizedMarks = normalizeMarks(merged)
+      normalizedMarks = requireMarks(merged)
     }
     // Register the workspace through the web gateway BEFORE creating the
     // session: the remote operation is the most likely failure, and a
@@ -386,7 +387,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     const index = await this.headerIndex()
     await this.assertAccess(caller, sessionId, index)
     if (options.tags !== undefined) {
-      normalizeMarks(options.tags)
+      requireMarks(options.tags)
     }
     let title: string | undefined
     if (options.title !== undefined) {
@@ -854,6 +855,18 @@ function descendantsOf(
     }
   }
   return result
+}
+
+/** Normalize plugin marks; rethrow as {@link SessionTagInvalidError} for the tool/CLI wire. */
+function requireMarks(tags: readonly string[]): string[] {
+  try {
+    return normalizeMarks(tags)
+  } catch (error) {
+    if (error instanceof TagInvalidError) {
+      throw new SessionTagInvalidError(error.message, { cause: error })
+    }
+    throw error
+  }
 }
 
 /** Project one event onto a readable message row; non-message events project to nothing. */

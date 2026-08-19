@@ -377,7 +377,7 @@ export function apply(ctx: Context): void {
         description: 'live/idle filter store presence; running/completed/failed/aborted filter the log-derived delegation status.',
       },
       origin: { type: 'string', enum: ['delegated'], description: 'Only sessions marked kind:delegated (bare token delegated accepted once for compat).' },
-      include_hidden: { type: 'boolean', description: 'Include hidden-prefix sessions (default false).' },
+      include_hidden: { type: 'boolean', description: 'Include hidden-prefix titles and kind:hidden rows (default false).' },
       cursor: { type: 'string', description: 'Opaque pagination cursor from a previous result.' },
       limit: { type: 'number', description: 'Row cap; clamped to the configured maximum.' },
     },

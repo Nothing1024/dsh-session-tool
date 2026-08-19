@@ -11,13 +11,14 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { TagInvalidError, get, marksPath, put } from 'session-marks'
+import { get, marksPath, put } from 'session-marks'
 import SessionToolLocalService from 'session-tool-local'
 import type { Config as ToolConfig } from 'session-tool-local'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
   SessionScopeDeniedError,
+  SessionTagInvalidError,
   SessionToolError,
   SessionToolUnauthorizedError,
 } from 'session-tool'
@@ -170,7 +171,7 @@ describe('SessionToolLocalService (remote)', () => {
     it('rejects invalid tags before the gateway call', async () => {
       callerSession('caller')
       await expect(ctx.sessionTool.create(agent('caller'), { tags: [''] }))
-        .rejects.toBeInstanceOf(TagInvalidError)
+        .rejects.toBeInstanceOf(SessionTagInvalidError)
       await expect(ctx.sessionTool.create(CLI, { tags: [] }))
         .rejects.toMatchObject({ code: 'tag-invalid' })
       expect(sessionClient().durableCreate).not.toHaveBeenCalled()

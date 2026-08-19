@@ -563,7 +563,7 @@ export function buildProgram(): Command {
     .option('--tag <tag>', 'rows must carry this tag (repeatable)', collect, [])
     .option('--title <text>', 'case-sensitive substring filter on the durable title')
     .option('--status <live|idle>', 'only live or only idle sessions')
-    .option('--include-hidden', 'include hidden-prefix sessions')
+    .option('--include-hidden', 'include hidden-prefix titles and kind:hidden rows')
     .option('--cursor <cursor>', 'opaque pagination cursor from a previous result')
     .option('--limit <n>', 'row cap (clamped to the configured maximum)', parseNonNegativeInt)
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')

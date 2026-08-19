@@ -516,6 +516,13 @@ export class SessionEmptyContentError extends SessionToolError {
   }
 }
 
+/** Plugin mark normalize rejected the tag set (empty, overlong, or over-count). */
+export class SessionTagInvalidError extends SessionToolError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, 'tag-invalid', options)
+  }
+}
+
 /** A configured bound (read rows, list rows) was exceeded or rejected. */
 export class SessionLimitError extends SessionToolError {
   constructor(message: string, options?: ErrorOptions) {

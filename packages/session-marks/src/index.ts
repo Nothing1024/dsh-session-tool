@@ -57,7 +57,7 @@ export function marksPath(dshHome?: string): string {
 }
 
 /**
- * Trim, drop empties, reject overlong tokens, dedupe, sort. Empty sets fail.
+ * Trim; reject empty tokens and empty sets; reject overlong tokens; dedupe; sort.
  * @throws {@link TagInvalidError} with code `tag-invalid`.
  */
 export function normalizeMarks(
