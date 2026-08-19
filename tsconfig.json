@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
+      "session-marks": ["./packages/session-marks/src/index.ts"],
       "session-tool": ["./packages/session-tool/src/index.ts"],
       "session-tool-local": ["./packages/session-tool-local/src/index.ts"],
       "tool-session": ["./packages/tool-session/src/index.ts"],

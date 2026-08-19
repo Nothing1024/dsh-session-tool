@@ -59,7 +59,7 @@ for (const pkg of readdirSync(join(WORKTREE, 'vendor'))) {
 
 // This project's own packages resolve to their TypeScript sources (they are
 // not built yet when type-checking, and their own flags match this base).
-for (const pkg of ['session-tool', 'session-tool-local', 'tool-session', 'session-tool-cli']) {
+for (const pkg of ['session-marks', 'session-tool', 'session-tool-local', 'tool-session', 'session-tool-cli']) {
   paths[pkg] = [rel(join(ROOT, 'packages', pkg, 'src', 'index.ts'))]
 }
 
