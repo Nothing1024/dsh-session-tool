@@ -8,7 +8,6 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
-import SessionTagsService from '@deepseek-ai/dsh-session-tags'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import SessionToolLocalService from 'session-tool-local'
 import type { Config as ToolConfig } from 'session-tool-local'
@@ -30,7 +29,6 @@ const TOOL_CONFIG: ToolConfig = {
 }
 
 const TITLE_CONFIG = { fallbackMaxWords: 5, fallbackMaxBytes: 40, maxTitleBytes: 80 }
-const TAGS_CONFIG = { maxTags: 5, maxTagBytes: 32, hiddenPrefixes: ['~', '[internal]'] }
 
 const WS = {
   workspaceId: 'ws-1',
@@ -43,11 +41,11 @@ const WS = {
 
 /** Compose the minimal session stack over one persistence root. */
 async function compose(root: string): Promise<Context> {
+  process.env.DSH_HOME = root
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(SessionPersistenceJsonl, { root })
+  await ctx.plugin(SessionPersistenceJsonl, { root: join(root, 'sessions') })
   await ctx.plugin(SessionTitleService, TITLE_CONFIG)
-  await ctx.plugin(SessionTagsService, TAGS_CONFIG)
   await ctx.plugin(SessionToolLocalService, TOOL_CONFIG)
   return ctx
 }
@@ -84,9 +82,11 @@ const CLI: SessionToolCaller = { kind: 'cli' }
 describe('SessionToolLocalService workspace surface', () => {
   let root: string
   let ctx: Context
+  let previousHome: string | undefined
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    previousHome = process.env.DSH_HOME
     root = mkdtempSync(join(tmpdir(), 'session-tool-ws-test-'))
     ctx = await compose(root)
     ctx.sessions.create(SessionId('caller'))
@@ -95,6 +95,8 @@ describe('SessionToolLocalService workspace surface', () => {
   afterEach(async () => {
     await ctx.fiber.dispose()
     rmSync(root, { recursive: true, force: true })
+    if (previousHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previousHome
   })
 
   describe('create with workspacePath', () => {

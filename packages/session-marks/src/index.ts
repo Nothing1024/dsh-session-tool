@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-/** Default cap on a mark set (vendor session-tags maxTags). */
+/** Default cap on a mark set (historical maxTags). */
 export const DEFAULT_MAX_TAGS = 20
 /** Default cap on one mark's UTF-8 byte length. */
 export const DEFAULT_MAX_TAG_BYTES = 128
@@ -91,6 +91,15 @@ export function normalizeMarks(
 }
 
 /**
+ * Whether a durable title starts with any configured hidden prefix.
+ * Empty or undefined titles are not hidden.
+ */
+export function isTitleHidden(title: string | undefined, prefixes: readonly string[]): boolean {
+  if (title === undefined || title === '') return false
+  return prefixes.some(prefix => prefix !== '' && title.startsWith(prefix))
+}
+
+/**
  * Replace the mark set for one session (last-wins) and persist atomically.
  * @returns the normalized set that was stored.
  */
@@ -125,6 +134,18 @@ export async function get(
 }
 
 /**
+ * List every last-wins row in the mark table.
+ */
+export async function listAll(options?: MarksOptions): Promise<SessionMarksRow[]> {
+  const table = await loadTable(marksPath(options?.dshHome))
+  const rows: SessionMarksRow[] = []
+  for (const [id, tags] of table) {
+    rows.push({ id, tags: [...tags] })
+  }
+  return rows
+}
+
+/**
  * List rows whose current set contains `kind`.
  * @param kind - exact token, e.g. `kind:vibee`.
  */
@@ -136,12 +157,7 @@ export async function listByKind(
   if (token === '') {
     throw new TagInvalidError('tag-invalid: empty kind')
   }
-  const table = await loadTable(marksPath(options?.dshHome))
-  const rows: SessionMarksRow[] = []
-  for (const [id, tags] of table) {
-    if (tags.includes(token)) rows.push({ id, tags: [...tags] })
-  }
-  return rows
+  return (await listAll(options)).filter(row => row.tags.includes(token))
 }
 
 /**

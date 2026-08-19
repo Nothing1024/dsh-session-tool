@@ -6,8 +6,10 @@
  * The capability follows the Codex session model as methodology only: durable
  * addressable sessions, append-only transcripts, fork lineage, and list-based
  * resume — all built on DSH's existing session stack (event-sourced
- * `Session` logs, session persistence, title and tag services) with zero new
- * event types.
+ * `Session` logs, session persistence, official title service). Tool parameter
+ * `tags` are plugin marks (`session-marks` jsonl). Reserved names:
+ * `kind:vibee`, `kind:delegated`, `kind:hidden`, `ui:aux`. The official GUI
+ * does not show them; later Web uses `listByKind`.
  * @module session-tool
  */
 
@@ -34,7 +36,7 @@ export interface SessionToolCreateOptions {
    * parent must be the caller itself or one of its ancestors.
    */
   readonly parentSessionId?: SessionId
-  /** Tag set accepted immediately after creation (last-wins replace). */
+  /** Plugin mark set written after creation (last-wins replace; not official GUI). */
   readonly tags?: readonly string[]
   /**
    * Register (or reuse) the workspace at this directory through the web
@@ -141,13 +143,13 @@ export type SessionToolCollectWait = 'all' | 'any' | 'n' | 'first-failed'
 /** Failure policy after the predicate satisfied: `continue` leaves the rest running; `cancel-rest` cancels the unfinished members (never deletes them). */
 export type SessionToolCollectOnFailure = 'continue' | 'cancel-rest'
 
-/** Request for {@link SessionToolService.collect}: the session set is the lineage tree rooted at `root`, or the tag aggregation named by `tags` (exactly one of the two). */
+/** Request for {@link SessionToolService.collect}: the session set is the lineage tree rooted at `root`, or the plugin-mark aggregation named by `tags` (exactly one of the two). */
 export interface SessionToolCollectRequest {
   /** Lineage-tree root: the set is the root and every transitive descendant. */
   readonly root?: SessionId
-  /** Tag aggregation: the set is every session carrying all listed tags. */
+  /** Plugin-mark aggregation: the set is every session carrying all listed marks. */
   readonly tags?: readonly string[]
-  /** Optional set filter by projection status and/or tag intersection. */
+  /** Optional set filter by projection status and/or plugin-mark intersection. */
   readonly filter?: {
     readonly status?: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
     readonly tags?: readonly string[]
@@ -191,7 +193,7 @@ export interface SessionToolListFilter {
   readonly scope?: SessionToolListScope
   /** Tree root for scope `tree`; the caller must be the root or one of its ancestors. */
   readonly sessionId?: SessionId
-  /** Rows must carry every listed tag (intersection against the folded tag set). */
+  /** Rows must carry every listed plugin mark (intersection against the mark table). */
   readonly tags?: readonly string[]
   /** Case-sensitive substring filter on the durable title. */
   readonly title?: string
@@ -203,8 +205,8 @@ export interface SessionToolListFilter {
    */
   readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted'
   /**
-   * Only delegated sessions: those whose tag set includes `delegated` or
-   * whose header records a positive delegation depth.
+   * Only delegated sessions: those whose plugin marks include `kind:delegated`
+   * (bare token `delegated` accepted once for compat).
    */
   readonly origin?: 'delegated'
   /** Exemption from the hidden-prefix filter (default `false`: hidden rows are excluded). */
@@ -221,7 +223,7 @@ export interface SessionToolListRow {
   readonly sessionId: SessionId
   /** Durable title, when one has been accepted. */
   readonly title?: string
-  /** Folded tag set (empty before any accepted set). */
+  /** Plugin mark set (empty before any accepted set). Official GUI does not show these. */
   readonly tags: readonly string[]
   /** `live` while the session is in this process's store, `idle` otherwise. */
   readonly status: 'live' | 'idle'
@@ -247,7 +249,7 @@ export interface SessionToolListResult {
 export interface SessionToolRenameOptions {
   /** Explicit title; pins the title and stops automatic generation. */
   readonly title?: string
-  /** Tag set (last-wins replace of the folded set). */
+  /** Plugin mark set (last-wins replace of the mark-table row). */
   readonly tags?: readonly string[]
 }
 
@@ -395,7 +397,7 @@ export interface SessionToolService {
   /**
    * Collect a set of sessions under one declarative completion predicate —
    * the coordinator's fan-out gather. The set is a lineage tree (`root`) or
-   * a tag aggregation (`tags`); the predicate (`wait`) is evaluated purely
+   * a plugin-mark aggregation (`tags`); the predicate (`wait`) is evaluated purely
    * over each member's log-derived status until it holds or the deadline
    * passes. On satisfaction, `onFailure: 'cancel-rest'` cancels the
    * unfinished members (never deletes them). This is an execution primitive:
@@ -408,7 +410,7 @@ export interface SessionToolService {
   collect(caller: SessionToolCaller, request: SessionToolCollectRequest): Promise<SessionToolCollectResult>
 
   /**
-   * Rename a session and/or replace its tag set.
+   * Rename a session and/or replace its plugin mark set.
    * @param caller - the calling agent or the CLI.
    * @param sessionId - target session; the caller must be the session itself
    *   or one of its ancestors.
@@ -465,7 +467,7 @@ export type SessionToolErrorCode =
   | 'scope-denied'
   | 'empty-content'
   | 'limit-exceeded'
-  // Translated from the owned session-title / session-tags services.
+  // title-invalid from session-title; tag-invalid from plugin mark normalize.
   | 'title-invalid'
   | 'tag-invalid'
   // The web gateway was unreachable or refused the request at the carrier layer.

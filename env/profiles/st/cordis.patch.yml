@@ -1,5 +1,5 @@
 # User overlay for profile `st`. Keep empty.
-# tool-session already ships session-tags / session-tool-local / tool-session
+# tool-session already ships session-tool-local / tool-session
 # via its own bundle patch. Do not re-insert those rows here (double mount).
 #
 # Only overlay when the web port is not 3080, e.g.:

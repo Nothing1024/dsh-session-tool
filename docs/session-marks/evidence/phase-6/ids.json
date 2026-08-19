@@ -1,0 +1,74 @@
+{
+  "ids": {
+    "uf003a": "session-d791087d-2b9e-40b7-ac81-30e21f604242",
+    "uf003b": "session-1e042024-188e-4def-92fa-b6b5d479d013",
+    "uf003p": "session-81d819aa-dff5-482f-a034-a45b91d53f1f",
+    "uf001": "session-25e1e12d-7164-4881-84b3-cc9ac4ce9056",
+    "uf002s": "session-9fab82d6-cbe1-4958-b0d2-5b66d72d8ef9",
+    "uf002h": "session-3de4e7ec-be66-4484-9a9d-4a432c6502fa",
+    "uf002o": "session-66ec96c9-c200-4177-8da5-971f75eb5ab1",
+    "uf004": "session-964f7ddf-5088-406b-92fe-f2fac4b14094",
+    "uf005p": "session-110f1d04-0852-42f2-8435-b33c61588290",
+    "uf005c": "session-657fa1bd-b550-48e3-a9ba-1770095cc8ed",
+    "uf005plain": "session-7654703f-ae6d-49f0-a379-813d392a136f"
+  },
+  "rows": {
+    "UF-002 empty": {
+      "ok": true,
+      "detail": "empty list/marks not an error"
+    },
+    "UF-001 fail-web": {
+      "ok": true,
+      "detail": "non-zero; no new jsonl row"
+    },
+    "UF-006": {
+      "ok": true,
+      "detail": "tag-invalid empty+overlong; no half row"
+    },
+    "UF-003 success": {
+      "ok": true,
+      "detail": "list=['session-d791087d-2b9e-40b7-ac81-30e21f604242', 'session-1e042024-188e-4def-92fa-b6b5d479d013'] collect=['session-1e042024-188e-4def-92fa-b6b5d479d013', 'session-d791087d-2b9e-40b7-ac81-30e21f604242']"
+    },
+    "UF-003 empty": {
+      "ok": true,
+      "detail": "empty non-error"
+    },
+    "UF-001 success": {
+      "ok": true,
+      "detail": "session-25e1e12d-7164-4881-84b3-cc9ac4ce9056"
+    },
+    "UF-007": {
+      "ok": true,
+      "detail": "re-list after CLI exit"
+    },
+    "UF-002 success": {
+      "ok": true,
+      "detail": "default=['sm-uf002-ok'] include=['~sm-uf002-secret', 'sm-uf002-visible', 'sm-uf002-ok']"
+    },
+    "UF-004 success": {
+      "ok": true,
+      "detail": "session-964f7ddf-5088-406b-92fe-f2fac4b14094"
+    },
+    "UF-004 fail-empty": {
+      "ok": true,
+      "detail": "empty-content"
+    },
+    "UF-005 success": {
+      "ok": true,
+      "detail": "CLI --parent + unit"
+    },
+    "UF-005 plain": {
+      "ok": true,
+      "detail": "no kind:delegated"
+    },
+    "UF-008 success": {
+      "ok": true,
+      "detail": "list n=3"
+    },
+    "UF-008 miss": {
+      "ok": true,
+      "detail": "not-found"
+    }
+  },
+  "all_ok": true
+}

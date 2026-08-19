@@ -1,0 +1,118 @@
+=== PATH ===
+[redacted PATH]
+=== node/pnpm ===
+v24.18.0
+11.7.0
+=== pnpm test ===
+$ vitest run
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 2ms
+ ✓ packages/session-marks/tests/marks.spec.ts (9 tests) 13ms
+ ↓ packages/session-tool-cli/tests/e2e.spec.ts (1 test | 1 skipped)
+ ✓ packages/session-tool-local/tests/delegation-projection.spec.ts (8 tests) 3ms
+ ✓ packages/tool-session/tests/tools.spec.ts (17 tests) 15ms
+ ✓ packages/session-tool-cli/tests/marks.spec.ts (5 tests) 11ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (11 tests) 18ms
+ ✓ packages/session-tool-local/tests/workspace.spec.ts (12 tests) 39ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (22 tests) 47ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (45 tests) 1695ms
+       ✓ wait-all aggregates when every member is terminal  340ms
+       ✓ returns a timeout snapshot without error when the deadline passes  341ms
+       ✓ resolves a tag aggregation and reports an empty set as unsatisfied  531ms
+
+ Test Files  9 passed | 1 skipped (10)
+      Tests  135 passed | 1 skipped (136)
+   Start at  10:40:05
+   Duration  1.93s (transform 598ms, setup 0ms, import 1.15s, tests 1.84s, environment 0ms)
+
+=== pnpm test exit: 0 ===
+=== pnpm run build ===
+$ pnpm -r run build
+Scope: 5 of 6 workspace projects
+packages/session-marks build$ tsdown
+packages/session-tool build$ tsdown
+packages/session-marks build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-marks build: ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-marks/tsdown.config.ts 
+packages/session-marks build: ℹ entry: src/index.ts
+packages/session-marks build: ℹ target: es2024
+packages/session-marks build: ℹ tsconfig: tsconfig.json
+packages/session-marks build: ℹ Build start
+packages/session-tool build: ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool/tsdown.config.ts 
+packages/session-tool build: ℹ entry: src/index.ts
+packages/session-tool build: ℹ target: es2024
+packages/session-tool build: ℹ tsconfig: tsconfig.json
+packages/session-tool build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool build: ℹ Build start
+packages/session-marks build: ℹ lib/index.js         6.85 kB │ gzip: 2.57 kB
+packages/session-marks build: ℹ lib/index.js.map    12.64 kB │ gzip: 4.20 kB
+packages/session-marks build: ℹ lib/index.d.ts.map   0.45 kB │ gzip: 0.26 kB
+packages/session-marks build: ℹ lib/index.d.ts       3.22 kB │ gzip: 1.29 kB
+packages/session-marks build: ℹ 4 files, total: 23.15 kB
+packages/session-marks build: ✔ Build complete in 272ms
+packages/session-marks build: Done
+packages/session-tool build: ℹ lib/index.js         2.82 kB │ gzip: 1.12 kB
+packages/session-tool build: ℹ lib/index.js.map    23.68 kB │ gzip: 6.33 kB
+packages/session-tool build: ℹ lib/index.d.ts.map   1.82 kB │ gzip: 0.57 kB
+packages/session-tool build: ℹ lib/index.d.ts      21.84 kB │ gzip: 5.80 kB
+packages/session-tool build: ℹ 4 files, total: 50.16 kB
+packages/session-tool build: ✔ Build complete in 295ms
+packages/session-tool build: Done
+packages/session-tool-cli build$ tsdown
+packages/session-tool-local build$ tsdown
+packages/session-tool-local build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool-cli build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool-local build: ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-local/tsdown.config.ts 
+packages/session-tool-cli build: ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts 
+packages/session-tool-local build: ℹ entry: src/index.ts
+packages/session-tool-local build: ℹ target: es2024
+packages/session-tool-local build: ℹ tsconfig: tsconfig.json
+packages/session-tool-local build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-local build: ℹ Build start
+packages/session-tool-cli build: ℹ entry: src/index.ts, src/bin.ts
+packages/session-tool-cli build: ℹ target: es2024
+packages/session-tool-cli build: ℹ tsconfig: tsconfig.json
+packages/session-tool-cli build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-cli build: ℹ Build start
+packages/session-tool-cli build: ℹ Cleaning 8 files
+packages/session-tool-cli build: ℹ Granting execute permission to lib/bin.js
+packages/session-tool-cli build: ℹ lib/index.js              0.32 kB │ gzip:  0.19 kB
+packages/session-tool-cli build: ℹ lib/bin.js                0.20 kB │ gzip:  0.18 kB
+packages/session-tool-cli build: ℹ lib/src-DNhO6DLw.js.map  46.48 kB │ gzip: 11.27 kB
+packages/session-tool-cli build: ℹ lib/src-DNhO6DLw.js      26.07 kB │ gzip:  6.84 kB
+packages/session-tool-cli build: ℹ lib/index.d.ts.map        0.30 kB │ gzip:  0.21 kB
+packages/session-tool-cli build: ℹ lib/bin.js.map            0.27 kB │ gzip:  0.22 kB
+packages/session-tool-cli build: ℹ lib/index.d.ts            2.73 kB │ gzip:  1.11 kB
+packages/session-tool-cli build: ℹ lib/bin.d.ts              0.01 kB │ gzip:  0.03 kB
+packages/session-tool-cli build: ℹ 8 files, total: 76.36 kB
+packages/session-tool-cli build: ✔ Build complete in 319ms
+packages/session-tool-cli build: Done
+packages/session-tool-local build: ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+packages/session-tool-local build: See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+packages/session-tool-local build: Detected dependencies in bundle:
+packages/session-tool-local build: - zod
+packages/session-tool-local build: ℹ lib/index.js        170.16 kB │ gzip: 36.30 kB
+packages/session-tool-local build: ℹ lib/index.js.map    465.55 kB │ gzip: 87.56 kB
+packages/session-tool-local build: ℹ lib/index.d.ts.map    0.93 kB │ gzip:  0.40 kB
+packages/session-tool-local build: ℹ lib/index.d.ts        9.36 kB │ gzip:  3.00 kB
+packages/session-tool-local build: ℹ 4 files, total: 645.99 kB
+packages/session-tool-local build: ✔ Build complete in 396ms
+packages/session-tool-local build: Done
+packages/tool-session build$ tsdown
+packages/tool-session build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/tool-session build: ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/tool-session/tsdown.config.ts 
+packages/tool-session build: ℹ entry: src/index.ts
+packages/tool-session build: ℹ target: es2024
+packages/tool-session build: ℹ tsconfig: tsconfig.json
+packages/tool-session build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/tool-session build: ℹ Build start
+packages/tool-session build: ℹ lib/index.js        20.23 kB │ gzip: 4.96 kB
+packages/tool-session build: ℹ lib/index.js.map    33.10 kB │ gzip: 7.68 kB
+packages/tool-session build: ℹ lib/index.d.ts.map   0.12 kB │ gzip: 0.13 kB
+packages/tool-session build: ℹ lib/index.d.ts       0.39 kB │ gzip: 0.26 kB
+packages/tool-session build: ℹ 4 files, total: 53.83 kB
+packages/tool-session build: ✔ Build complete in 289ms
+packages/tool-session build: Done
+=== pnpm build exit: 0 ===

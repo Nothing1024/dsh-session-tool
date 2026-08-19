@@ -2,7 +2,7 @@
   "name": "session-tool-local",
   "version": "0.1.0",
   "private": true,
-  "description": "Local provider for the session-tool Service Definition: implements ctx.sessionTool over the DSH session stack (live store, JSONL/SQLite persistence, title and tag services)",
+  "description": "Local provider for the session-tool Service Definition: implements ctx.sessionTool over the DSH session stack (live store, JSONL persistence, title service) and plugin session marks",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -19,10 +19,11 @@
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "build": "tsdown"
+    "build": "tsdown",
+    "test": "vitest run --config ../../vitest.config.ts packages/session-tool-local/tests"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-session-tags": "file:../../vendor/session-tags",
+    "session-marks": "workspace:*",
     "session-tool": "workspace:*"
   },
   "peerDependencies": {
@@ -44,7 +45,6 @@
     "@deepseek-ai/dsh-session-persistence": "0.1.0-rc.7",
     "@deepseek-ai/dsh-session-persistence-jsonl": "0.1.0-rc.7",
     "@deepseek-ai/dsh-session-projection": "0.1.0-rc.7",
-    "@deepseek-ai/dsh-session-tags": "file:../../vendor/session-tags",
     "@deepseek-ai/dsh-session-title": "0.1.0-rc.7",
     "schemastery": "^3.18.0",
     "zod": "^4.4.3"

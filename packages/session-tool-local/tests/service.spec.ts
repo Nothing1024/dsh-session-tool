@@ -3,7 +3,7 @@
 // list delegate to the mocked gateway clients; read stays local over the
 // persistence backend; the fence and scope logic run in-process over the
 // merged header index.
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -11,6 +11,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { TagInvalidError, get, marksPath, put } from 'session-marks'
 import SessionToolLocalService from 'session-tool-local'
 import type { Config as ToolConfig } from 'session-tool-local'
 import {
@@ -36,9 +37,10 @@ const TOOL_CONFIG: ToolConfig = {
 
 /** Compose the minimal read stack: live store + persistence + the service. */
 async function compose(root: string, config: ToolConfig = TOOL_CONFIG): Promise<Context> {
+  process.env.DSH_HOME = root
   const ctx = new Context()
   await ctx.plugin(SessionStore)
-  await ctx.plugin(SessionPersistenceJsonl, { root })
+  await ctx.plugin(SessionPersistenceJsonl, { root: join(root, 'sessions') })
   await ctx.plugin(SessionToolLocalService, config)
   return ctx
 }
@@ -84,9 +86,11 @@ function listRow(id: string, options: {
 describe('SessionToolLocalService (remote)', () => {
   let root: string
   let ctx: Context
+  let previousHome: string | undefined
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    previousHome = process.env.DSH_HOME
     root = mkdtempSync(join(tmpdir(), 'session-tool-test-'))
     ctx = await compose(root)
   })
@@ -94,6 +98,8 @@ describe('SessionToolLocalService (remote)', () => {
   afterEach(async () => {
     await ctx.fiber.dispose()
     rmSync(root, { recursive: true, force: true })
+    if (previousHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previousHome
   })
 
   /** Establish the caller's own session in the live store. */
@@ -102,7 +108,7 @@ describe('SessionToolLocalService (remote)', () => {
   }
 
   describe('create', () => {
-    it('delegates to the gateway with title, tags, and explicit lineage', async () => {
+    it('delegates to the gateway without tags, then puts marks after success', async () => {
       callerSession('caller')
       sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-9' })
       const created = await ctx.sessionTool.create(agent('caller'), {
@@ -115,11 +121,16 @@ describe('SessionToolLocalService (remote)', () => {
       expect(sessionClient().durableCreate).toHaveBeenCalledWith({
         title: 'my session',
         parentSessionId: 'caller',
-        tags: ['wip'],
         cwd: '/proj',
         delegationDepth: 1,
       })
+      expect(sessionClient().durableCreate.mock.calls[0]?.[0]).not.toHaveProperty('tags')
       expect(created.sessionId).toBe('session-9')
+      expect(await get('session-9')).toEqual(['kind:delegated', 'wip'])
+      const jsonl = readFileSync(marksPath(root), 'utf8')
+      expect(jsonl).toContain('"id":"session-9"')
+      expect(jsonl).toContain('kind:delegated')
+      expect(jsonl).toContain('wip')
     })
 
     it('joins an agent caller tree by default and stays top-level for the CLI', async () => {
@@ -130,6 +141,8 @@ describe('SessionToolLocalService (remote)', () => {
         parentSessionId: 'caller',
         delegationDepth: 1,
       }))
+      expect(sessionClient().durableCreate.mock.calls.at(-1)?.[0]).not.toHaveProperty('tags')
+      expect(await get('session-1')).toEqual(['kind:delegated'])
       sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-2' })
       await ctx.sessionTool.create(CLI, { title: 'top' })
       expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.not.objectContaining({
@@ -139,6 +152,28 @@ describe('SessionToolLocalService (remote)', () => {
       expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.not.objectContaining({
         delegationDepth: expect.anything(),
       }))
+      expect(await get('session-2')).toBeUndefined()
+    })
+
+    it('auto-tags delegated creates and leaves a parentless CLI unmarked', async () => {
+      callerSession('caller')
+      callerSession('other')
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'cli-child' })
+      await ctx.sessionTool.create(CLI, { parentSessionId: SessionId('other'), tags: ['plan'] })
+      expect(await get('cli-child')).toEqual(['kind:delegated', 'plan'])
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'cli-plain' })
+      await ctx.sessionTool.create(CLI, { tags: ['plan'] })
+      expect(await get('cli-plain')).toEqual(['plan'])
+      expect(await get('cli-plain')).not.toContain('kind:delegated')
+    })
+
+    it('rejects invalid tags before the gateway call', async () => {
+      callerSession('caller')
+      await expect(ctx.sessionTool.create(agent('caller'), { tags: [''] }))
+        .rejects.toBeInstanceOf(TagInvalidError)
+      await expect(ctx.sessionTool.create(CLI, { tags: [] }))
+        .rejects.toMatchObject({ code: 'tag-invalid' })
+      expect(sessionClient().durableCreate).not.toHaveBeenCalled()
     })
 
     it('honours an explicit delegation depth and carries a deeper caller depth', async () => {
@@ -173,15 +208,17 @@ describe('SessionToolLocalService (remote)', () => {
       sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-x' })
       await expect(ctx.sessionTool.create(CLI, { parentSessionId: SessionId('other') }))
         .resolves.toBeDefined()
+      expect(await get('session-x')).toEqual(['kind:delegated'])
     })
 
-    it('propagates a gateway validation rejection', async () => {
+    it('propagates a gateway validation rejection and does not write marks', async () => {
       callerSession('caller')
       sessionClient().durableCreate.mockRejectedValue(
         new SessionToolError('session title must contain visible characters', 'title-invalid'),
       )
       await expect(ctx.sessionTool.create(agent('caller'), { title: '   ' }))
         .rejects.toMatchObject({ code: 'title-invalid' })
+      expect(await get('session-9')).toBeUndefined()
     })
   })
 
@@ -451,8 +488,9 @@ describe('SessionToolLocalService (remote)', () => {
         const client = sessionClient()
         client.list.mockResolvedValue([
           listRow('root', {}),
-          listRow('delegated-hidden', { parentSessionId: 'root', tags: ['delegated'] }),
+          listRow('delegated-hidden', { parentSessionId: 'root' }),
         ])
+        await put('delegated-hidden', ['kind:delegated'])
 
         const hidden = await ctx2.sessionTool.list(agent('root'), { scope: 'all' })
         expect(hidden.sessions.map(row => row.sessionId)).toEqual(['root'])
@@ -466,17 +504,31 @@ describe('SessionToolLocalService (remote)', () => {
   })
 
   describe('rename', () => {
-    it('delegates to the gateway and echoes the accepted values', async () => {
+    it('renames title on the gateway and replaces tags in the mark table', async () => {
       callerSession('caller')
       const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
       await ctx.sessions.flush(target)
-      sessionClient().rename.mockResolvedValue({ title: 'new title', tags: ['b', 'c'], seq: 7 })
+      sessionClient().rename.mockResolvedValue({ title: 'new title', seq: 7 })
       const result = await ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), {
         title: 'new title',
         tags: ['b', 'c'],
       })
-      expect(sessionClient().rename).toHaveBeenCalledWith('session-1', { title: 'new title', tags: ['b', 'c'] })
+      expect(sessionClient().rename).toHaveBeenCalledWith('session-1', { title: 'new title' })
       expect(result).toMatchObject({ title: 'new title', tags: ['b', 'c'] })
+      expect(await get('session-1')).toEqual(['b', 'c'])
+    })
+
+    it('replaces tags without calling the gateway when title is omitted', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      await ctx.sessions.flush(target)
+      await put('session-1', ['a', 'b'])
+      const result = await ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), {
+        tags: ['kind:hidden'],
+      })
+      expect(sessionClient().rename).not.toHaveBeenCalled()
+      expect(result).toMatchObject({ tags: ['kind:hidden'] })
+      expect(await get('session-1')).toEqual(['kind:hidden'])
     })
 
     it('requires at least one of title or tags and maps validation codes', async () => {
@@ -490,9 +542,9 @@ describe('SessionToolLocalService (remote)', () => {
       )
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), { title: ' ' }))
         .rejects.toMatchObject({ code: 'title-invalid' })
-      sessionClient().rename.mockRejectedValue(new SessionToolError('invalid tag set', 'tag-invalid'))
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), { tags: [' ', ''] }))
         .rejects.toMatchObject({ code: 'tag-invalid' })
+      expect(sessionClient().rename).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -649,9 +701,11 @@ describe('SessionToolLocalService (remote)', () => {
     it('resolves a tag aggregation and reports an empty set as unsatisfied', async () => {
       callerSession('root')
       sessionClient().list.mockResolvedValue([
-        listRow('tagged-a', { parentSessionId: 'root', tags: ['plan', 'delegated'] }),
-        listRow('tagged-b', { parentSessionId: 'root', tags: ['plan'] }),
+        listRow('tagged-a', { parentSessionId: 'root' }),
+        listRow('tagged-b', { parentSessionId: 'root' }),
       ])
+      await put('tagged-a', ['delegated', 'plan'])
+      await put('tagged-b', ['plan'])
       const aggregated = await ctx.sessionTool.collect(agent('root'), {
         tags: ['plan'],
         wait: 'any',
@@ -706,13 +760,30 @@ describe('SessionToolLocalService (remote)', () => {
       expect(included.sessions.map(row => row.sessionId)).toEqual(['root', 'child', 'grandchild'])
     })
 
+    it('hides ~ titles and kind:hidden unless includeHidden is set', async () => {
+      callerSession('root')
+      sessionClient().list.mockResolvedValue([
+        listRow('secret', { title: '~secret' }),
+        listRow('hidden-kind', { title: '订单同步' }),
+        listRow('ok', { title: 'ok' }),
+      ])
+      await put('hidden-kind', ['kind:hidden'])
+      const hidden = await ctx.sessionTool.list(agent('root'), { scope: 'all' })
+      expect(hidden.sessions.map(row => row.sessionId)).toEqual(['ok'])
+      const included = await ctx.sessionTool.list(agent('root'), { scope: 'all', includeHidden: true })
+      expect(included.sessions.map(row => row.sessionId)).toEqual(['hidden-kind', 'ok', 'secret'])
+      expect(included.sessions.find(row => row.sessionId === 'hidden-kind')?.tags).toEqual(['kind:hidden'])
+    })
+
     it('filters by tag intersection, title substring, and status', async () => {
       callerSession('root')
       sessionClient().list.mockResolvedValue([
-        listRow('a', { parentSessionId: 'root', title: 'alpha plan', tags: ['plan', 'wip'] }),
-        listRow('b', { parentSessionId: 'root', title: 'beta notes', tags: ['notes'] }),
+        listRow('a', { parentSessionId: 'root', title: 'alpha plan' }),
+        listRow('b', { parentSessionId: 'root', title: 'beta notes' }),
         listRow('c', { parentSessionId: 'root', title: 'gamma', running: true }),
       ])
+      await put('a', ['plan', 'wip'])
+      await put('b', ['notes'])
       const byTag = await ctx.sessionTool.list(agent('root'), { scope: 'all', tags: ['plan'] })
       expect(byTag.sessions.map(row => row.sessionId)).toEqual(['a'])
       const byTitle = await ctx.sessionTool.list(agent('root'), { scope: 'all', title: 'notes' })
@@ -761,28 +832,28 @@ describe('SessionToolLocalService (remote)', () => {
       expect(row?.delegationStatus).toBe('completed')
     })
 
-    it('filters by the delegated origin (tag or positive delegation depth)', async () => {
+    it('filters origin=delegated by kind:delegated (bare delegated is compat)', async () => {
       callerSession('root')
       const tagged = ctx.sessions.create(SessionId('tagged'), {
         meta: { cwd: '/proj', parentSession: 'root' },
       })
-      tagged.append('session/tags', { tags: ['delegated'], source: { kind: 'user' } })
-      const deep = ctx.sessions.create(SessionId('deep'), {
-        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 2, createdAt: tagged.header.createdAt },
+      ctx.sessions.create(SessionId('bare'), {
+        meta: { cwd: '/proj', parentSession: 'root', createdAt: tagged.header.createdAt },
       })
-      const plain = ctx.sessions.create(SessionId('plain'), {
+      ctx.sessions.create(SessionId('plain'), {
         meta: { cwd: '/proj', parentSession: 'root', createdAt: tagged.header.createdAt },
       })
       sessionClient().list.mockResolvedValue([
         listRow('root', {}),
-        listRow('tagged', { parentSessionId: 'root', tags: ['delegated'] }),
-        listRow('deep', { parentSessionId: 'root' }),
+        listRow('tagged', { parentSessionId: 'root' }),
+        listRow('bare', { parentSessionId: 'root' }),
         listRow('plain', { parentSessionId: 'root' }),
       ])
+      await put('tagged', ['kind:delegated'])
+      await put('bare', ['delegated'])
 
       const delegated = await ctx.sessionTool.list(agent('root'), { scope: 'all', origin: 'delegated' })
-      // Same createdAt, so rows sort by id.
-      expect(delegated.sessions.map(row => row.sessionId)).toEqual(['deep', 'tagged'])
+      expect(delegated.sessions.map(row => row.sessionId)).toEqual(['bare', 'tagged'])
     })
 
     it('paginates with cursor and limit', async () => {

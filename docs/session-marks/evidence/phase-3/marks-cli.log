@@ -1,0 +1,155 @@
+=== date ===
+Wed Aug 19 10:25:15 CST 2026
+=== node/pnpm ===
+v24.18.0
+11.7.0
+
+=== pnpm --filter session-marks test ===
+$ vitest run --config ../../vitest.config.ts packages/session-marks/tests
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-marks/tests/marks.spec.ts (9 tests) 11ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  10:25:17
+   Duration  105ms (transform 17ms, setup 0ms, import 25ms, tests 11ms, environment 0ms)
+
+
+=== pnpm --filter session-marks build ===
+$ tsdown
+ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-marks/tsdown.config.ts 
+ℹ entry: src/index.ts
+ℹ target: es2024
+ℹ tsconfig: tsconfig.json
+ℹ Build start
+ℹ lib/index.js         6.86 kB │ gzip: 2.57 kB
+ℹ lib/index.js.map    12.65 kB │ gzip: 4.20 kB
+ℹ lib/index.d.ts.map   0.45 kB │ gzip: 0.26 kB
+ℹ lib/index.d.ts       3.23 kB │ gzip: 1.29 kB
+ℹ 4 files, total: 23.18 kB
+✔ Build complete in 332ms
+
+=== pnpm --filter session-tool-cli test ===
+$ vitest run --config ../../vitest.config.ts packages/session-tool-cli/tests
+
+ RUN  v4.1.10 /Users/dev/workspace/dsh/plugin/session-tool/plugin
+
+ ↓ packages/session-tool-cli/tests/e2e.spec.ts (1 test | 1 skipped)
+ ✓ packages/session-tool-cli/tests/marks.spec.ts (5 tests) 9ms
+
+ Test Files  1 passed | 1 skipped (2)
+      Tests  5 passed | 1 skipped (6)
+   Start at  10:25:20
+   Duration  139ms (transform 64ms, setup 0ms, import 124ms, tests 9ms, environment 0ms)
+
+
+=== pnpm --filter session-tool-cli build ===
+$ tsdown
+ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts 
+ℹ entry: src/index.ts, src/bin.ts
+ℹ target: es2024
+ℹ tsconfig: tsconfig.json
+
+ WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+
+ℹ Build start
+ℹ Granting execute permission to lib/bin.js
+ℹ lib/index.js              0.32 kB │ gzip:  0.19 kB
+ℹ lib/bin.js                0.20 kB │ gzip:  0.18 kB
+ℹ lib/src-DNhO6DLw.js.map  46.48 kB │ gzip: 11.27 kB
+ℹ lib/src-DNhO6DLw.js      26.07 kB │ gzip:  6.84 kB
+ℹ lib/index.d.ts.map        0.30 kB │ gzip:  0.21 kB
+ℹ lib/bin.js.map            0.27 kB │ gzip:  0.22 kB
+ℹ lib/index.d.ts            2.73 kB │ gzip:  1.11 kB
+ℹ lib/bin.d.ts              0.01 kB │ gzip:  0.03 kB
+ℹ 8 files, total: 76.36 kB
+✔ Build complete in 316ms
+
+=== installAnchor mention check ===
+src/index.ts: no session-tool-env
+
+=== marks verbs ===
+559:    .command('list')
+609:    .command('collect')
+647:    .command('marks')
+651:    .command('list')
+667:    .command('get')
+714:    .command('list')
+
+=== built CLI mentions session-tool-env? ===
+packages/session-tool-cli/lib/src-bGWO2t0D.js:44:	return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL("../../../../env/session-tool-env", import.meta.url));
+packages/session-tool-cli/lib/src-Blsr63_O.js:44:	return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL("../../../../env/session-tool-env", import.meta.url));
+packages/session-tool-cli/lib/src-C0Va-3ll.js:44:	return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL("../../../../env/session-tool-env", import.meta.url));
+packages/session-tool-cli/lib/src-CbbhzWC2.js:44:	return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL("../../../../plugin-dev/session-tool-env", import.meta.url));
+
+=== rebuild session-tool-cli with clean:true ===
+$ tsdown
+ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+ℹ config file: /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts 
+ℹ entry: src/index.ts, src/bin.ts
+ℹ target: es2024
+ℹ tsconfig: tsconfig.json
+
+ WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+
+ℹ Build start
+ℹ Cleaning 21 files
+ℹ Granting execute permission to lib/bin.js
+ℹ lib/index.js              0.32 kB │ gzip:  0.19 kB
+ℹ lib/bin.js                0.20 kB │ gzip:  0.18 kB
+ℹ lib/src-DNhO6DLw.js.map  46.48 kB │ gzip: 11.27 kB
+ℹ lib/src-DNhO6DLw.js      26.07 kB │ gzip:  6.84 kB
+ℹ lib/index.d.ts.map        0.30 kB │ gzip:  0.21 kB
+ℹ lib/bin.js.map            0.27 kB │ gzip:  0.22 kB
+ℹ lib/index.d.ts            2.73 kB │ gzip:  1.11 kB
+ℹ lib/bin.d.ts              0.01 kB │ gzip:  0.03 kB
+ℹ 8 files, total: 76.36 kB
+✔ Build complete in 337ms
+
+=== lib files ===
+bin.d.ts
+bin.js
+bin.js.map
+index.d.ts
+index.d.ts.map
+index.js
+src-DNhO6DLw.js
+src-DNhO6DLw.js.map
+
+=== session-tool-env in lib? ===
+lib: no session-tool-env
+
+=== smoke marks list/get via built bin ===
+[
+  {
+    "id": "s-vibee",
+    "tags": [
+      "kind:vibee",
+      "plan"
+    ]
+  }
+]
+list exit: 0
+{
+  "id": "s-vibee",
+  "tags": [
+    "kind:vibee",
+    "plan"
+  ]
+}
+get exit: 0
+dsh-session: [session-not-found] session "missing" does not exist
+miss exit: 1
+dsh-session: DSH_HOME is not set
+nohome exit: 1
+
+=== listAll in session-marks d.ts ===
+declare function listAll(options?: MarksOptions): Promise<SessionMarksRow[]>;
+export { DEFAULT_MAX_TAGS, DEFAULT_MAX_TAG_BYTES, MarksOptions, NormalizeMarksLimits, RESERVED_MARKS, SessionMarksRow, TagInvalidError, gc, get, isTitleHidden, listAll, listByKind, marksPath, normalizeMarks, put };
+
+=== pnpm --filter session-tool-cli typecheck ===
+$ tsc -p tsconfig.json

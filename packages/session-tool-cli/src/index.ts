@@ -7,16 +7,15 @@
  * disposes the tree. The CLI is a thin shell over the same service layer the
  * agent tools use — `--format json` prints the tool-shaped value verbatim.
  *
- * The installation anchor points at the linked dsh worktree's `apps/cli`
- * package (override with `DSH_SESSION_ANCHOR`), so bundle resolution and the
- * healed profile module fallback behave exactly like `dsh run` from that
- * checkout.
+ * The installation anchor is the official `@deepseek-ai/dsh` package.json
+ * (override with `DSH_SESSION_ANCHOR`), so bundle resolution and the healed
+ * profile module fallback behave like `dsh run` from that install.
  * @module session-tool-cli
  */
 
-import { writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { basename, dirname, join, resolve } from 'node:path'
 import { Command } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@cordisjs/plugin-include'
@@ -34,9 +33,13 @@ import {
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { SessionToolError } from 'session-tool'
+import { get as getMarks, listAll, listByKind, type SessionMarksRow } from 'session-marks'
+import { SessionNotFoundError, SessionToolError } from 'session-tool'
 import type {
   SessionToolCaller,
+  SessionToolCollectOnFailure,
+  SessionToolCollectResult,
+  SessionToolCollectWait,
   SessionToolCreateResult,
   SessionToolListResult,
   SessionToolReadResult,
@@ -47,6 +50,8 @@ import type {
   SessionToolWorkspaceRenameResult,
   SessionToolWriteResult,
 } from 'session-tool'
+
+const require = createRequire(import.meta.url)
 
 const NAME = 'dsh-session'
 
@@ -67,21 +72,42 @@ const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tre
 let liveCtx: Context | undefined
 
 /**
- * The linked dsh worktree checkout this project develops against.
- * @returns the worktree root, or the `DSH_SESSION_ANCHOR` override.
+ * Official `@deepseek-ai/dsh` package.json, used as the default install
+ * anchor when `DSH_SESSION_ANCHOR` is unset.
  */
-export function dshWorktreeRoot(): string {
-  return process.env.DSH_SESSION_ANCHOR ?? fileURLToPath(new URL('../../../../env/session-tool-env', import.meta.url))
+function officialDshPackageJson(): string {
+  return require.resolve('@deepseek-ai/dsh/package.json')
 }
 
 /**
- * The installation anchor for profile bundle resolution: the worktree's
- * `apps/cli` package.json, so bundle resolution and the healed profile module
- * fallback match `dsh run` from that checkout.
+ * The installation anchor for profile bundle resolution: official
+ * `@deepseek-ai/dsh/package.json`. `DSH_SESSION_ANCHOR` overrides: a path
+ * ending in `package.json` is used as-is; a directory prefers
+ * `dir/package.json`, else `dir/apps/cli/package.json` when present.
  * @returns the anchor package.json path.
  */
 export function installAnchor(): string {
-  return join(dshWorktreeRoot(), 'apps', 'cli', 'package.json')
+  const override = process.env.DSH_SESSION_ANCHOR
+  if (override !== undefined && override !== '') {
+    if (override.endsWith('package.json')) return override
+    const dirPkg = join(override, 'package.json')
+    if (existsSync(dirPkg)) return dirPkg
+    const cliPkg = join(override, 'apps', 'cli', 'package.json')
+    if (existsSync(cliPkg)) return cliPkg
+  }
+  return officialDshPackageJson()
+}
+
+/**
+ * Directory that owns {@link installAnchor}: the official package root, or
+ * the worktree root when the anchor is `apps/cli/package.json`.
+ */
+export function dshWorktreeRoot(): string {
+  const dir = dirname(installAnchor())
+  if (basename(dir) === 'cli' && basename(dirname(dir)) === 'apps') {
+    return dirname(dirname(dir))
+  }
+  return dir
 }
 
 /** The home-level user patch layer, applied over every profile's own layer. */
@@ -328,6 +354,43 @@ function renderWorkspaceDeleteText(value: SessionToolWorkspaceDeleteResult): str
   return value.deleted ? `deleted workspace ${value.workspaceId}` : `workspace ${value.workspaceId} not found`
 }
 
+/** Tool-shaped collect result (session_collect schema). */
+function collectToolShape(value: SessionToolCollectResult): {
+  satisfied: boolean
+  elapsed_ms: number
+  sessions: { session_id: string; status: string; result?: string }[]
+} {
+  return {
+    satisfied: value.satisfied,
+    elapsed_ms: value.elapsedMs,
+    sessions: value.sessions.map(row => ({
+      session_id: row.sessionId,
+      status: row.status,
+      ...row.result === undefined ? {} : { result: row.result },
+    })),
+  }
+}
+
+/** Render a collect result as text lines. */
+function renderCollectText(value: SessionToolCollectResult): string {
+  const header = `collect ${value.satisfied ? 'satisfied' : 'unsatisfied'} (${value.elapsedMs}ms)`
+  if (value.sessions.length === 0) return header
+  const rows = value.sessions.map(row =>
+    `${row.sessionId} [${row.status}]${row.result === undefined ? '' : ` ${row.result}`}`)
+  return [header, ...rows].join('\n')
+}
+
+/** JSON projection of a mark-table row. */
+function marksRowShape(row: SessionMarksRow): { id: string; tags: string[] } {
+  return { id: row.id, tags: [...row.tags] }
+}
+
+/** Render mark-table rows as text lines. */
+function renderMarksListText(rows: readonly SessionMarksRow[]): string {
+  if (rows.length === 0) return '(no marks)'
+  return rows.map(row => `${row.id} ${row.tags.join(',')}`).join('\n')
+}
+
 /** Collect repeated option values. */
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value]
@@ -346,6 +409,40 @@ function parseNonNegativeInt(value: string): number | undefined {
 function parseFormat(value: string): string {
   if (value !== 'text' && value !== 'json') {
     throw new Error(`expected --format text|json, got ${JSON.stringify(value)}`)
+  }
+  return value
+}
+
+/** Validate a collect `--wait` value. */
+function parseCollectWait(value: string): SessionToolCollectWait {
+  if (value !== 'all' && value !== 'any' && value !== 'n' && value !== 'first-failed') {
+    throw new Error(`expected --wait all|any|n|first-failed, got ${JSON.stringify(value)}`)
+  }
+  return value
+}
+
+/** Validate a collect `--on-failure` value. */
+function parseCollectOnFailure(value: string): SessionToolCollectOnFailure {
+  if (value !== 'continue' && value !== 'cancel-rest') {
+    throw new Error(`expected --on-failure continue|cancel-rest, got ${JSON.stringify(value)}`)
+  }
+  return value
+}
+
+/** Validate a collect `--filter-status` value. */
+function parseCollectFilterStatus(
+  value: string,
+): 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' {
+  if (
+    value !== 'running'
+    && value !== 'completed'
+    && value !== 'failed'
+    && value !== 'aborted'
+    && value !== 'max-tokens'
+  ) {
+    throw new Error(
+      `expected --filter-status running|completed|failed|aborted|max-tokens, got ${JSON.stringify(value)}`,
+    )
   }
   return value
 }
@@ -383,7 +480,7 @@ function reportError(error: unknown): void {
 }
 
 /** Build the CLI grammar. */
-function buildProgram(): Command {
+export function buildProgram(): Command {
   const program = new Command()
   program
     .name('dsh-session')
@@ -507,6 +604,82 @@ function buildProgram(): Command {
         await disposeTree()
       }
     })))
+
+  bootOptions(session
+    .command('collect')
+    .description('Collect sessions by lineage root or tag set under a completion predicate.')
+    .option('--root <id>', 'lineage-tree root (exactly one of --root / --tag)')
+    .option('--tag <tag>', 'tag aggregation (repeatable; exactly one of --root / --tag)', collect, [])
+    .option('--filter-status <status>', 'optional set filter by delegation status', parseCollectFilterStatus)
+    .option('--filter-tag <tag>', 'optional set filter by tag intersection (repeatable)', collect, [])
+    .option('--wait <all|any|n|first-failed>', 'completion predicate (default all)', parseCollectWait, 'all')
+    .option('--n <n>', 'member count for --wait n', parseNonNegativeInt)
+    .option('--on-failure <continue|cancel-rest>', 'after satisfaction (default continue)', parseCollectOnFailure)
+    .option('--timeout-ms <n>', 'deadline in milliseconds (default 0: snapshot, do not poll)', parseNonNegativeInt, 0)
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.collect(CLI_CALLER, {
+          ...opts.root !== undefined ? { root: SessionId(opts.root) } : {},
+          ...opts.tag.length > 0 ? { tags: opts.tag } : {},
+          ...opts.filterStatus !== undefined || opts.filterTag.length > 0
+            ? {
+              filter: {
+                ...opts.filterStatus !== undefined ? { status: opts.filterStatus } : {},
+                ...opts.filterTag.length > 0 ? { tags: opts.filterTag } : {},
+              },
+            }
+            : {},
+          wait: opts.wait,
+          ...opts.n !== undefined ? { n: opts.n } : {},
+          ...opts.onFailure !== undefined ? { onFailure: opts.onFailure } : {},
+          ...opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {},
+        })
+        printResult(opts.format, () => renderCollectText(result), () => collectToolShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  // ── marks (plugin table; does not boot a profile) ────────────────────────
+  const marks = program
+    .command('marks')
+    .description('Query the plugin mark table ($DSH_HOME/session-tool/marks.jsonl). Does not boot a profile.')
+
+  marks
+    .command('list')
+    .description('List mark-table rows (all rows, or those carrying --kind).')
+    .option('--kind <kind>', 'exact mark token, e.g. kind:vibee')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (opts) => {
+      const rows = opts.kind === undefined
+        ? await listAll()
+        : await listByKind(opts.kind)
+      printResult(
+        opts.format,
+        () => renderMarksListText(rows),
+        () => rows.map(marksRowShape),
+      )
+    }))
+
+  marks
+    .command('get')
+    .description('Read the current mark set for one session id.')
+    .option('--id <id>', 'session id')
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (opts) => {
+      const id = typeof opts.id === 'string' ? opts.id.trim() : ''
+      if (id === '') {
+        throw new SessionNotFoundError('session id is required')
+      }
+      const tags = await getMarks(id)
+      if (tags === undefined) {
+        throw new SessionNotFoundError(`session "${id}" does not exist`)
+      }
+      const row = { id, tags }
+      printResult(opts.format, () => renderMarksListText([row]), () => marksRowShape(row),)
+    }))
 
   // ── workspace (web gateway authority) ────────────────────────────────────
   //

@@ -1,0 +1,4 @@
+Phase 3 delegated: parentSessionId set OR caller.kind==agent merges kind:delegated; CLI with no parent does not; service.spec positive/negative cases green.
+CLI marks (task 9) not in this slice — listByKind/get already exported from session-marks in P1.
+
+Full run: delegated.log (same captured run as phase-2 write.log)

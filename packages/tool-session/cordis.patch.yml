@@ -1,24 +1,12 @@
 # tool-session bundle patch: the session management surface over dsh-base.
 #
 # dsh-base mounts the session store, JSONL persistence, projections, and the
-# session-title service, but NOT session-tags (still WIP upstream) and of
-# course not this project's own packages. This single bundle mounts the whole
-# stack: the tags service (hidden-prefix visibility rules), the local
-# session-tool provider, and the five session_* tools.
+# session-title service. This bundle mounts the local session-tool provider
+# and the session_* tools. Session tags are plugin marks (session-marks jsonl),
+# not an official tags service.
 #
 # Install with: dsh plugin --profile <name> add <path/to/packages/tool-session>
 - insert:
-    # session-tags Config has no defaults (all fields required), so the row
-    # supplies the deployment values here. hiddenPrefixes is the "sessions I
-    # mark myself stay out of default lists" convention (e.g. '~', '[internal]').
-    - id: session-tags
-      name: '@deepseek-ai/dsh-session-tags'
-      config:
-        maxTags: 20
-        maxTagBytes: 128
-        hiddenPrefixes:
-          - '~'
-
     - id: session-tool-local
       name: 'session-tool-local'
       config:

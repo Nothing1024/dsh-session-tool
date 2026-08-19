@@ -20,7 +20,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "build": "tsdown",
-    "test": "vitest run --config ../../vitest.config.ts tests"
+    "test": "vitest run --config ../../vitest.config.ts packages/session-marks/tests"
   },
   "devDependencies": {
     "vitest": "^4.1.8"

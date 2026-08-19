@@ -1,0 +1,107 @@
+# UF-003 list/collect --tag kind:vibee
+date: 2026-08-19 10:58:01 
+ROOT: /Users/dev/workspace/dsh/plugin/session-tool/plugin
+DSH_HOME: /Users/dev/workspace/dsh/plugin/session-tool/plugin/env
+gateway: http://127.0.0.1:3080 curl=200
+listen:
+COMMAND   PID    USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node    72010 dev   14u  IPv4 0xd73b1557edb87c20      0t0  TCP 127.0.0.1:3080 (LISTEN)
+CLI: node /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/lib/bin.js (pnpm exec dsh-session is not linked at workspace root)
+profile: headless
+note: --profile st is the already-running web gateway; CLI boot of st fails
+      (web-app waits for cmdlineArgs / would bind 3080). CLI uses a session-store
+      profile (dsh-base + tool-session, Config.webUrl=http://127.0.0.1:3080).
+titles: unique sm-* prefix
+
+## create sm-uf003-vibee-a --tag kind:vibee --tag plan
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title sm-uf003-vibee-a --format json --tag kind:vibee --tag plan --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-d791087d-2b9e-40b7-ac81-30e21f604242"
+}
+
+--- stderr ---
+(empty)
+
+## create sm-uf003-vibee-b --tag kind:vibee
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title sm-uf003-vibee-b --format json --tag kind:vibee --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-1e042024-188e-4def-92fa-b6b5d479d013"
+}
+
+--- stderr ---
+(empty)
+
+## create sm-uf003-plain --tag plain
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title sm-uf003-plain --format json --tag plain --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-81d819aa-dff5-482f-a034-a45b91d53f1f"
+}
+
+--- stderr ---
+(empty)
+
+## session list --tag kind:vibee --title sm-uf003
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session list --format json --tag kind:vibee --title sm-uf003 --profile headless
+exit 0
+--- stdout ---
+{
+  "sessions": [
+    {
+      "session_id": "session-d791087d-2b9e-40b7-ac81-30e21f604242",
+      "title": "sm-uf003-vibee-a",
+      "tags": [
+        "kind:vibee",
+        "plan"
+      ],
+      "status": "idle",
+      "created_at": 1787108279568
+    },
+    {
+      "session_id": "session-1e042024-188e-4def-92fa-b6b5d479d013",
+      "title": "sm-uf003-vibee-b",
+      "tags": [
+        "kind:vibee"
+      ],
+      "status": "idle",
+      "created_at": 1787108280043
+    }
+  ]
+}
+
+--- stderr ---
+(empty)
+
+## session collect --tag kind:vibee --timeout-ms 0
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session collect --format json --tag kind:vibee --timeout-ms 0 --profile headless
+exit 0
+--- stdout ---
+{
+  "satisfied": false,
+  "elapsed_ms": 4,
+  "sessions": [
+    {
+      "session_id": "session-1e042024-188e-4def-92fa-b6b5d479d013",
+      "status": "running"
+    },
+    {
+      "session_id": "session-d791087d-2b9e-40b7-ac81-30e21f604242",
+      "status": "running"
+    }
+  ]
+}
+
+--- stderr ---
+(empty)
+
+marks.jsonl:
+{"id":"session-d791087d-2b9e-40b7-ac81-30e21f604242","tags":["kind:vibee","plan"]}
+{"id":"session-1e042024-188e-4def-92fa-b6b5d479d013","tags":["kind:vibee"]}
+{"id":"session-81d819aa-dff5-482f-a034-a45b91d53f1f","tags":["plain"]}
+
+ok=True

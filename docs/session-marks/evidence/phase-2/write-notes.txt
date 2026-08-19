@@ -1,0 +1,4 @@
+Phase 2 write: create normalizes marks before gateway; durableCreate is called without tags; put lands in $DSH_HOME/session-tool/marks.jsonl after success; invalid tags throw TagInvalidError (code tag-invalid) and skip the gateway; rename writes tags via marks.put only.
+
+Source test file: packages/session-tool-local/tests/service.spec.ts create/rename
+Full run: write.log

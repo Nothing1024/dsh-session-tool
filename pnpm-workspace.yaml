@@ -1,10 +1,14 @@
 packages:
   - packages/*
-  - vendor/session-tags
 allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': false
+  '@google/genai': false
   esbuild: true
   koffi: true
+  node-pty: false
+  protobufjs: false
 minimumReleaseAgeExclude:
+  - '@deepseek-ai/dsh@0.1.0-rc.7'
   - '@deepseek-ai/dsh-agent-default-model@0.1.0-rc.7'
   - '@deepseek-ai/dsh-agent@0.1.0-rc.7'
   - '@deepseek-ai/dsh-api-remotes@0.1.0-rc.7'

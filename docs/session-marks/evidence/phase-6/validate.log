@@ -1,0 +1,23 @@
+=== validate_package.py after tasks 15-16 已完成 ===
+date: Wed Aug 19 11:01:15 CST 2026
+
+== validate_package: /Users/dev/workspace/dsh/plugin/session-tool/plugin/docs/session-marks ==
+[WARN] 真实场景任务已标记完成, 但 5.2 节未写具体 evidence/ 路径, 无法审计——执行矩阵 Evidence 列请写明确路径
+[PASS] spec.md 存在（789 行）
+[PASS] tasks.csv 表头正确（8 列）
+[PASS] tasks.csv 序号 1..16 连续, 共 16 条任务
+[PASS] 所有详情锚点在 spec.md 中有对应 Task 标题
+[PASS] 前置依赖引用有效且无循环
+[PASS] 每个 Phase 最后一条任务均为回归验证
+[PASS] handoff.md 引用路径全部存在
+[PASS] BR/UF/INV/EVD 引用闭环（定义 34 个）
+[PASS] 待勘察/ASM 行占比 2%（3/148）
+[PASS] 全部 8 个 UF 均有步骤级流程脚本
+[PASS] 存在真实场景测试章节, 且有任务覆盖执行
+[PASS] evidence/ 目录存在
+
+结果: 0 FAIL / 1 WARN / 12 PASS
+VALIDATE_EXIT=0
+
+NOTE: WARN is validator matching Phase 6 heading not 5.2 matrix;
+5.2 evidence files exist at the paths named in spec section 5.2.

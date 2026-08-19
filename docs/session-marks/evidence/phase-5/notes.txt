@@ -1,0 +1,12 @@
+P5 (Task 13-14) done with P4.
+
+README.md / env/README.md / packages/session-tool/src/index.ts /
+packages/tool-session/src/index.ts: tags are plugin marks; reserved
+kind:vibee kind:delegated kind:hidden ui:aux; official GUI does not show
+them; later Web uses listByKind. Removed wording that implied official
+session/tags events or a mounted tags service.
+
+rg/grep in packages: no 「零新增事件类型」 / 「session/tags 都是现成」.
+
+Regression: same pnpm test + pnpm run build as evidence/phase-4/test.log
+(135 passed / 1 skipped CLI e2e; build exit 0).

@@ -1,0 +1,6 @@
+=== vendor scan (rg not on PATH; using grep -R) ===
+cwd: /Users/dev/workspace/dsh/plugin/session-tool/plugin
+date: Wed Aug 19 10:50:15 CST 2026
+command: grep -R --exclude-dir=node_modules --exclude-dir=lib --exclude-dir=sessions --exclude-dir=storages -n 'dsh-session-tags' packages pnpm-workspace.yaml env
+---
+(no matches)

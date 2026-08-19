@@ -1,0 +1,27 @@
+=== 2026-08-19T02:41:00Z ===
+cwd: /Users/dev/workspace/dsh/plugin/session-tool/plugin
+vendor exists? no
+
+rg not on PATH; used grep -RIn (same patterns as spec 5.1 / Task 11).
+node_modules/ and gitignored env/profiles/*/pnpm-lock.yaml excluded from the
+dependency search (pnpm install refreshed the gitignored st lockfile; it is
+also clean).
+
+=== grep -RIn -E 'dsh-session-tags|vendor/session-tags' packages env pnpm-workspace.yaml --exclude-dir=node_modules --exclude=pnpm-lock.yaml ===
+(zero hits)
+
+=== grep -RIn -E 'dsh-session-tags|vendor/session-tags' pnpm-lock.yaml ===
+(zero hits)
+
+=== grep -n 'dsh-session-tags|vendor/session-tags' env/profiles/st/package.json env/profiles/st/pnpm-lock.yaml ===
+(zero hits)
+
+=== grep -RIn -E '零新增事件类型|session/tags 都是现成' packages --exclude-dir=node_modules ===
+(zero hits)
+
+=== session-tool-local src import ===
+(zero hits; leftover type import removed before vendor delete)
+
+docs/ may still mention the unpublished package historically (spec / handoff).
+CLI e2e skipped: packages/session-tool-cli/tests/e2e.spec.ts skipIf — official
+@deepseek-ai/dsh has no apps/cli/lib/bin.js.

@@ -6,8 +6,8 @@
  * live there, published to every GUI client through the ordinary event push.
  * Reading stays local (persistence inspection, no agent acquisition); the
  * owner fence, scope gates, and hidden-prefix filtering run in this process
- * over a read-only header index. Zero new event types: the gateway reuses
- * DSH's existing `user/message`, `session/title`, and `session/tags` events.
+ * over a read-only header index. Session marks live in the plugin mark table
+ * (`session-marks`); this provider never appends official `session/tags` events.
  * @module session-tool-local
  */
 
@@ -18,7 +18,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { isTitleHidden } from '@deepseek-ai/dsh-session-tags'
+import { get as getMarks, isTitleHidden, normalizeMarks, put as putMarks } from 'session-marks'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
@@ -89,8 +89,8 @@ export interface Config {
   /** Single `list` row cap; model-supplied `limit` is clamped to it. */
   readonly listMaxRows: number
   /**
-   * Title prefixes that drop a session from default lists (shared with the
-   * web composition's session-tags hiddenPrefixes; keep them in sync).
+   * Title prefixes that drop a session from default lists (dual-hide with
+   * the `kind:hidden` mark; default `~`).
    */
   readonly hiddenPrefixes: string[]
   /**
@@ -116,8 +116,8 @@ export interface Config {
   readonly maxDelegationDepth?: number
   /**
    * Whether delegated sessions appear in `session_list` results (default
-   * `true`). `false` drops rows whose tag set carries `delegated` or whose
-   * header records a positive delegation depth.
+   * `true`). `false` drops rows whose mark set carries `kind:delegated`
+   * (bare token `delegated` is accepted once for compat).
    */
   readonly showDelegated: boolean
 }
@@ -172,6 +172,39 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       }
       this.assertCreateParent(caller, options.parentSessionId, index)
     }
+    // The gateway creates the durable session (no agent started) and serves
+    // it live, so every GUI client sees it immediately. An agent caller's
+    // creations join its own tree by default (parent = the caller), keeping
+    // owner-fence access and `own` scope listings; CLI creations are
+    // top-level sessions unless a parent is named. A delegated session
+    // records the caller's depth plus one unless an explicit depth is given
+    // (the gateway still admits at most parent depth plus one). The plugin
+    // depth ceiling and mark normalization run here, before any gateway call.
+    const childDepth = options.delegationDepth
+      ?? (caller.kind === 'agent' ? caller.delegationDepth + 1 : undefined)
+    if (childDepth !== undefined && this.config.maxDelegationDepth !== undefined
+      && childDepth > this.config.maxDelegationDepth) {
+      throw new SessionToolUnauthorizedError(
+        `delegation depth ${childDepth} exceeds the configured maximum ${this.config.maxDelegationDepth}`,
+      )
+    }
+    const parentSessionId = options.parentSessionId !== undefined
+      ? options.parentSessionId
+      : caller.kind === 'agent'
+        ? caller.sessionId
+        : undefined
+    // Normalize before any gateway call so invalid tags cannot mint a session
+    // or register a workspace. Agent callers (default parent = caller) and
+    // any explicit parent merge `kind:delegated`. A CLI create with no parent
+    // does not.
+    const delegated = options.parentSessionId !== undefined || caller.kind === 'agent'
+    const incoming = options.tags
+    let normalizedMarks: string[] | undefined
+    if (incoming !== undefined || delegated) {
+      const merged = [...(incoming ?? [])]
+      if (delegated) merged.push('kind:delegated')
+      normalizedMarks = normalizeMarks(merged)
+    }
     // Register the workspace through the web gateway BEFORE creating the
     // session: the remote operation is the most likely failure, and a
     // rejecting/unreachable gateway must leave zero local state. The
@@ -182,35 +215,17 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       const { workspace } = await this.workspaceClient.addWorkspace(options.workspacePath)
       bound = { workspaceId: workspace.workspaceId, path: workspace.path }
     }
-    // The gateway creates the durable session (no agent started) and serves
-    // it live, so every GUI client sees it immediately. An agent caller's
-    // creations join its own tree by default (parent = the caller), keeping
-    // owner-fence access and `own` scope listings; CLI creations are
-    // top-level sessions unless a parent is named. A delegated session
-    // records the caller's depth plus one unless an explicit depth is given
-    // (the gateway still admits at most parent depth plus one). The plugin
-    // depth ceiling is enforced here, before any gateway call.
-    const childDepth = options.delegationDepth
-      ?? (caller.kind === 'agent' ? caller.delegationDepth + 1 : undefined)
-    if (childDepth !== undefined && this.config.maxDelegationDepth !== undefined
-      && childDepth > this.config.maxDelegationDepth) {
-      throw new SessionToolUnauthorizedError(
-        `delegation depth ${childDepth} exceeds the configured maximum ${this.config.maxDelegationDepth}`,
-      )
-    }
     const created = await this.sessionClient.durableCreate({
       ...options.title === undefined ? {} : { title: options.title },
-      ...options.parentSessionId !== undefined
-        ? { parentSessionId: options.parentSessionId }
-        : caller.kind === 'agent'
-          ? { parentSessionId: caller.sessionId }
-          : {},
-      ...options.tags === undefined ? {} : { tags: options.tags },
+      ...parentSessionId === undefined ? {} : { parentSessionId },
       ...childDepth === undefined ? {} : { delegationDepth: childDepth },
       ...bound === undefined
         ? options.cwd === undefined ? {} : { cwd: options.cwd }
         : { workspaceId: bound.workspaceId },
     })
+    if (normalizedMarks !== undefined && normalizedMarks.length > 0) {
+      await putMarks(created.sessionId, normalizedMarks)
+    }
     return {
       sessionId: created.sessionId as SessionId,
       ...bound === undefined ? {} : { workspaceId: bound.workspaceId, workspacePath: bound.path },
@@ -295,9 +310,10 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       assertNever(scope, 'SessionToolListScope')
     }
 
-    // The gateway serves the web view (cwd-bearing sessions) with title/tags
-    // projections; own/tree rows are intersected with the scope's id set
-    // (the local header index carries the lineage), `all` uses every row.
+    // The gateway serves the web view (cwd-bearing sessions) with title
+    // projection; plugin marks JOIN from the mark table. own/tree rows are
+    // intersected with the scope's id set (the local header index carries
+    // the lineage), `all` uses every row.
     const scopeIds = candidates === undefined ? undefined : new Set(candidates)
     const gatewayRows = (await this.sessionClient.list())
       .filter(row => scopeIds === undefined || scopeIds.has(row.sessionId as SessionId))
@@ -307,7 +323,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       return {
         sessionId: row.sessionId as SessionId,
         ...row.title === undefined ? {} : { title: row.title },
-        tags: [...(row.tags ?? [])],
+        tags: await this.tagsOf(row.sessionId as SessionId),
         status: row.running ? 'live' : 'idle',
         ...delegationStatus === undefined ? {} : { delegationStatus },
         createdAt: header?.createdAt ?? row.updatedAt,
@@ -316,12 +332,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
     let visible = rows
     if (filter.includeHidden !== true) {
-      visible = visible.filter(row => !isTitleHidden(row.title, this.config.hiddenPrefixes))
+      visible = visible.filter(row =>
+        !isTitleHidden(row.title, this.config.hiddenPrefixes) && !row.tags.includes('kind:hidden'))
     }
     if (this.config.showDelegated === false && filter.origin !== 'delegated') {
-      // Visibility config: hide delegated sessions (tag `delegated` or a
-      // positive header depth) unless the caller explicitly asked for them.
-      visible = visible.filter(row => !this.isDelegated(row, index))
+      visible = visible.filter(row => !this.isDelegated(row))
     }
     if (filter.status !== undefined) {
       // The delegation vocabulary (running/completed/failed/aborted) filters
@@ -335,7 +350,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       }
     }
     if (filter.origin === 'delegated') {
-      visible = visible.filter(row => this.isDelegated(row, index))
+      visible = visible.filter(row => this.isDelegated(row))
     }
     const requiredTags = filter.tags
     if (requiredTags !== undefined && requiredTags.length > 0) {
@@ -368,18 +383,23 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (options.title === undefined && options.tags === undefined) {
       throw new SessionEmptyContentError('rename requires at least one of title or tags')
     }
-    // The gateway pre-validates both inputs before committing either (no
-    // partial commit) and serves the renamed session to every GUI client.
     const index = await this.headerIndex()
     await this.assertAccess(caller, sessionId, index)
-    const accepted = await this.sessionClient.rename(sessionId, {
-      ...options.title === undefined ? {} : { title: options.title },
-      ...options.tags === undefined ? {} : { tags: options.tags },
-    })
+    if (options.tags !== undefined) {
+      normalizeMarks(options.tags)
+    }
+    let title: string | undefined
+    if (options.title !== undefined) {
+      const accepted = await this.sessionClient.rename(sessionId, { title: options.title })
+      title = accepted.title
+    }
+    const tags = options.tags !== undefined
+      ? await putMarks(sessionId, options.tags)
+      : await getMarks(sessionId)
     return {
       sessionId,
-      ...accepted.title === undefined ? {} : { title: accepted.title },
-      ...accepted.tags === undefined ? {} : { tags: [...accepted.tags] },
+      ...title === undefined ? {} : { title },
+      ...tags === undefined ? {} : { tags },
     }
   }
 
@@ -644,12 +664,16 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       await this.assertAccess(caller, request.root, index)
       ids = descendantsOf(index, indexChildren(index), [request.root]).filter(id => id !== request.root)
     } else {
-      // Tag aggregation: every gateway row carrying all listed tags.
+      // Tag aggregation: JOIN the mark table; never gateway projections.
       const requiredTags = request.tags ?? []
       const rows = await this.sessionClient.list()
-      ids = rows
-        .filter(row => requiredTags.every(tag => (row.tags ?? []).includes(tag)))
-        .map(row => row.sessionId as SessionId)
+      const marked = await Promise.all(rows.map(async row => ({
+        id: row.sessionId as SessionId,
+        tags: await this.tagsOf(row.sessionId as SessionId),
+      })))
+      ids = marked
+        .filter(row => requiredTags.every(tag => row.tags.includes(tag)))
+        .map(row => row.id)
       // The caller must be able to reach the aggregate: the gateway rows are
       // the web view; the local fence walks the header lineage per member.
       await Promise.all(ids.map(id => this.assertAccess(caller, id, index).catch(() => undefined)))
@@ -660,7 +684,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     let filtered = ids
     if (request.filter.tags !== undefined && request.filter.tags.length > 0) {
       const required = request.filter.tags
-      filtered = filtered.filter(id => required.every(tag => this.tagsOf(id).includes(tag)))
+      const marked = await Promise.all(filtered.map(async id => ({
+        id,
+        tags: await this.tagsOf(id),
+      })))
+      filtered = marked.filter(row => required.every(tag => row.tags.includes(tag))).map(row => row.id)
     }
     if (request.filter.status !== undefined) {
       const wanted = request.filter.status
@@ -670,15 +698,9 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     return filtered
   }
 
-  /** Read a session's folded tags from the live log (absent for cold sessions). */
-  private tagsOf(id: SessionId): readonly string[] {
-    const live = this.ctx.sessions.get(id)
-    if (live === undefined) return []
-    let tags: readonly string[] = []
-    for (const event of live.events) {
-      if (event.type === 'session/tags') tags = event.data.tags
-    }
-    return tags
+  /** Read a session's current mark set from the plugin table (never the log). */
+  private async tagsOf(id: SessionId): Promise<readonly string[]> {
+    return (await getMarks(id)) ?? []
   }
 
   /**
@@ -743,15 +765,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   }
 
   /**
-   * Whether a list row is a delegated session: its tag set carries the
-   * `delegated` marker, or its header records a positive delegation depth.
-   * @param row - the gateway row.
-   * @param index - the merged header index.
+   * Whether a list row is a delegated session: the mark table carries
+   * `kind:delegated` (bare token `delegated` accepted once for compat).
    */
-  private isDelegated(row: SessionToolListRow, index: Map<SessionId, SessionHeader>): boolean {
-    if (row.tags.includes('delegated')) return true
-    const header = index.get(row.sessionId)
-    return (header?.delegationDepth ?? 0) > 0
+  private isDelegated(row: SessionToolListRow): boolean {
+    return row.tags.includes('kind:delegated') || row.tags.includes('delegated')
   }
 
   /** Merge live and persisted headers into one id → header index (live wins). */

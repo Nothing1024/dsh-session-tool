@@ -52,7 +52,7 @@ describe('SessionHttpClient', () => {
     vi.unstubAllGlobals()
   })
 
-  it('durableCreate posts create then rename; drops tags and lineage', async () => {
+  it('durableCreate posts create then rename; drops lineage and does not write tags', async () => {
     const methods: string[] = []
     const fetchMock = stubFetch((url, body) => {
       methods.push(body.method)
@@ -69,11 +69,11 @@ describe('SessionHttpClient', () => {
     const result = await client.durableCreate({
       title: 't',
       parentSessionId: 'caller',
-      tags: ['a', 'b'],
       workspaceId: 'ws-1',
       delegationDepth: 1,
     })
     expect(result).toEqual({ sessionId: 'session-9', title: 't' })
+    expect(result).not.toHaveProperty('tags')
     expect(methods).toEqual(['session.create', 'session.rename'])
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
@@ -166,7 +166,7 @@ describe('SessionHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
-  it('list folds title/tags projections onto the rows', async () => {
+  it('list folds title projection onto the rows and ignores gateway tags', async () => {
     stubFetch((_url, body) => okResponse(body.rpcId, {
       items: [
         summary({
@@ -189,34 +189,25 @@ describe('SessionHttpClient', () => {
         parentSessionId: 'caller',
         cwd: '/proj',
         title: 'named',
-        tags: ['a', 'b'],
         running: false,
         updatedAt: 1_700_000_000_000,
       },
       { sessionId: 'session-2', running: false, updatedAt: 1_700_000_000_000 },
     ])
+    expect(rows[0]).not.toHaveProperty('tags')
   })
 
-  it('rename posts only the title and echoes tags locally', async () => {
+  it('rename posts only the title and does not echo tags', async () => {
     const fetchMock = stubFetch((url, body) => {
       expect(url.pathname).toBe('/api/session.rename')
       expect(body.payload).toEqual({ sessionId: 'session-1', title: 'new' })
       return okResponse(body.rpcId, { title: 'new', seq: 7 })
     })
     const client = new SessionHttpClient(BASE)
-    const result = await client.rename('session-1', { title: 'new', tags: ['x'] })
-    expect(result).toEqual({ title: 'new', tags: ['x'], seq: 7 })
+    const result = await client.rename('session-1', { title: 'new' })
+    expect(result).toEqual({ title: 'new', seq: 7 })
+    expect(result).not.toHaveProperty('tags')
     expect(fetchMock).toHaveBeenCalledOnce()
-  })
-
-  it('rename with tags only does not call the gateway', async () => {
-    const fetchMock = stubFetch(() => {
-      throw new Error('unexpected gateway call')
-    })
-    const client = new SessionHttpClient(BASE)
-    const result = await client.rename('session-1', { tags: ['x'] })
-    expect(result).toEqual({ tags: ['x'], seq: 0 })
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('translates a title-invalid business error onto the seam code', async () => {

@@ -1,9 +1,10 @@
 /**
  * Model-facing `session_create`, `session_read`, `session_write`,
  * `session_list`, and `session_rename` tools over `ctx.sessionTool`. The
- * bundle patch also mounts the service provider (`session-tool-local`) and the
- * session-tags service the visibility rules depend on, so loading this bundle
- * in a profile is the whole session-management surface.
+ * bundle patch also mounts the service provider (`session-tool-local`).
+ * Tool parameter `tags` are plugin marks (reserved: kind:vibee,
+ * kind:delegated, kind:hidden, ui:aux). The official GUI does not show them;
+ * later Web uses listByKind.
  *
  * Render intent is fixed up front per the tool presentation contract: none of
  * the five touches a terminal or a file, so every call is a `generic` card
@@ -55,7 +56,7 @@ export function apply(ctx: Context): void {
     name: 'session_create',
     description:
       'Create a persistent, addressable session. Optionally fork under a parent session (you or one of your '
-      + 'ancestors) for lineage, pin an explicit title, and attach an initial tag set. Pass workspace_path to '
+      + 'ancestors) for lineage, pin an explicit title, and attach plugin marks (`tags`). Pass workspace_path to '
       + 'register (or reuse) the workspace at that directory through the web gateway and bind the session to it '
       + '(the session header cwd becomes the workspace\'s canonical path; the web process accounts it on its next '
       + 'index rebuild). The session stays durable across processes; write prompts into it with session_write and '
@@ -72,7 +73,7 @@ export function apply(ctx: Context): void {
       tags: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional initial tag set (last-wins replace if accepted again later).',
+        description: 'Optional plugin marks (last-wins replace). Reserved: kind:vibee, kind:delegated, kind:hidden, ui:aux. Official GUI does not show them; later Web uses listByKind.',
       },
       workspace_path: {
         type: 'string',
@@ -235,19 +236,19 @@ export function apply(ctx: Context): void {
     name: 'session_collect',
     description:
       'Collect a set of sessions under one declarative completion predicate — the coordinator\'s fan-out gather. '
-      + 'The set is a lineage tree (root, you and your descendants) or a tag aggregation (tags). The predicate '
+      + 'The set is a lineage tree (root, you and your descendants) or a plugin-mark aggregation (tags). The predicate '
       + '(wait: all/any/n/first-failed) is evaluated purely over each member\'s log-derived status until it holds '
       + 'or timeout_ms passes; on satisfaction, on_failure "cancel-rest" cancels the unfinished members (never '
       + 'deletes them). This is an execution primitive: no dependency graphs, no scheduling, no retries.',
     parameters: {
       root: { type: 'string', description: 'Lineage-tree root: the set is the root and every transitive descendant (exactly one of root/tags).' },
-      tags: { type: 'array', items: { type: 'string' }, description: 'Tag aggregation: every session carrying all listed tags (exactly one of root/tags).' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Plugin-mark aggregation: every session carrying all listed marks (exactly one of root/tags).' },
       filter_status: {
         type: 'string',
         enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens'],
         description: 'Optional set filter by delegation status.',
       },
-      filter_tags: { type: 'array', items: { type: 'string' }, description: 'Optional set filter by tag intersection.' },
+      filter_tags: { type: 'array', items: { type: 'string' }, description: 'Optional set filter by plugin-mark intersection.' },
       wait: {
         type: 'string',
         required: true,
@@ -362,20 +363,20 @@ export function apply(ctx: Context): void {
     description:
       'List sessions. Scope "own" (default) lists you and your descendants; scope "tree" lists the subtree rooted '
       + 'at session_id (you must be the root or one of its ancestors); scope "all" lists every materialized session '
-      + 'and is gated by deployment policy. Hidden-prefix titles are excluded unless include_hidden is set. '
-      + 'Filter by tag intersection, title substring, delegation status (running/completed/failed/aborted), and '
-      + 'origin "delegated"; paginate with cursor/limit.',
+      + 'and is gated by deployment policy. Hidden-prefix titles or kind:hidden marks are excluded unless include_hidden is set. '
+      + 'Filter by plugin-mark intersection, title substring, delegation status (running/completed/failed/aborted), and '
+      + 'origin "delegated"; paginate with cursor/limit. Official GUI does not show marks.',
     parameters: {
       scope: { type: 'string', enum: ['own', 'tree', 'all'], description: 'Listing scope; defaults to own.' },
       session_id: { type: 'string', description: 'Tree root for scope "tree".' },
-      tags: { type: 'array', items: { type: 'string' }, description: 'Rows must carry every listed tag.' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Rows must carry every listed plugin mark.' },
       title: { type: 'string', description: 'Case-sensitive substring filter on the durable title.' },
       status: {
         type: 'string',
         enum: ['live', 'idle', 'running', 'completed', 'failed', 'aborted'],
         description: 'live/idle filter store presence; running/completed/failed/aborted filter the log-derived delegation status.',
       },
-      origin: { type: 'string', enum: ['delegated'], description: 'Only delegated sessions (tag "delegated" or positive delegation depth).' },
+      origin: { type: 'string', enum: ['delegated'], description: 'Only sessions marked kind:delegated (bare token delegated accepted once for compat).' },
       include_hidden: { type: 'boolean', description: 'Include hidden-prefix sessions (default false).' },
       cursor: { type: 'string', description: 'Opaque pagination cursor from a previous result.' },
       limit: { type: 'number', description: 'Row cap; clamped to the configured maximum.' },
@@ -446,13 +447,13 @@ export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'session_rename',
     description:
-      'Rename a session and/or replace its tag set (yours or a descendant\'s). An explicit title pins the session '
-      + 'title — automatic generation stops. Tags are last-wins replace. Hidden-prefix titles drop the session '
-      + 'from default lists.',
+      'Rename a session and/or replace its plugin marks (yours or a descendant\'s). An explicit title pins the session '
+      + 'title — automatic generation stops. Marks are last-wins replace (kind:vibee, kind:delegated, kind:hidden, ui:aux). '
+      + 'Hidden-prefix titles or kind:hidden drop the session from default lists. Official GUI does not show marks.',
     parameters: {
       session_id: SESSION_ID_SCHEMA,
       title: { type: 'string', description: 'Explicit title; pins the title and stops automatic generation.' },
-      tags: { type: 'array', items: { type: 'string' }, description: 'Replacement tag set.' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Replacement plugin mark set. Official GUI does not show these; later Web uses listByKind.' },
     },
     output: {
       schema: {

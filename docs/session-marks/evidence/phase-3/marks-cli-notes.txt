@@ -1,0 +1,11 @@
+Phase 3 CLI marks (Task 9):
+
+- session-tool-cli depends on session-marks (workspace) and @deepseek-ai/dsh@0.1.0-rc.7
+- installAnchor() resolves official @deepseek-ai/dsh/package.json via createRequire; DSH_SESSION_ANCHOR honors package.json path or dir/package.json else dir/apps/cli/package.json
+- deleted default ../../../../env/session-tool-env
+- dsh-session marks list [--kind] / marks get --id (no profile boot); missing DSH_HOME fail-loud; missing/unknown get id → session-not-found exit 1
+- session collect wraps ctx.sessionTool.collect (UF-003)
+- e2e skipIf when official package has no apps/cli/lib/bin.js; BUNDLES no longer includes vendor session-tags
+- pnpm --filter session-tool-cli test: 5 passed, 1 skipped; build ok
+
+Full capture: marks-cli.log

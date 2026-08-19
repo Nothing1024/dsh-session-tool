@@ -1,0 +1,109 @@
+# UF-002 dual-hide default list vs include-hidden
+date: 2026-08-19 10:58:06 
+ROOT: /Users/dev/workspace/dsh/plugin/session-tool/plugin
+DSH_HOME: /Users/dev/workspace/dsh/plugin/session-tool/plugin/env
+gateway: http://127.0.0.1:3080 curl=200
+listen:
+COMMAND   PID    USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node    72010 dev   14u  IPv4 0xd73b1557edb87c20      0t0  TCP 127.0.0.1:3080 (LISTEN)
+CLI: node /Users/dev/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/lib/bin.js (pnpm exec dsh-session is not linked at workspace root)
+profile: headless
+note: --profile st is the already-running web gateway; CLI boot of st fails
+      (web-app waits for cmdlineArgs / would bind 3080). CLI uses a session-store
+      profile (dsh-base + tool-session, Config.webUrl=http://127.0.0.1:3080).
+titles: unique sm-* prefix
+
+## create ~sm-uf002-secret (no hidden kind)
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title ~sm-uf002-secret --format json --tag plan --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-9fab82d6-cbe1-4958-b0d2-5b66d72d8ef9"
+}
+
+--- stderr ---
+(empty)
+
+## create sm-uf002-visible --tag kind:hidden
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title sm-uf002-visible --format json --tag kind:hidden --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-3de4e7ec-be66-4484-9a9d-4a432c6502fa"
+}
+
+--- stderr ---
+(empty)
+
+## create sm-uf002-ok --tag plan
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session create --title sm-uf002-ok --format json --tag plan --profile headless
+exit 0
+--- stdout ---
+{
+  "session_id": "session-66ec96c9-c200-4177-8da5-971f75eb5ab1"
+}
+
+--- stderr ---
+(empty)
+
+## session list --title sm-uf002  (expect only sm-uf002-ok)
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session list --format json --title sm-uf002 --profile headless
+exit 0
+--- stdout ---
+{
+  "sessions": [
+    {
+      "session_id": "session-66ec96c9-c200-4177-8da5-971f75eb5ab1",
+      "title": "sm-uf002-ok",
+      "tags": [
+        "plan"
+      ],
+      "status": "idle",
+      "created_at": 1787108285354
+    }
+  ]
+}
+
+--- stderr ---
+(empty)
+
+## session list --title sm-uf002 --include-hidden  (expect 3)
+$ DSH_HOME=/Users/dev/workspace/dsh/plugin/session-tool/plugin/env node packages/session-tool-cli/lib/bin.js session list --format json --title sm-uf002 --include-hidden --profile headless
+exit 0
+--- stdout ---
+{
+  "sessions": [
+    {
+      "session_id": "session-9fab82d6-cbe1-4958-b0d2-5b66d72d8ef9",
+      "title": "~sm-uf002-secret",
+      "tags": [
+        "plan"
+      ],
+      "status": "idle",
+      "created_at": 1787108284432
+    },
+    {
+      "session_id": "session-3de4e7ec-be66-4484-9a9d-4a432c6502fa",
+      "title": "sm-uf002-visible",
+      "tags": [
+        "kind:hidden"
+      ],
+      "status": "idle",
+      "created_at": 1787108284893
+    },
+    {
+      "session_id": "session-66ec96c9-c200-4177-8da5-971f75eb5ab1",
+      "title": "sm-uf002-ok",
+      "tags": [
+        "plan"
+      ],
+      "status": "idle",
+      "created_at": 1787108285354
+    }
+  ]
+}
+
+--- stderr ---
+(empty)
+
+ok=True

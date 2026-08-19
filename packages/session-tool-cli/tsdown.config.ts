@@ -14,6 +14,6 @@ export default defineConfig({
   target: 'es2024',
   fixedExtension: false,
   dts: true,
-  clean: false,
-  external: ['cordis', 'cosmokit', 'schemastery', /^@deepseek-ai\//],
+  clean: true,
+  external: ['cordis', 'cosmokit', 'schemastery', 'session-marks', 'session-tool', /^@deepseek-ai\//],
 })

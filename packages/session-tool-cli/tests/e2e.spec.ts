@@ -9,8 +9,9 @@
 // `dsh web` with model credentials and is exercised as an integration
 // verification (see docs/design.md §14), not in this fixture.
 //
-// Requires the built CLI (pnpm -r run build) and the worktree's built dsh
-// bin. Re-record the fixture with: DSH_SNAPSHOT=record npx vitest run
+// Requires the built CLI (pnpm -r run build) and a dsh bin at
+// `<install>/apps/cli/lib/bin.js`. Official `@deepseek-ai/dsh` has no
+// apps/cli tree, so this spec skipIfs. Re-record with: DSH_SNAPSHOT=record npx vitest run
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -28,7 +29,6 @@ const BUNDLES = [
   join(PROJECT_ROOT, 'packages', 'tool-session'),
   join(PROJECT_ROOT, 'packages', 'session-tool-local'),
   join(PROJECT_ROOT, 'packages', 'session-tool'),
-  join(dshWorktreeRoot(), 'packages', 'session', 'session-tags'),
 ]
 
 /** The web gateway address the fixture guarantees to be unreachable. */

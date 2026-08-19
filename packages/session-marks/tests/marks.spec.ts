@@ -6,6 +6,8 @@ import {
   TagInvalidError,
   gc,
   get,
+  isTitleHidden,
+  listAll,
   listByKind,
   marksPath,
   normalizeMarks,
@@ -52,6 +54,15 @@ describe('normalizeMarks', () => {
     }
   })
 
+  it('isTitleHidden is prefix startswith; empty or undefined title is not hidden', () => {
+    expect(isTitleHidden(undefined, ['~'])).toBe(false)
+    expect(isTitleHidden('', ['~'])).toBe(false)
+    expect(isTitleHidden('draft', ['~'])).toBe(false)
+    expect(isTitleHidden('~secret', ['~'])).toBe(true)
+    expect(isTitleHidden('[internal]x', ['~', '[internal]'])).toBe(true)
+    expect(isTitleHidden('~secret', [''])).toBe(false)
+  })
+
   it('rejects overlong tokens and over-count sets', () => {
     const tooLong = 'a'.repeat(129)
     try {
@@ -83,6 +94,8 @@ describe('put/get/listByKind', () => {
     const vibee = await listByKind('kind:vibee', opts)
     expect(vibee.map(row => row.id)).toEqual(['s1'])
     expect(vibee[0]!.tags).toEqual(['kind:vibee'])
+    const all = await listAll(opts)
+    expect(all.map(row => row.id).sort()).toEqual(['s1', 's2'])
     const text = readFileSync(marksPath(home), 'utf8')
     expect(text).toContain('"id":"s1"')
     expect(text).not.toContain('plan')

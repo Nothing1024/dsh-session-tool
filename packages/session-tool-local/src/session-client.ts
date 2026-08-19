@@ -9,8 +9,9 @@
  *
  * rc.7 has no `session.durableCreate` / `session.wait`. This adapter keeps
  * the SessionHttpClient surface and maps those calls onto `session.create`
- * + `session.rename` and a `session.list` poll. parentSessionId, tags, and
+ * + `session.rename` and a `session.list` poll. parentSessionId and
  * delegationDepth have no create/rename field on rc.7 and are not sent.
+ * Session marks are not a gateway write.
  *
  * Transport failures surface as `SessionWebUnreachableError`; the gateway's
  * business errors surface as `SessionToolError` with the wire code.
@@ -21,12 +22,12 @@ import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import type { RpcResponse } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { SessionToolError, SessionWebUnreachableError } from 'session-tool'
 import type { SessionToolErrorCode } from 'session-tool'
-// Side-effect type imports: resolve the title/tags projection keys onto the
-// merge-extensible SessionProjectionMap this client reads.
+// Side-effect type import: resolve the title projection key onto the
+// merge-extensible SessionProjectionMap this client reads. Plugin marks are
+// not a gateway projection.
 import type {} from '@deepseek-ai/dsh-session-title'
-import type {} from '@deepseek-ai/dsh-session-tags'
 
-/** One gateway session list row (wire SessionSummary + title/tags projections). */
+/** One gateway session list row (wire SessionSummary + title projection). */
 export interface SessionListRow {
   /** The session id. */
   readonly sessionId: string
@@ -36,8 +37,6 @@ export interface SessionListRow {
   readonly cwd?: string
   /** Normalized title projection, when one has been accepted. */
   readonly title?: string
-  /** Normalized tag set projection, when one has been accepted. */
-  readonly tags?: readonly string[]
   /** Whether the web process currently runs a turn for this session. */
   readonly running: boolean
   /** Last-activity instant (ms). */
@@ -50,8 +49,6 @@ export interface DurableCreateResult {
   readonly sessionId: string
   /** The accepted title, when requested. */
   readonly title?: string
-  /** The accepted tag set, when requested. */
-  readonly tags?: readonly string[]
 }
 
 /** Wire codes this client translates onto the session-tool seam. */
@@ -96,7 +93,6 @@ export class SessionHttpClient extends AbstractApiClient {
     sessionId?: string
     title?: string
     parentSessionId?: string
-    tags?: readonly string[]
     workspaceId?: string
     cwd?: string
     delegationDepth?: number
@@ -196,7 +192,7 @@ export class SessionHttpClient extends AbstractApiClient {
     })
   }
 
-  /** List every served session (web view: cwd-bearing sessions) with title/tags projections. */
+  /** List every served session (web view: cwd-bearing sessions) with title projection. */
   async list(): Promise<readonly SessionListRow[]> {
     return await this.invoke('session.list', async () => {
       const response = await this.sessions.list({})
@@ -208,7 +204,6 @@ export class SessionHttpClient extends AbstractApiClient {
           ...item.parentSessionId === undefined ? {} : { parentSessionId: item.parentSessionId },
           ...item.cwd === undefined ? {} : { cwd: item.cwd },
           ...values?.title === undefined || values.title === null ? {} : { title: values.title },
-          ...values?.tags === undefined || values.tags === null ? {} : { tags: [...values.tags] },
           running: item.running,
           updatedAt: item.updatedAt,
         }
@@ -217,30 +212,18 @@ export class SessionHttpClient extends AbstractApiClient {
   }
 
   /**
-   * Rename a session. rc.7 `session.rename` accepts only `title`. Tags have
-   * no RPC and are echoed in the result without a wire write (Step A).
+   * Rename a session. rc.7 `session.rename` accepts only `title`.
    */
-  async rename(sessionId: string, options: { title?: string; tags?: readonly string[] }): Promise<{
+  async rename(sessionId: string, options: { title: string }): Promise<{
     title?: string
-    tags?: readonly string[]
     seq: number
   }> {
     return await this.invoke('session.rename', async () => {
-      if (options.title !== undefined) {
-        const value = this.unwrap(await this.sessions.rename({
-          sessionId: sessionId as never,
-          title: options.title,
-        }))
-        return {
-          title: value.title,
-          ...options.tags === undefined ? {} : { tags: [...options.tags] },
-          seq: value.seq,
-        }
-      }
-      return {
-        ...options.tags === undefined ? {} : { tags: [...options.tags] },
-        seq: 0,
-      }
+      const value = this.unwrap(await this.sessions.rename({
+        sessionId: sessionId as never,
+        title: options.title,
+      }))
+      return { title: value.title, seq: value.seq }
     })
   }
 

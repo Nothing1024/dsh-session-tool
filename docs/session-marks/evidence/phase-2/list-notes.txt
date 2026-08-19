@@ -1,0 +1,4 @@
+Phase 2 list/collect: row.tags from marks.get; dual-hide (~ title OR kind:hidden); includeHidden opens both; filter.tags is mark-table intersection; collect tagsOf is marks.get; origin=delegated matches kind:delegated (bare delegated compat).
+
+Source test file: packages/session-tool-local/tests/service.spec.ts list/collect
+Full run: list.log (same captured run as write.log)

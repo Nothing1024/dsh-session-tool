@@ -1,0 +1,28 @@
+# Phase 6 (Task 15-16)
+
+date: 2026-08-19
+ROOT: /Users/dev/workspace/dsh/plugin/session-tool/plugin
+PATH prefix: /Users/dev/.nvm/versions/node/v24.18.0/bin
+DSH_HOME: ROOT/env
+gateway: existing http://127.0.0.1:3080 (PID 72010); not restarted; no --lan
+
+## 5.1
+
+- pnpm test: 135 passed / 1 skipped (CLI e2e skipIf no apps/cli/lib/bin.js). exit 0.
+  log: evidence/phase-6/test.log
+- pnpm run build: exit 0. log: evidence/phase-6/build.log
+- vendor scan (rg not on PATH; grep -R packages pnpm-workspace.yaml env): 0 dsh-session-tags hits.
+  log: evidence/phase-6/vendor-rg.txt
+
+## 5.2
+
+- Matrix: all rows PASS. See matrix-summary.txt / UF-001..UF-008.
+- CLI: node packages/session-tool-cli/lib/bin.js (root has no pnpm exec dsh-session bin).
+- --profile st cannot CLI-boot (web-app waits for cmdlineArgs; would bind 3080).
+  Recorded: evidence/phase-6/cli-profile-st.txt
+- Session verbs used --profile headless (dsh-base + tool-session; webUrl 127.0.0.1:3080).
+- Unique titles prefixed sm-. marks.jsonl kept under env/session-tool/ (not committed).
+
+## validate_package.py
+
+Re-run after marking tasks 15-16 已完成.
