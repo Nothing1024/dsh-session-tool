@@ -40,18 +40,23 @@ export interface DelegationProjection {
   readonly lastAssistantSeq?: number
 }
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionMap {
-    /** Log-derived delegation status of a session (BR-003/BR-004). */
-    delegation: DelegationProjection
-  }
-}
-
-interface DelegationState {
+/** Host fold state for the delegation projection (plain JSON, cacheable). */
+export interface DelegationState {
   status: DelegationStatus
   lastTurnEnd?: string
   promptCount: number
   lastAssistantSeq?: number
+}
+
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionStateMap {
+    /** Host fold state for {@link SessionProjectionMap.delegation}. */
+    delegation: DelegationState
+  }
+  interface SessionProjectionMap {
+    /** Log-derived delegation status of a session (BR-003/BR-004). */
+    delegation: DelegationProjection
+  }
 }
 
 const projectionSchema = z.object({
@@ -63,6 +68,18 @@ const projectionSchema = z.object({
   promptCount: z.number().int().nonnegative(),
   lastAssistantSeq: z.number().int().nonnegative().optional(),
 }).strict() as unknown as z.ZodType<DelegationProjection>
+
+const stateSchema = projectionSchema as unknown as z.ZodType<DelegationState>
+
+/** State → wire payload; used by the unit, the log-tail fallback, and tests. */
+export function viewDelegation(state: DelegationState): DelegationProjection {
+  return {
+    status: state.status,
+    ...state.lastTurnEnd === undefined ? {} : { lastTurnEnd: state.lastTurnEnd },
+    promptCount: state.promptCount,
+    ...state.lastAssistantSeq === undefined ? {} : { lastAssistantSeq: state.lastAssistantSeq },
+  }
+}
 
 /** Map a `turn/end` reason kind onto the delegation status vocabulary. */
 function statusOfReason(kind: string): DelegationStatus {
@@ -86,11 +103,16 @@ function statusOfReason(kind: string): DelegationStatus {
  * event it does not own returns the same state reference (zero downstream
  * work), and a changed status returns a new reference.
  */
-export const delegationProjectionDefinition:
-ProjectionDefinition<'delegation', DelegationState> = {
-  key: 'delegation',
+export const delegationProjectionDefinition = {
+  key: 'delegation' as const,
+  // rc.7 `sessionProjections.snapshot` reads `schema.parse(view(state))`.
+  // 0.1.1+ reads `stateSchema` + `wire.viewSchema`. Serve both so a mixed
+  // profile (vibee on rc.7, this package on 0.1.1 types) does not 500 every
+  // session.history with `Cannot read properties of undefined (reading 'parse')`.
   schema: projectionSchema,
-  init: () => ({ status: 'idle', promptCount: 0 }),
+  view: viewDelegation,
+  stateSchema,
+  init: (): DelegationState => ({ status: 'idle', promptCount: 0 }),
   apply: (state, event) => {
     if (event.type === 'turn/start') {
       return state.status === 'running' ? state : { ...state, status: 'running' }
@@ -115,11 +137,9 @@ ProjectionDefinition<'delegation', DelegationState> = {
     // its own `turn/end`, exactly as before the compaction.
     return state
   },
-  view: (state): DelegationProjection => ({
-    status: state.status,
-    ...state.lastTurnEnd === undefined ? {} : { lastTurnEnd: state.lastTurnEnd },
-    promptCount: state.promptCount,
-    ...state.lastAssistantSeq === undefined ? {} : { lastAssistantSeq: state.lastAssistantSeq },
-  }),
+  wire: { viewSchema: projectionSchema, view: viewDelegation },
   stateVersion: 1,
+} satisfies ProjectionDefinition<'delegation', DelegationState> & {
+  schema: typeof projectionSchema
+  view: typeof viewDelegation
 }

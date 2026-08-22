@@ -24,6 +24,7 @@ import {
 } from 'session-tool'
 import type { SessionToolCaller } from 'session-tool'
 import { SessionHttpClient } from '../src/session-client.ts'
+import { putLineage } from '../src/lineage.ts'
 
 vi.mock('../src/session-client.ts')
 
@@ -34,6 +35,8 @@ const TOOL_CONFIG: ToolConfig = {
   listMaxRows: 100,
   hiddenPrefixes: ['~', '[internal]'],
   webUrl: 'http://127.0.0.1:3180',
+  allowOthersToWrite: 'workspace',
+  showDelegated: true,
 }
 
 /** Compose the minimal read stack: live store + persistence + the service. */
@@ -56,13 +59,14 @@ const CLI: SessionToolCaller = { kind: 'cli' }
 /** The last mock session-client instance (the provider constructs one per boot). */
 function sessionClient() {
   const constructor = vi.mocked(SessionHttpClient)
-  return constructor.mock.instances.at(-1) as {
+  return constructor.mock.instances.at(-1) as unknown as {
     durableCreate: ReturnType<typeof vi.fn>
     prompt: ReturnType<typeof vi.fn>
     subagentPrompt: ReturnType<typeof vi.fn>
     list: ReturnType<typeof vi.fn>
     rename: ReturnType<typeof vi.fn>
     wait: ReturnType<typeof vi.fn>
+    cancel: ReturnType<typeof vi.fn>
   }
 }
 
@@ -73,7 +77,14 @@ function listRow(id: string, options: {
   tags?: readonly string[]
   running?: boolean
   updatedAt?: number
-} = {}): Parameters<ReturnType<typeof sessionClient>['list']['mock']['resolvedValue']>[0][number] {
+} = {}): {
+  sessionId: string
+  parentSessionId?: string
+  title?: string
+  tags?: readonly string[]
+  running: boolean
+  updatedAt: number
+} {
   return {
     sessionId: id,
     ...options.parentSessionId === undefined ? {} : { parentSessionId: options.parentSessionId },
@@ -196,6 +207,15 @@ describe('SessionToolLocalService (remote)', () => {
       expect(sessionClient().durableCreate).toHaveBeenCalledWith(expect.objectContaining({ cwd: '/custom' }))
     })
 
+    it('inherits the caller cwd when create omits cwd and workspacePath', async () => {
+      ctx.sessions.create(SessionId('caller'), { meta: { cwd: '/from-parent' } })
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'session-9' })
+      await ctx.sessionTool.create(agent('caller'), { title: 'child' })
+      expect(sessionClient().durableCreate).toHaveBeenCalledWith(expect.objectContaining({
+        cwd: '/from-parent',
+      }))
+    })
+
     it('rejects a ghost caller, a missing parent, and a parent outside the lineage', async () => {
       await expect(ctx.sessionTool.create(agent('ghost'), {}))
         .rejects.toThrow(SessionNotFoundError)
@@ -226,7 +246,7 @@ describe('SessionToolLocalService (remote)', () => {
   describe('write and read', () => {
     it('sends the prompt to the gateway and returns the session id', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       sessionClient().prompt.mockResolvedValue({ accepted: true })
       const result = await ctx.sessionTool.write(agent('caller'), SessionId('session-1'), 'hello world')
@@ -243,12 +263,12 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('reads a locally persisted transcript with incremental and capped reads', async () => {
       callerSession('caller')
-      const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       const append = (text: string): number => {
-        const event = session.append('user/message', {
+        const event = session.append('user/message', createUserMessage({
           content: [{ type: 'text', text }],
           source: { kind: 'user' },
-        }, { surfaceOp: 'append' })
+        }), { surfaceOp: 'append' })
         return event.seq
       }
       append('first')
@@ -267,11 +287,11 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('maps assistant and tool events onto their roles', async () => {
       callerSession('caller')
-      const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
-      session.append('user/message', {
+      const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      session.append('user/message', createUserMessage({
         content: [{ type: 'text', text: 'user says' }],
         source: { kind: 'user' },
-      }, { surfaceOp: 'append' })
+      }), { surfaceOp: 'append' })
       session.append('assistant/message', {
         turn: 1,
         step: 1,
@@ -310,7 +330,7 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('lets a parent reach a child session but not a sibling', async () => {
       callerSession('root')
-      const child = ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj', parentSession: 'root' } })
+      const child = ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj', parentSession: SessionId('root') } })
       await ctx.sessions.flush(child)
       sessionClient().prompt.mockResolvedValue({ accepted: true })
       await ctx.sessionTool.write(agent('root'), SessionId('child'), 'parent writes child')
@@ -319,10 +339,65 @@ describe('SessionToolLocalService (remote)', () => {
         .rejects.toThrow(SessionToolUnauthorizedError)
     })
 
+    it('admits the creator to a child whose live header dropped parentSession (rc.7)', async () => {
+      const caller = callerSession('caller')
+      await ctx.sessions.flush(caller)
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'child' })
+      await ctx.sessionTool.create(agent('caller'), { parentSessionId: SessionId('caller') })
+      const child = ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj' } })
+      await ctx.sessions.flush(child)
+      await expect(ctx.sessionTool.read(agent('caller'), SessionId('child'), {}))
+        .resolves.toMatchObject({ sessionId: 'child' })
+      sessionClient().prompt.mockResolvedValue({ accepted: true })
+      await expect(ctx.sessionTool.write(agent('caller'), SessionId('child'), 'hi'))
+        .resolves.toBeDefined()
+    })
+
+    it('reloads remembered lineage so a creator can read after restart', async () => {
+      callerSession('caller')
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'child' })
+      await ctx.sessionTool.create(agent('caller'), {
+        parentSessionId: SessionId('caller'),
+        cwd: '/proj',
+      })
+      await ctx.fiber.dispose()
+
+      ctx = await compose(root)
+      callerSession('caller')
+      ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj' } })
+      await expect(ctx.sessionTool.read(agent('caller'), SessionId('child'), {}))
+        .resolves.toBeDefined()
+    })
+
+    it('picks up CLI-written lineage without a process restart', async () => {
+      callerSession('caller')
+      await ctx.sessionTool.read(agent('caller'), SessionId('caller'), {})
+      await putLineage({ id: 'cli-child', parentSession: 'caller', delegationDepth: 1 })
+      ctx.sessions.create(SessionId('cli-child'), { meta: { cwd: '/proj' } })
+      await expect(ctx.sessionTool.read(agent('caller'), SessionId('cli-child'), {}))
+        .resolves.toMatchObject({ sessionId: 'cli-child' })
+    })
+
+    it('resolves caller depth from the overlay when the live header omitted it', async () => {
+      callerSession('root')
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'child' })
+      await ctx.sessionTool.create(agent('root'), { cwd: '/proj' })
+      ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj' } })
+      sessionClient().list.mockResolvedValue([listRow('root'), listRow('child')])
+      await expect(ctx.sessionTool.list(agent('child', 0), { scope: 'all' }))
+        .rejects.toThrow(SessionScopeDeniedError)
+      sessionClient().durableCreate.mockResolvedValue({ sessionId: 'grandchild' })
+      await ctx.sessionTool.create(agent('child', 0), { cwd: '/proj' })
+      expect(sessionClient().durableCreate).toHaveBeenLastCalledWith(expect.objectContaining({
+        parentSessionId: 'child',
+        delegationDepth: 2,
+      }))
+    })
+
     it('writes a badged rc.7 child through subagent.prompt, not session.prompt', async () => {
       callerSession('root')
       const child = ctx.sessions.create(SessionId('child'), {
-        meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), origin: 'subagent', delegationDepth: 1 },
       })
       await ctx.sessions.flush(child)
       const client = sessionClient()
@@ -337,7 +412,7 @@ describe('SessionToolLocalService (remote)', () => {
       callerSession('root')
       callerSession('peer')
       const child = ctx.sessions.create(SessionId('child'), {
-        meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), origin: 'subagent', delegationDepth: 1 },
       })
       await ctx.sessions.flush(child)
       const client = sessionClient()
@@ -372,7 +447,7 @@ describe('SessionToolLocalService (remote)', () => {
         callerOn(ctx2, 'root')
         callerOn(ctx2, 'peer')
         const child = ctx2.sessions.create(SessionId('delegated-child'), {
-          meta: { cwd: '/proj', parentSession: 'root' },
+          meta: { cwd: '/proj', parentSession: SessionId('root') },
         })
         await ctx2.sessions.flush(child)
         const client = sessionClient()
@@ -406,7 +481,7 @@ describe('SessionToolLocalService (remote)', () => {
         callerOn(ctx2, 'peer')
         callerOn(ctx2, 'foreign-peer', '/other')
         const target = ctx2.sessions.create(SessionId('delegated-target'), {
-          meta: { cwd: '/proj', parentSession: 'root' },
+          meta: { cwd: '/proj', parentSession: SessionId('root') },
         })
         await ctx2.sessions.flush(target)
         const client = sessionClient()
@@ -420,7 +495,7 @@ describe('SessionToolLocalService (remote)', () => {
           .rejects.toThrow(SessionToolUnauthorizedError)
         // A badged rc.7 child uses the subagent door after the same fence.
         const badged = ctx2.sessions.create(SessionId('badged-child'), {
-          meta: { cwd: '/proj', parentSession: 'root', origin: 'subagent', delegationDepth: 1 },
+          meta: { cwd: '/proj', parentSession: SessionId('root'), origin: 'subagent', delegationDepth: 1 },
         })
         await ctx2.sessions.flush(badged)
         client.subagentPrompt.mockResolvedValue({ accepted: true })
@@ -441,7 +516,7 @@ describe('SessionToolLocalService (remote)', () => {
         callerOn(ctx2, 'root')
         callerOn(ctx2, 'stranger')
         const target = ctx2.sessions.create(SessionId('delegated-anyone'), {
-          meta: { cwd: '/proj', parentSession: 'root' },
+          meta: { cwd: '/proj', parentSession: SessionId('root') },
         })
         await ctx2.sessions.flush(target)
         const client = sessionClient()
@@ -483,7 +558,7 @@ describe('SessionToolLocalService (remote)', () => {
       try {
         callerOn(ctx2, 'root')
         const delegated = ctx2.sessions.create(SessionId('delegated-hidden'), {
-          meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+          meta: { cwd: '/proj', parentSession: SessionId('root'), delegationDepth: 1 },
         })
         await ctx2.sessions.flush(delegated)
         const client = sessionClient()
@@ -507,7 +582,7 @@ describe('SessionToolLocalService (remote)', () => {
   describe('rename', () => {
     it('renames title on the gateway and replaces tags in the mark table', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       sessionClient().rename.mockResolvedValue({ title: 'new title', seq: 7 })
       const result = await ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), {
@@ -521,7 +596,7 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('replaces tags without calling the gateway when title is omitted', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       await put('session-1', ['a', 'b'])
       const result = await ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), {
@@ -534,7 +609,7 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('requires at least one of title or tags and maps validation codes', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), {}))
         .rejects.toThrow(SessionEmptyContentError)
@@ -552,7 +627,7 @@ describe('SessionToolLocalService (remote)', () => {
   describe('wait', () => {
     it('delegates to the gateway and maps the terminal status', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       sessionClient().wait.mockResolvedValue({
         status: 'completed',
@@ -572,7 +647,7 @@ describe('SessionToolLocalService (remote)', () => {
 
     it('defaults the options and maps a timeout status through', async () => {
       callerSession('caller')
-      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: 'caller' } })
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
       await ctx.sessions.flush(target)
       sessionClient().wait.mockResolvedValue({ status: 'timeout' })
       const result = await ctx.sessionTool.wait(agent('caller'), SessionId('session-1'), {})
@@ -584,7 +659,7 @@ describe('SessionToolLocalService (remote)', () => {
       callerSession('caller')
       callerSession('other')
       const foreign = ctx.sessions.create(SessionId('foreign'), {
-        meta: { cwd: '/proj', parentSession: 'other' },
+        meta: { cwd: '/proj', parentSession: SessionId('other') },
       })
       await ctx.sessions.flush(foreign)
       await expect(ctx.sessionTool.wait(agent('caller'), SessionId('foreign'), {}))
@@ -602,27 +677,30 @@ describe('SessionToolLocalService (remote)', () => {
     }> {
       callerSession('root')
       const done = ctx.sessions.create(SessionId('collect-done'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      done.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      done.append('turn/start', { turn: 1 })
       done.append('assistant/message', {
         turn: 1,
         step: 1,
-        message: { role: 'assistant', content: [{ type: 'text', text: 'finished work' }], source: { provider: 'p', model: 'm' } },
+        message: createAssistantMessage({
+          content: [{ type: 'text', text: 'finished work' }],
+          source: { provider: 'p', model: 'm' },
+        }),
       }, { surfaceOp: 'append' })
       done.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
       const failedId = ctx.sessions.create(SessionId('collect-failed'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      failedId.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      failedId.append('turn/start', { turn: 1 })
       failedId.append('turn/end', {
         turn: 1,
         reason: { kind: 'error', error: { message: 'boom', code: 'X' } },
       })
       const runningId = ctx.sessions.create(SessionId('collect-running'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      runningId.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      runningId.append('turn/start', { turn: 1 })
       await ctx.sessions.flush(done)
       await ctx.sessions.flush(failedId)
       await ctx.sessions.flush(runningId)
@@ -742,10 +820,10 @@ describe('SessionToolLocalService (remote)', () => {
       const rootAt = Date.now()
       callerSession('root')
       const child = ctx.sessions.create(SessionId('child'), {
-        meta: { cwd: '/proj', parentSession: 'root', createdAt: rootAt + 1_000 },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), createdAt: rootAt + 1_000 },
       })
       const grandchild = ctx.sessions.create(SessionId('grandchild'), {
-        meta: { cwd: '/proj', parentSession: 'child', createdAt: rootAt + 2_000 },
+        meta: { cwd: '/proj', parentSession: SessionId('child'), createdAt: rootAt + 2_000 },
       })
       await ctx.sessions.flush(child)
       await ctx.sessions.flush(grandchild)
@@ -798,23 +876,26 @@ describe('SessionToolLocalService (remote)', () => {
     it('derives and filters by the delegation projection status', async () => {
       callerSession('root')
       const child = ctx.sessions.create(SessionId('child'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      child.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
-      child.append('user/message', { content: [{ type: 'text', text: 'work' }] }, { surfaceOp: 'append' })
+      child.append('turn/start', { turn: 1 })
+      child.append('user/message', createUserMessage({
+        content: [{ type: 'text', text: 'work' }],
+        source: { kind: 'user' },
+      }), { surfaceOp: 'append' })
       child.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
       const failed = ctx.sessions.create(SessionId('failed'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      failed.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      failed.append('turn/start', { turn: 1 })
       failed.append('turn/end', {
         turn: 1,
         reason: { kind: 'error', error: { message: 'boom', code: 'X' } },
       })
       const running = ctx.sessions.create(SessionId('running'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
-      running.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      running.append('turn/start', { turn: 1 })
       sessionClient().list.mockResolvedValue([
         listRow('root', {}),
         listRow('child', { parentSessionId: 'root' }),
@@ -836,13 +917,13 @@ describe('SessionToolLocalService (remote)', () => {
     it('filters origin=delegated by kind:delegated (bare delegated is compat)', async () => {
       callerSession('root')
       const tagged = ctx.sessions.create(SessionId('tagged'), {
-        meta: { cwd: '/proj', parentSession: 'root' },
+        meta: { cwd: '/proj', parentSession: SessionId('root') },
       })
       ctx.sessions.create(SessionId('bare'), {
-        meta: { cwd: '/proj', parentSession: 'root', createdAt: tagged.header.createdAt },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), createdAt: tagged.header.createdAt },
       })
       ctx.sessions.create(SessionId('plain'), {
-        meta: { cwd: '/proj', parentSession: 'root', createdAt: tagged.header.createdAt },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), createdAt: tagged.header.createdAt },
       })
       sessionClient().list.mockResolvedValue([
         listRow('root', {}),
@@ -869,9 +950,16 @@ describe('SessionToolLocalService (remote)', () => {
       const first = await ctx.sessionTool.list(agent('root'), { scope: 'all', limit: 2 })
       expect(first.sessions).toHaveLength(2)
       expect(first.nextCursor).toBe(first.sessions[1]?.sessionId)
-      const second = await ctx.sessionTool.list(agent('root'), { scope: 'all', limit: 2, cursor: first.nextCursor })
+      const second = await ctx.sessionTool.list(agent('root'), {
+        scope: 'all',
+        limit: 2,
+        ...first.nextCursor === undefined ? {} : { cursor: first.nextCursor },
+      })
       expect(second.sessions).toHaveLength(2)
-      const third = await ctx.sessionTool.list(agent('root'), { scope: 'all', cursor: second.nextCursor })
+      const third = await ctx.sessionTool.list(agent('root'), {
+        scope: 'all',
+        ...second.nextCursor === undefined ? {} : { cursor: second.nextCursor },
+      })
       expect(third.sessions).toHaveLength(1)
       expect(third.nextCursor).toBeUndefined()
     })
@@ -924,18 +1012,18 @@ describe('SessionToolLocalService (remote)', () => {
       // one that is still running, then dispose the context (process exit).
       callerSession('root')
       const completed = ctx.sessions.create(SessionId('restart-completed'), {
-        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), delegationDepth: 1 },
       })
-      completed.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      completed.append('turn/start', { turn: 1 })
       completed.append('user/message', createUserMessage({
         content: [{ type: 'text', text: 'work' }],
         source: { kind: 'user' },
       }), { surfaceOp: 'append' })
       completed.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
       const running = ctx.sessions.create(SessionId('restart-running'), {
-        meta: { cwd: '/proj', parentSession: 'root', delegationDepth: 1 },
+        meta: { cwd: '/proj', parentSession: SessionId('root'), delegationDepth: 1 },
       })
-      running.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
+      running.append('turn/start', { turn: 1 })
       await ctx.sessions.flush(completed)
       await ctx.sessions.flush(running)
       await ctx.fiber.dispose()

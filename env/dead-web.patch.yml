@@ -1,0 +1,17 @@
+# Point session-tool-local at a closed port. Use with --profile headless
+# instead of cli.patch.yml (this file also disables the one-shot runner).
+- id: headless-startup
+  disabled: true
+- id: headless-runner
+  disabled: true
+- id: session-tool-local
+  config:
+    allowAllScope: 'top-level'
+    cliAllowAll: true
+    readMaxBlocks: 500
+    listMaxRows: 100
+    hiddenPrefixes:
+      - '~'
+    webUrl: 'http://127.0.0.1:3999'
+    allowOthersToWrite: 'workspace'
+    showDelegated: true

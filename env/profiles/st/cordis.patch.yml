@@ -1,10 +1,16 @@
-# User overlay for profile `st`. Keep empty.
+# User overlay for profile `st`.
 # tool-session already ships session-tool-local / tool-session
 # via its own bundle patch. Do not re-insert those rows here (double mount).
 #
-# Only overlay when the web port is not 3080, e.g.:
-# - update:
-#     - id: session-tool-local
-#       config:
-#         webUrl: 'http://127.0.0.1:3083'
-[]
+# Port is 3081 (not the bundle default 3080). Id-targeted patch replaces
+# the named entry's whole config — restate unchanged fields. Keep webUrl
+# in sync with env/boot.sh GW_PORT and env/cli.patch.yml.
+- id: session-tool-local
+  config:
+    allowAllScope: 'top-level'
+    cliAllowAll: true
+    readMaxBlocks: 500
+    listMaxRows: 100
+    webUrl: 'http://127.0.0.1:3081'
+    allowOthersToWrite: 'workspace'
+    showDelegated: true

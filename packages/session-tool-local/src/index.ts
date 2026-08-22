@@ -52,7 +52,8 @@ import type {
 } from 'session-tool'
 import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
-import { delegationProjectionDefinition } from './delegation-projection.ts'
+import { loadLineage, putLineage, type LineageRecord } from './lineage.ts'
+import { delegationProjectionDefinition, viewDelegation } from './delegation-projection.ts'
 import type { DelegationStatus } from './delegation-projection.ts'
 import {
   evaluateCollectPredicate,
@@ -73,9 +74,10 @@ export type AllowAllScope = 'top-level' | 'any' | 'none'
  * who may write to / wait on a delegated session created by another agent.
  * `creator` admits only the lineage-chain creator; `workspace` (default)
  * admits any same-workspace caller; `anyone` admits every caller. These
- * levels constrain ONLY the plugin tool path (`session_write` /
- * `session_wait`); the upstream subagent tool path keeps workspace-level
- * authorization.
+ * levels constrain the plugin tool path (`session_write` / `session_wait`).
+ * `session_read` stays lineage-only; rc.7 drops `parentSession` on create,
+ * so this provider remembers intended lineage locally (see lineage overlay).
+ * The upstream subagent tool path keeps workspace-level authorization.
  */
 export type AllowOthersToWrite = 'workspace' | 'creator' | 'anyone'
 
@@ -146,6 +148,10 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   private readonly config: Config
   private readonly workspaceClient: WorkspaceHttpClient
   private readonly sessionClient: SessionHttpClient
+  /** HTTP create-dropped parentSession / depth, keyed by child session id. */
+  private readonly lineage = new Map<string, LineageRecord>()
+  /** In-flight disk merge; concurrent headerIndex callers share one read. */
+  private lineageInflight: Promise<void> | undefined
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'sessionTool')
@@ -182,7 +188,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // (the gateway still admits at most parent depth plus one). The plugin
     // depth ceiling and mark normalization run here, before any gateway call.
     const childDepth = options.delegationDepth
-      ?? (caller.kind === 'agent' ? caller.delegationDepth + 1 : undefined)
+      ?? (caller.kind === 'agent' ? this.callerDepth(caller, index) + 1 : undefined)
     if (childDepth !== undefined && this.config.maxDelegationDepth !== undefined
       && childDepth > this.config.maxDelegationDepth) {
       throw new SessionToolUnauthorizedError(
@@ -216,14 +222,28 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       const { workspace } = await this.workspaceClient.addWorkspace(options.workspacePath)
       bound = { workspaceId: workspace.workspaceId, path: workspace.path }
     }
+    // rc.7 session.create has no parentSession field. When the caller omits
+    // cwd, inherit the parent's so the child lands in the same workspace
+    // (write/wait workspace fence; GUI grouping).
+    const cwd = options.cwd
+      ?? (bound === undefined && parentSessionId !== undefined
+        ? index.get(parentSessionId)?.cwd
+        : undefined)
     const created = await this.sessionClient.durableCreate({
       ...options.title === undefined ? {} : { title: options.title },
       ...parentSessionId === undefined ? {} : { parentSessionId },
       ...childDepth === undefined ? {} : { delegationDepth: childDepth },
       ...bound === undefined
-        ? options.cwd === undefined ? {} : { cwd: options.cwd }
+        ? cwd === undefined ? {} : { cwd }
         : { workspaceId: bound.workspaceId },
     })
+    if (parentSessionId !== undefined) {
+      await this.rememberLineage({
+        id: created.sessionId,
+        parentSession: String(parentSessionId),
+        ...childDepth === undefined ? {} : { delegationDepth: childDepth },
+      })
+    }
     if (normalizedMarks !== undefined && normalizedMarks.length > 0) {
       await putMarks(created.sessionId, normalizedMarks)
     }
@@ -303,7 +323,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       await this.assertAccess(caller, filter.sessionId, index)
       candidates = descendantsOf(index, children, [filter.sessionId])
     } else if (scope === 'all') {
-      this.assertAllScope(caller)
+      this.assertAllScope(caller, index)
       // The gateway's web view IS the full materialized set; no local
       // intersection (the scope-id filter below is skipped for `all`).
       candidates = undefined
@@ -541,8 +561,17 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     )
   }
 
+  /**
+   * Agent depth for fences: the overlay-filled header index first (HTTP
+   * create still omits `delegationDepth`), then the caller-supplied value.
+   */
+  private callerDepth(caller: SessionToolCaller, index: Map<SessionId, SessionHeader>): number {
+    if (caller.kind !== 'agent') return 0
+    return index.get(caller.sessionId)?.delegationDepth ?? caller.delegationDepth
+  }
+
   /** Enforce the `all`-scope gate for the caller identity. */
-  private assertAllScope(caller: SessionToolCaller): void {
+  private assertAllScope(caller: SessionToolCaller, index: Map<SessionId, SessionHeader>): void {
     if (caller.kind === 'cli') {
       if (!this.config.cliAllowAll) {
         throw new SessionScopeDeniedError('the "all" scope is disabled for the CLI (cliAllowAll: false)')
@@ -554,11 +583,13 @@ export class SessionToolLocalService extends Service implements SessionToolServi
         return
       case 'none':
         throw new SessionScopeDeniedError('the "all" scope is disabled (allowAllScope: none)')
-      case 'top-level':
-        if (caller.delegationDepth === 0) return
+      case 'top-level': {
+        const depth = this.callerDepth(caller, index)
+        if (depth === 0) return
         throw new SessionScopeDeniedError(
-          `the "all" scope requires a top-level agent (delegationDepth 0), caller is at depth ${caller.delegationDepth}`,
+          `the "all" scope requires a top-level agent (delegationDepth 0), caller is at depth ${depth}`,
         )
+      }
       /* v8 ignore next -- closed-union exhaustiveness guard */
       default:
         assertNever(this.config.allowAllScope, 'AllowAllScope')
@@ -775,6 +806,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
   /** Merge live and persisted headers into one id → header index (live wins). */
   private async headerIndex(): Promise<Map<SessionId, SessionHeader>> {
+    await this.ensureLineage()
     const index = new Map<SessionId, SessionHeader>()
     for (const session of this.ctx.sessions.list()) {
       index.set(session.id, session.header)
@@ -783,7 +815,65 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     for (const header of persisted) {
       if (!index.has(header.id)) index.set(header.id, header)
     }
+    this.overlayLineage(index)
     return index
+  }
+
+  /**
+   * Merge the on-disk lineage table into the in-memory map. Concurrent
+   * callers share one in-flight read so the first headerIndex does not
+   * overlay an empty map. Reloads on every headerIndex so a CLI write to
+   * the same `$DSH_HOME` is visible to the long-lived web process.
+   */
+  private async ensureLineage(): Promise<void> {
+    if (this.lineageInflight !== undefined) return this.lineageInflight
+    this.lineageInflight = this.mergeLineageFromDisk().finally(() => {
+      this.lineageInflight = undefined
+    })
+    return this.lineageInflight
+  }
+
+  private async mergeLineageFromDisk(): Promise<void> {
+    try {
+      const table = await loadLineage()
+      for (const [id, row] of table) this.lineage.set(id, row)
+    } catch {
+      // DSH_HOME unset or unreadable: in-process remembers still apply.
+    }
+  }
+
+  /**
+   * Record intended parentSession after a gateway create. HTTP create still
+   * omits the field on the durable header; the overlay restores it for owner fences.
+   */
+  private async rememberLineage(record: LineageRecord): Promise<void> {
+    await this.ensureLineage()
+    this.lineage.set(record.id, record)
+    try {
+      await putLineage(record)
+    } catch (error) {
+      this.ctx.logger.warn(`session-tool: persist lineage failed: ${String(error)}`)
+    }
+  }
+
+  /**
+   * Fill parentSession / delegationDepth when the live header omitted them.
+   * Does not mutate store headers — only the fence index.
+   */
+  private overlayLineage(index: Map<SessionId, SessionHeader>): void {
+    for (const [id, row] of this.lineage) {
+      const sid = SessionId(id)
+      const header = index.get(sid)
+      if (header === undefined) continue
+      const parentMissing = header.parentSession === undefined
+      const depthMissing = header.delegationDepth === undefined && row.delegationDepth !== undefined
+      if (!parentMissing && !depthMissing) continue
+      index.set(sid, {
+        ...header,
+        ...parentMissing ? { parentSession: SessionId(row.parentSession) } : {},
+        ...depthMissing ? { delegationDepth: row.delegationDepth } : {},
+      })
+    }
   }
 
   /**
@@ -887,7 +977,7 @@ function messageRow(event: SessionEvent): SessionToolMessageRow | undefined {
 function foldDelegationStatus(events: readonly SessionEvent[]): DelegationStatus {
   let state = delegationProjectionDefinition.init()
   for (const event of events) state = delegationProjectionDefinition.apply(state, event)
-  return delegationProjectionDefinition.view(state).status
+  return viewDelegation(state).status
 }
 
 /** Collect poll interval (ms): the status snapshot cadence while waiting. */

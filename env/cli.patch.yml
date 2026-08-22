@@ -1,0 +1,21 @@
+# dsh-session boots headless as a session-store client, not a one-shot runner.
+# Official rc.7 headless mounts headless-startup (needs cmdlineArgs) plus
+# headless-runner; the CLI only strips the latter. Disable both so verbs
+# can talk to the already-running `st` web on :3081.
+#
+# Id-targeted patch replaces the named entry's whole config — restate
+# unchanged fields. Keep webUrl in sync with boot.sh GW_PORT and
+# profiles/st/cordis.patch.yml.
+- id: headless-startup
+  disabled: true
+- id: headless-runner
+  disabled: true
+- id: session-tool-local
+  config:
+    allowAllScope: 'top-level'
+    cliAllowAll: true
+    readMaxBlocks: 500
+    listMaxRows: 100
+    webUrl: 'http://127.0.0.1:3081'
+    allowOthersToWrite: 'workspace'
+    showDelegated: true

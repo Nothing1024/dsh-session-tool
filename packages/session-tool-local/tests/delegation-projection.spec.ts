@@ -2,11 +2,9 @@
 // mapping, prompt/assistant tracking, identity-preserving no-op events, and
 // restart replay (the same fold over the same events yields the same state).
 import { describe, expect, it } from 'vitest'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
-import { delegationProjectionDefinition } from '../src/delegation-projection.ts'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { delegationProjectionDefinition, viewDelegation } from '../src/delegation-projection.ts'
 import type { DelegationProjection } from '../src/delegation-projection.ts'
-
-const sid = (id: string): SessionId => id as SessionId
 
 let nextSeq = 0
 function event(type: string, data: Record<string, unknown>, overrides: Record<string, unknown> = {}): SessionEvent {
@@ -37,7 +35,7 @@ function assistantMessage(seq: number): SessionEvent {
 function fold(events: readonly SessionEvent[]): DelegationProjection {
   let state = delegationProjectionDefinition.init()
   for (const item of events) state = delegationProjectionDefinition.apply(state, item)
-  return delegationProjectionDefinition.view(state)
+  return viewDelegation(state)
 }
 
 describe('delegation projection', () => {
@@ -96,6 +94,13 @@ describe('delegation projection', () => {
     const first = delegationProjectionDefinition.apply(running, assistantMessage(5))
     const again = delegationProjectionDefinition.apply(first, assistantMessage(5))
     expect(again).toBe(first)
+  })
+
+  it('exposes rc.7 schema.parse(view(state)) so mixed-version gateways can snapshot', () => {
+    const state = delegationProjectionDefinition.init()
+    const viewed = delegationProjectionDefinition.view(state)
+    expect(viewed).toEqual({ status: 'idle', promptCount: 0 })
+    expect(delegationProjectionDefinition.schema.parse(viewed)).toEqual(viewed)
   })
 
   it('replays the same events to the same state after a restart (BR-004)', () => {

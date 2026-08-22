@@ -20,7 +20,18 @@ function stubExec() {
 }
 
 /** Register the tools against a mock context and capture the definitions. */
-function register(): { defs: Map<string, ToolDefinition>; sessionTool: Record<string, ReturnType<typeof vi.fn>> } {
+function register(): {
+  defs: Map<string, ToolDefinition>
+  sessionTool: {
+    create: ReturnType<typeof vi.fn>
+    read: ReturnType<typeof vi.fn>
+    write: ReturnType<typeof vi.fn>
+    list: ReturnType<typeof vi.fn>
+    wait: ReturnType<typeof vi.fn>
+    collect: ReturnType<typeof vi.fn>
+    rename: ReturnType<typeof vi.fn>
+  }
+} {
   const sessionTool = {
     create: vi.fn(),
     read: vi.fn(),
@@ -65,7 +76,7 @@ describe('tool-session', () => {
     for (const [name, definition] of defs) {
       const view = definition.presentCall?.(validArgs[name]!)
       expect(view?.card, name).toBe('generic')
-      expect('locations' in (view ?? {}) ? view?.locations : undefined, name).toBeUndefined()
+      expect((view as { locations?: unknown } | undefined)?.locations, name).toBeUndefined()
     }
   })
 
@@ -331,7 +342,7 @@ describe('tool-session', () => {
   })
 
   it('rejects a missing calling agent', async () => {
-    const { defs, sessionTool } = register()
+    const { defs } = register()
     await expect(
       (defs.get('session_read')!.execute as (a: unknown, e: unknown) => Promise<unknown>)(
         { session_id: 'x' },

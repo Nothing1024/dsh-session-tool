@@ -16,9 +16,13 @@ const WS = {
 
 /** Stub global fetch with a handler over the parsed request. */
 function stubFetch(handler: (url: URL, body: { rpcId: string; method: string; payload: unknown }) => Response | Promise<Response>): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input))
-    const body = init?.body === undefined ? {} : JSON.parse(String(init.body)) as { rpcId: string; method: string; payload: unknown }
+    const body = JSON.parse(String(init?.body ?? '{"rpcId":"","method":"","payload":null}')) as {
+      rpcId: string
+      method: string
+      payload: unknown
+    }
     return await handler(url, body)
   })
   vi.stubGlobal('fetch', fetchMock)

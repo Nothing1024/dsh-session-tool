@@ -9,7 +9,12 @@ env/sessions/
 env/storages/
 env/settings.yaml
 env/.env
+env/.credentials.yaml
+env/.anonymous-user-id
 env/session-tool/
+env/manual-test-last.txt
+env/manual-test-*.txt
+env/manual-view/
 env/profiles/headless/
 env/lan-uuid
 

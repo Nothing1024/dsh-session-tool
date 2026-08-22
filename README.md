@@ -22,14 +22,38 @@ session-tool/
 ## 安装 / 调试
 
 仓内 `env/` 就是 `DSH_HOME`，见 `env/README.md`。不要再找 worktree 或 LAN skill。
+模型 key 在 `env/.env` / `env/.credentials.yaml`（git 忽略）；`sh env/setup.sh` 会在缺失时从 `~/.dsh/.env` 补。
 
 ```sh
 pnpm install && pnpm run build
 sh env/setup.sh
-sh env/boot.sh
+sh env/boot.sh                 # loopback :3081
 ```
 
-起来之后 agent 可用 `session_*` 工具。`hiddenPrefixes` 默认 `~`（`session-tool-local` Config）；`kind:hidden` 是第二道隐藏闸。
+网关起来后一键 CLI 矩阵（命令 + 退出码 + stdout/stderr，覆盖 UF-001..008）。
+会话标题用中文标出【可见】/【标题隐藏】/【标记隐藏】/【委派】，挂在 workspace「手工验收」里，方便在 http://127.0.0.1:3081 侧栏对照。
+
+```sh
+bash scripts/manual-test.sh                 # 默认给每条可查看会话写不同中文提示（走模型；空会话官方栏不出现）
+bash scripts/manual-test.sh --no-write      # 只建会话、不打对话
+# 或：pnpm env:test
+```
+
+`--profile st` 是正在跑的 web（:3081），不要再 boot。CLI 一律 `--profile headless --patch env/cli.patch.yml`（webUrl 也是 :3081）。矩阵会先核网关 `DSH_HOME` 是本仓 `env/`。
+起来之后 agent 可用 `session_*` 工具。`hiddenPrefixes` 默认 `~`；`kind:hidden` 是第二道隐藏闸。
+官方侧栏应能看到【可见】；`~【标题隐藏】` 官方栏不出现；【标记隐藏】官方栏仍可能看见（不读插件标记）。
+
+### 调试（网关内部状态）
+
+CLI 矩阵之外，想直接看"插件挂上了没"/"某个会话日志里到底发生了什么"，用 `dsh-plugin-debug` skill：
+
+```sh
+~/.agents/skills/dsh-plugin-debug/scripts/dsh-rpc-who.sh 3081                 # 先确认口是本仓的
+~/.agents/skills/dsh-plugin-debug/scripts/dsh-rpc.sh 3081 pluginInventory/list | grep -A2 session-tool
+~/.agents/skills/dsh-plugin-debug/scripts/dsh-rpc.sh 3081 session.history '{"sessionId":"<id>","maxMessages":20}'
+```
+
+网关没起时可绕过网关直接读磁盘：`dsh-session-cat.sh env session-xxx`。
 
 ## CLI 用法
 
@@ -69,7 +93,7 @@ workspace 注册表归 **web 进程**（`dsh web`）所有；本插件的 worksp
 - `session_create` 的 `workspace_path` / CLI `session create --workspace <path>`：先经网关幂等注册（同 canonical path 复用），再以网关返回的 **canonical path 作为新会话 header 的 `cwd`** 建会话——持久化按 cwd 分目录、跨进程可访问；**workspace 账（GUI 分组）只由 attachSession 写入**（bootstrap 仅在 workspace 域首次初始化建账），跨进程 session 在 GUI 显示于"未分组"（详见 docs/design.md §14 边界与上游化建议）；
 - `dsh-session workspace add/list/rename/delete`：注册 / 列表 / 改名 / 删除（保留目录与会话日志）；
 - 网关不可达或拒绝时 fail loud：`[web-unreachable]` / 透传网关 wire 错误码（`workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`）；
-- 网关地址 = `session-tool-local` 的 `Config.webUrl`（bundle patch 可配置，默认 `http://127.0.0.1:3080`）。
+- 网关地址 = `session-tool-local` 的 `Config.webUrl`（官方包默认 `http://127.0.0.1:3080`；本仓 overlay / CLI patch 指到 `http://127.0.0.1:3081`）。
 
 ## 开发
 
@@ -85,7 +109,7 @@ pnpm test
 - **owner fence**：agent 调用者必须是目标会话自身或其祖先（沿 header `parentSession` 链）；CLI 豁免；
 - **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根，调用者须为根或祖先）、`all`（Config 门槛：`allowAllScope: top-level|any|none` + `cliAllowAll`）；默认双闸隐藏（`~` 标题或 `kind:hidden`）；
 - **重命名**：`session/title`（user 源 pin 标题、停自动生成）+ 插件标记表整组替换（last-wins）；官方 GUI 不显示标记；后期 Web 用 `listByKind`；
-- **workspace 注册/绑定走 web 网关**：`session_create --workspace_path` 先经网关幂等注册 workspace，再以 canonical path 作为会话 header `cwd`（归属机制）；workspace 管理经 `dsh-session workspace` 子命令；网关地址 `Config.webUrl` 可配置（默认 `http://127.0.0.1:3080`）；不可达 fail loud（`web-unreachable`）；
+- **workspace 注册/绑定走 web 网关**：`session_create --workspace_path` 先经网关幂等注册 workspace，再以 canonical path 作为会话 header `cwd`（归属机制）；workspace 管理经 `dsh-session workspace` 子命令；`Config.webUrl` 官方包默认 `:3080`，本仓 overlay 为 `:3081`；不可达 fail loud（`web-unreachable`）；
 - **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid` / `web-unreachable` / `workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`（HarnessError code，工具失败结果与 CLI stderr 均携带）。
 
 ## 注意事项

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Boot profile `st` from this env directory.
-#   sh env/boot.sh              loopback :3080 (matches bundle webUrl)
+#   sh env/boot.sh              loopback :3081 (this warehouse; overlay webUrl)
 #   sh env/boot.sh --lan        delegates to dsh-plugin-debug-env/scripts/boot-lan.sh
 set -eu
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -9,6 +9,10 @@ if [ ! -d "$ROOT/profiles/st/node_modules/@deepseek-ai/dsh-base" ]; then
   exit 1
 fi
 export DSH_HOME="$ROOT"
+GW_PORT=3081
+EXPECTED_HOME="$ROOT"
+# shellcheck disable=SC1091
+. "$ROOT/gateway-id.sh"
 
 find_skill() {
   if [ -n "${DSH_PLUGIN_DEBUG_ENV:-}" ] && [ -x "$DSH_PLUGIN_DEBUG_ENV/scripts/boot-lan.sh" ]; then
@@ -33,4 +37,9 @@ if [ "${1:-}" = "--lan" ]; then
   SKILL=$(find_skill)
   exec "$SKILL/scripts/boot-lan.sh" --home "$ROOT" --profile st --overlay "$ROOT/lan.patch.yml" "$@"
 fi
-exec npx --yes @deepseek-ai/dsh@0.1.0-rc.7 --profile st --port 3080 "$@"
+
+if gateway_refuse_foreign; then
+  echo "env/boot: already up pid=$GW_PID http://127.0.0.1:${GW_PORT}"
+  exit 0
+fi
+exec npx --yes @deepseek-ai/dsh@0.1.1-rc.2 --profile st --port "$GW_PORT" --no-open "$@"

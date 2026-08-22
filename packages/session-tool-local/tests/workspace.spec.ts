@@ -26,6 +26,8 @@ const TOOL_CONFIG: ToolConfig = {
   listMaxRows: 100,
   hiddenPrefixes: ['~'],
   webUrl: 'http://127.0.0.1:3080',
+  allowOthersToWrite: 'workspace',
+  showDelegated: true,
 }
 
 const TITLE_CONFIG = { fallbackMaxWords: 5, fallbackMaxBytes: 40, maxTitleBytes: 80 }
@@ -58,7 +60,7 @@ function clientMock(): {
   deleteWorkspace: ReturnType<typeof vi.fn>
 } {
   const constructor = vi.mocked(WorkspaceHttpClient)
-  const instance = constructor.mock.instances.at(-1) as {
+  const instance = constructor.mock.instances.at(-1) as unknown as {
     addWorkspace: ReturnType<typeof vi.fn>
     listWorkspaces: ReturnType<typeof vi.fn>
     renameWorkspace: ReturnType<typeof vi.fn>
@@ -70,7 +72,7 @@ function clientMock(): {
 /** The last mock session-client instance. */
 function sessionClientMock() {
   const constructor = vi.mocked(SessionHttpClient)
-  return constructor.mock.instances.at(-1) as { durableCreate: ReturnType<typeof vi.fn> }
+  return constructor.mock.instances.at(-1) as unknown as { durableCreate: ReturnType<typeof vi.fn> }
 }
 
 function agent(id: string): SessionToolCaller {
