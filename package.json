@@ -10,6 +10,7 @@
     "build": "pnpm -r run build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "standard:check": "node standards/validate.mjs",
     "env:setup": "sh env/setup.sh",
     "env:boot": "sh env/boot.sh",
     "env:test": "bash scripts/manual-test.sh"

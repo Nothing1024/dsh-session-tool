@@ -1,0 +1,18 @@
+{
+  "$schema": "https://dsh-std.example/schemas/dsh-plugin/v0.15.json",
+  "id": "io.github.nothing1024.tool-session",
+  "name": "DSH Session Tool",
+  "version": "0.1.0",
+  "manifestVersion": "0.15",
+  "facets": {
+    "host": { "entry": "lib/index.js", "apiVersion": "v1alpha1" }
+  },
+  "requires": {
+    "contracts": [
+      { "apiVersion": "x-nothing1024.dsh.tools/v1alpha1", "kind": "ToolRegistry" },
+      { "apiVersion": "x-nothing1024.dsh.session-stack/v1alpha1", "kind": "SessionStack" },
+      { "apiVersion": "x-nothing1024.dsh.web-gateway/v1alpha1", "kind": "WebGateway" }
+    ]
+  },
+  "permissions": []
+}

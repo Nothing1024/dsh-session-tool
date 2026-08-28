@@ -101,7 +101,12 @@ workspace 注册表归 **web 进程**（`dsh web`）所有；本插件的 worksp
 pnpm install
 pnpm run build
 pnpm test
+pnpm run standard:check   # dsh-community-standard v0.15 对齐检查（见 standards/README.md）
 ```
+
+## 社区标准对齐（standards/）
+
+对齐 [dsh-community-standard](https://github.com/oh-my-dsh/dsh-community-standard) v0.15 的静态声明面：`packages/tool-session/dsh-plugin.json` 是标准 manifest（与官方装载用的 `dsh.plugin.json` 并存），`standards/` 内有部署 Host Descriptor（profile `st`）、纯函数协商、fixtures 与上游触点基线（adapter 审计）。私有坐标用 `x-nothing1024.*` 命名空间，Registry 定案后做映射替换。详见 `standards/README.md`。
 
 ## 关键设计（详见 docs/design.md）
 
