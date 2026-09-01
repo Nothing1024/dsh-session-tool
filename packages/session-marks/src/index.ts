@@ -35,6 +35,14 @@ export interface NormalizeMarksLimits {
   readonly maxTagBytes?: number
 }
 
+/** Patch operation for atomically adding/removing tags from one session. */
+export interface PatchMarksRequest {
+  /** Tags to add to the session's mark set (union operation). */
+  readonly add?: readonly string[]
+  /** Tags to remove from the session's mark set (diff operation). */
+  readonly remove?: readonly string[]
+}
+
 /** Rejection of an empty, overlong, or over-count mark set. */
 export class TagInvalidError extends Error {
   override readonly name = 'TagInvalidError'
@@ -117,6 +125,45 @@ export async function put(
     await saveTable(path, table)
   })
   return normalized
+}
+
+/**
+ * Atomically add and/or remove tags from one session's mark set.
+ * The final set is normalized (dedupe, sort, size checks) as a whole.
+ * Applies adds first, then removes; if a tag appears in both, remove wins.
+ * @returns the final normalized set after the patch.
+ * @throws TagInvalidError if the merged result fails normalization.
+ */
+export async function patch(
+  sessionId: string,
+  changes: PatchMarksRequest,
+  options?: MarksOptions,
+): Promise<string[]> {
+  const id = requireId(sessionId)
+  const path = marksPath(options?.dshHome)
+  return await withLock(path, async () => {
+    const table = await loadTable(path)
+    const existing = table.get(id) ?? []
+
+    // Apply adds (union) then removes (diff)
+    let updated = [...existing]
+
+    if (changes.add !== undefined && changes.add.length > 0) {
+      updated = [...updated, ...changes.add]
+    }
+
+    if (changes.remove !== undefined && changes.remove.length > 0) {
+      const removeSet = new Set(changes.remove.map(t => t.trim()))
+      updated = updated.filter(tag => !removeSet.has(tag))
+    }
+
+    // Normalize the merged result
+    const normalized = normalizeMarks(updated)
+
+    table.set(id, normalized)
+    await saveTable(path, table)
+    return normalized
+  })
 }
 
 /**

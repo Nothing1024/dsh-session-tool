@@ -118,14 +118,18 @@ export interface SessionToolWaitOptions {
   readonly timeoutMs?: number
 }
 
-/** Result of {@link SessionToolService.wait}. */
-export interface SessionToolWaitResult {
-  /** The waited session id. */
-  readonly sessionId: SessionId
-  /** The terminal status once the wait settled, or `timeout`. */
-  readonly status: SessionToolWaitStatus
-  /** Kind of the last `turn/end` reason, when one has ended. */
-  readonly lastTurnEndReason?: string
+/** Visibility state of a session combining marks and workspace archive status. */
+export interface SessionVisibility {
+  /** Whether the session has the kind:hidden mark set. */
+  readonly hasHiddenMark: boolean
+  /** Whether the session is archived in the workspace registry. */
+  readonly archived: boolean
+  /**
+   * Composite: true if (hasHiddenMark || archived).
+   * This is the canonical "is this session hidden everywhere?" predicate,
+   * used by list(includeHidden: false).
+   */
+  readonly isHidden: boolean
 }
 
 /**
@@ -235,6 +239,8 @@ export interface SessionToolListRow {
   readonly delegationStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
   /** Creation timestamp from the session header. */
   readonly createdAt: number
+  /** Whether the session is archived in the workspace registry. */
+  readonly archived?: boolean
 }
 
 /** Result of {@link SessionToolService.list}. */
@@ -410,6 +416,20 @@ export interface SessionToolService {
   collect(caller: SessionToolCaller, request: SessionToolCollectRequest): Promise<SessionToolCollectResult>
 
   /**
+   * Cancel an in-progress session's current turn.
+   *
+   * Semantics: sends a cancellation signal to the web gateway, which will
+   * interrupt the model's execution and mark the turn as `aborted`.
+   * The session remains durable and inspectable; this does not delete it.
+   * Caller must be the session itself or one of its ancestors (same as write/wait).
+   *
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session to cancel.
+   * @returns void (settle means the cancel signal was accepted).
+   */
+  cancel(caller: SessionToolCaller, sessionId: SessionId): Promise<void>
+
+  /**
    * Rename a session and/or replace its plugin mark set.
    * @param caller - the calling agent or the CLI.
    * @param sessionId - target session; the caller must be the session itself
@@ -418,6 +438,39 @@ export interface SessionToolService {
    * @returns the accepted title and/or tags.
    */
   rename(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolRenameOptions): Promise<SessionToolRenameResult>
+
+  /**
+   * Read the visibility state of a session (hidden marks + archived status).
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session.
+   * @returns the composite visibility state.
+   */
+  getVisibility(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility>
+
+  /**
+   * Hide a session by setting the kind:hidden mark and optionally archiving.
+   * The mark operation always completes; archival is best-effort when workspace
+   * registry is available.
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session; the caller must be the session itself
+   *   or one of its ancestors.
+   * @param options - `syncToArchived` controls whether to also call workspace
+   *   archival (default: true).
+   * @returns the updated visibility state.
+   */
+  hide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility>
+
+  /**
+   * Unhide a session by removing the kind:hidden mark and optionally unarchiving.
+   * The mark operation always completes; workspace state updates are best-effort.
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session; the caller must be the session itself
+   *   or one of its ancestors.
+   * @param options - `syncToArchived` controls whether to also call workspace
+   *   unarchival (default: true).
+   * @returns the updated visibility state.
+   */
+  unhide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility>
 
   /**
    * Register (or reuse) a workspace through the web gateway. The gateway is

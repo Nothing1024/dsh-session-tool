@@ -18,7 +18,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { get as getMarks, isTitleHidden, normalizeMarks, put as putMarks, TagInvalidError } from 'session-marks'
+import { get as getMarks, isTitleHidden, normalizeMarks, patch as patchMarks, put as putMarks, TagInvalidError } from 'session-marks'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
@@ -331,6 +331,10 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       assertNever(scope, 'SessionToolListScope')
     }
 
+    // Fetch archived sessions once for use in filtering and row enrichment
+    const { archivedSessionIds } = await this.workspaceClient.listWorkspaces()
+    const archivedSet = new Set(archivedSessionIds)
+
     // The gateway serves the web view (cwd-bearing sessions) with title
     // projection; plugin marks JOIN from the mark table. own/tree rows are
     // intersected with the scope's id set (the local header index carries
@@ -348,13 +352,17 @@ export class SessionToolLocalService extends Service implements SessionToolServi
         status: row.running ? 'live' : 'idle',
         ...delegationStatus === undefined ? {} : { delegationStatus },
         createdAt: header?.createdAt ?? row.updatedAt,
+        ...archivedSet.has(row.sessionId as SessionId) ? { archived: true } : {},
       }
     }))
 
     let visible = rows
     if (filter.includeHidden !== true) {
       visible = visible.filter(row =>
-        !isTitleHidden(row.title, this.config.hiddenPrefixes) && !row.tags.includes('kind:hidden'))
+        !isTitleHidden(row.title, this.config.hiddenPrefixes)
+        && !row.tags.includes('kind:hidden')
+        && row.archived !== true,
+      )
     }
     if (this.config.showDelegated === false && filter.origin !== 'delegated') {
       visible = visible.filter(row => !this.isDelegated(row))
@@ -424,6 +432,74 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     }
   }
 
+  async getVisibility(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility> {
+    // Check kind:hidden mark
+    const marks = await getMarks(sessionId)
+    const hasHiddenMark = marks?.includes('kind:hidden') ?? false
+
+    // Check workspace archive status
+    const { archivedSessionIds } = await this.workspaceClient.listWorkspaces()
+    const archived = archivedSessionIds.includes(sessionId)
+
+    return {
+      hasHiddenMark,
+      archived,
+      isHidden: hasHiddenMark || archived,
+    }
+  }
+
+  async hide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility> {
+    const index = await this.headerIndex()
+    await this.assertContinuationAllowed(caller, sessionId, index)
+
+    // Set kind:hidden mark (idempotent: if already set, normalizeMarks dedupes)
+    await patchMarks(sessionId, { add: ['kind:hidden'] })
+
+    // Best-effort workspace archival
+    const syncToArchived = options?.syncToArchived !== false
+    if (syncToArchived) {
+      try {
+        const registry = this.ctx.get('workspaceRegistry')
+        if (registry !== undefined && typeof registry.archiveSession === 'function') {
+          await registry.archiveSession(sessionId)
+        }
+      } catch (error) {
+        // Log but don't fail; mark is already set
+        const msg = error instanceof Error ? error.message : String(error)
+        console.warn(`[session-tool] archiveSession failed for ${sessionId}: ${msg}`)
+      }
+    }
+
+    return this.getVisibility(caller, sessionId)
+  }
+
+  async unhide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility> {
+    const index = await this.headerIndex()
+    await this.assertContinuationAllowed(caller, sessionId, index)
+
+    // Remove kind:hidden mark (idempotent: if not set, diff handles it)
+    await patchMarks(sessionId, { remove: ['kind:hidden'] })
+
+    // Best-effort workspace unarchival
+    const syncToArchived = options?.syncToArchived !== false
+    if (syncToArchived) {
+      try {
+        const registry = this.ctx.get('workspaceRegistry')
+        if (registry !== undefined && typeof registry.unarchiveSession === 'function') {
+          await registry.unarchiveSession(sessionId)
+        } else if (registry !== undefined) {
+          console.warn(`[session-tool] workspaceRegistry.unarchiveSession is not available; workspace archive state unchanged`)
+        }
+      } catch (error) {
+        // Log but don't fail; mark removal completed
+        const msg = error instanceof Error ? error.message : String(error)
+        console.warn(`[session-tool] unarchiveSession failed for ${sessionId}: ${msg}`)
+      }
+    }
+
+    return this.getVisibility(caller, sessionId)
+  }
+
   async wait(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolWaitOptions): Promise<SessionToolWaitResult> {
     const index = await this.headerIndex()
     await this.assertContinuationAllowed(caller, sessionId, index)
@@ -481,6 +557,12 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       }
       await sleep(COLLECT_POLL_MS)
     }
+  }
+
+  async cancel(caller: SessionToolCaller, sessionId: SessionId): Promise<void> {
+    const index = await this.headerIndex()
+    await this.assertContinuationAllowed(caller, sessionId, index)
+    await this.sessionClient.cancel(sessionId)
   }
 
   // ---- workspace (web gateway authority) ---------------------------------
@@ -787,6 +869,13 @@ export class SessionToolLocalService extends Service implements SessionToolServi
    * @returns the log-derived status, when the log is resolvable.
    */
   private async delegationStatusOf(sessionId: SessionId): Promise<DelegationStatus | undefined> {
+    // Try cached projection first (available if sessionProjections service composed)
+    const projection = this.ctx.sessionProjections?.get(sessionId)
+    if (projection) {
+      return projection.delegationStatus
+    }
+
+    // Fallback: read live or persisted events and fold
     const live = this.ctx.sessions.get(sessionId)
     const events = live?.events
     if (events !== undefined) {
