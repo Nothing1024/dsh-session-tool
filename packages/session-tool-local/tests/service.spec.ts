@@ -10,6 +10,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { get, marksPath, put } from 'session-marks'
 import SessionToolLocalService from 'session-tool-local'
@@ -24,9 +25,11 @@ import {
 } from 'session-tool'
 import type { SessionToolCaller } from 'session-tool'
 import { SessionHttpClient } from '../src/session-client.ts'
+import { WorkspaceHttpClient } from '../src/workspace-client.ts'
 import { putLineage } from '../src/lineage.ts'
 
 vi.mock('../src/session-client.ts')
+vi.mock('../src/workspace-client.ts')
 
 const TOOL_CONFIG: ToolConfig = {
   allowAllScope: 'top-level',
@@ -70,6 +73,14 @@ function sessionClient() {
   }
 }
 
+/** The last mock workspace-client instance (the provider constructs one per boot). */
+function workspaceClient() {
+  const constructor = vi.mocked(WorkspaceHttpClient)
+  return constructor.mock.instances.at(-1) as unknown as {
+    listWorkspaces: ReturnType<typeof vi.fn>
+  }
+}
+
 /** A mock list row shaped like the gateway's SessionListRow. */
 function listRow(id: string, options: {
   parentSessionId?: string
@@ -105,6 +116,9 @@ describe('SessionToolLocalService (remote)', () => {
     previousHome = process.env.DSH_HOME
     root = mkdtempSync(join(tmpdir(), 'session-tool-test-'))
     ctx = await compose(root)
+    // list() always consults the archive set; default to none archived so
+    // callers exercising list() need not stub this unless they test archiving.
+    workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
   })
 
   afterEach(async () => {
@@ -555,6 +569,7 @@ describe('SessionToolLocalService (remote)', () => {
         ...TOOL_CONFIG,
         showDelegated: false,
       })
+      workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
       try {
         callerOn(ctx2, 'root')
         const delegated = ctx2.sessions.create(SessionId('delegated-hidden'), {
@@ -621,6 +636,97 @@ describe('SessionToolLocalService (remote)', () => {
       await expect(ctx.sessionTool.rename(agent('caller'), SessionId('session-1'), { tags: [' ', ''] }))
         .rejects.toMatchObject({ code: 'tag-invalid' })
       expect(sessionClient().rename).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('getVisibility / hide / unhide', () => {
+    it('reports both flags false when neither marked nor archived', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      const result = await ctx.sessionTool.getVisibility(agent('caller'), SessionId('session-1'))
+      expect(result).toEqual({ hasHiddenMark: false, archived: false, isHidden: false })
+    })
+
+    it('getVisibility composes the kind:hidden mark and the archive set', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      await put('session-1', ['kind:hidden'])
+      const result = await ctx.sessionTool.getVisibility(agent('caller'), SessionId('session-1'))
+      expect(result).toEqual({ hasHiddenMark: true, archived: false, isHidden: true })
+
+      workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: ['session-2'] })
+      const archivedOnly = await ctx.sessionTool.getVisibility(agent('caller'), SessionId('session-2'))
+      expect(archivedOnly).toEqual({ hasHiddenMark: false, archived: true, isHidden: true })
+    })
+
+    it('hide sets kind:hidden and unhide clears it, both idempotently', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+
+      const hidden = await ctx.sessionTool.hide(agent('caller'), SessionId('session-1'))
+      expect(hidden).toEqual({ hasHiddenMark: true, archived: false, isHidden: true })
+      expect(await get('session-1')).toEqual(['kind:hidden'])
+      // Reapplying is a no-op on the mark set.
+      await ctx.sessionTool.hide(agent('caller'), SessionId('session-1'))
+      expect(await get('session-1')).toEqual(['kind:hidden'])
+
+      const unhidden = await ctx.sessionTool.unhide(agent('caller'), SessionId('session-1'))
+      expect(unhidden).toEqual({ hasHiddenMark: false, archived: false, isHidden: false })
+      expect(await get('session-1')).toBeUndefined()
+      // Reapplying is a no-op.
+      await ctx.sessionTool.unhide(agent('caller'), SessionId('session-1'))
+      expect(await get('session-1')).toBeUndefined()
+    })
+
+    it('hide preserves any other marks already on the session', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      await put('session-1', ['plan'])
+      await ctx.sessionTool.hide(agent('caller'), SessionId('session-1'))
+      expect(await get('session-1')).toEqual(['kind:hidden', 'plan'])
+      await ctx.sessionTool.unhide(agent('caller'), SessionId('session-1'))
+      expect(await get('session-1')).toEqual(['plan'])
+    })
+
+    it('enforces the access fence before hiding, unhiding, or reading visibility', async () => {
+      callerSession('caller')
+      callerSession('other')
+      const foreign = ctx.sessions.create(SessionId('foreign'), {
+        meta: { cwd: '/proj', parentSession: SessionId('other') },
+      })
+      await ctx.sessions.flush(foreign)
+      await expect(ctx.sessionTool.hide(agent('caller'), SessionId('foreign')))
+        .rejects.toThrow(SessionToolUnauthorizedError)
+      await expect(ctx.sessionTool.unhide(agent('caller'), SessionId('foreign')))
+        .rejects.toThrow(SessionToolUnauthorizedError)
+      expect(await get('foreign')).toBeUndefined()
+    })
+  })
+
+  describe('cancel', () => {
+    it('delegates to the gateway', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      sessionClient().cancel.mockResolvedValue({ accepted: true })
+      await ctx.sessionTool.cancel(agent('caller'), SessionId('session-1'))
+      expect(sessionClient().cancel).toHaveBeenCalledWith('session-1')
+    })
+
+    it('enforces the access fence before delegating', async () => {
+      callerSession('caller')
+      callerSession('other')
+      const foreign = ctx.sessions.create(SessionId('foreign'), {
+        meta: { cwd: '/proj', parentSession: SessionId('other') },
+      })
+      await ctx.sessions.flush(foreign)
+      await expect(ctx.sessionTool.cancel(agent('caller'), SessionId('foreign')))
+        .rejects.toThrow(SessionToolUnauthorizedError)
+      expect(sessionClient().cancel).not.toHaveBeenCalled()
     })
   })
 
@@ -1006,6 +1112,43 @@ describe('SessionToolLocalService (remote)', () => {
     })
   })
 
+  describe('delegation status via the projection registry cache', () => {
+    it('reads through sessionProjections.stateOf when the registry is composed', async () => {
+      const projRoot = mkdtempSync(join(tmpdir(), 'session-tool-proj-test-'))
+      process.env.DSH_HOME = projRoot
+      const projCtx = new Context()
+      await projCtx.plugin(SessionStore)
+      await projCtx.plugin(SessionPersistenceJsonl, { root: join(projRoot, 'sessions') })
+      await projCtx.plugin(SessionProjectionRegistry)
+      await projCtx.plugin(SessionToolLocalService, TOOL_CONFIG)
+      try {
+        projCtx.sessions.create(SessionId('root'))
+        const child = projCtx.sessions.create(SessionId('child'), {
+          meta: { cwd: '/proj', parentSession: SessionId('root') },
+        })
+        child.append('turn/start', { turn: 1 })
+        child.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+
+        const constructor = vi.mocked(SessionHttpClient)
+        const client = constructor.mock.instances.at(-1) as unknown as { list: ReturnType<typeof vi.fn> }
+        client.list.mockResolvedValue([
+          listRow('root', {}),
+          listRow('child', { parentSessionId: 'root' }),
+        ])
+        const wsConstructor = vi.mocked(WorkspaceHttpClient)
+        const wsClient = wsConstructor.mock.instances.at(-1) as unknown as { listWorkspaces: ReturnType<typeof vi.fn> }
+        wsClient.listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
+
+        const result = await projCtx.sessionTool.list(agent('root'), { scope: 'all' })
+        const row = result.sessions.find(r => r.sessionId === 'child')
+        expect(row?.delegationStatus).toBe('completed')
+      } finally {
+        await projCtx.fiber.dispose()
+        rmSync(projRoot, { recursive: true, force: true })
+      }
+    })
+  })
+
   describe('restart recovery (BR-004 / EVD-008)', () => {
     it('rebuilds delegation statuses from persisted logs after a process restart', async () => {
       // First "process": create a delegated session with a completed turn and
@@ -1030,6 +1173,7 @@ describe('SessionToolLocalService (remote)', () => {
 
       // Second "process": a fresh context over the SAME persistence root.
       const ctx2 = await compose(root)
+      workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
       try {
         sessionClient().list.mockResolvedValue([
           listRow('restart-completed', { parentSessionId: 'root', tags: ['delegated'] }),

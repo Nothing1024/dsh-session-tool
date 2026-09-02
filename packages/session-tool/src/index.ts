@@ -118,6 +118,16 @@ export interface SessionToolWaitOptions {
   readonly timeoutMs?: number
 }
 
+/** Result of {@link SessionToolService.wait}. */
+export interface SessionToolWaitResult {
+  /** The waited session id. */
+  readonly sessionId: SessionId
+  /** The terminal status once the wait settled, or `timeout`. */
+  readonly status: SessionToolWaitStatus
+  /** Kind of the last `turn/end` reason, when one has ended. */
+  readonly lastTurnEndReason?: string
+}
+
 /** Visibility state of a session combining marks and workspace archive status. */
 export interface SessionVisibility {
   /** Whether the session has the kind:hidden mark set. */

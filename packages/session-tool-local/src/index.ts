@@ -49,6 +49,7 @@ import type {
   SessionToolWorkspaceRenameResult,
   SessionToolWorkspaceRow,
   SessionToolWriteResult,
+  SessionVisibility,
 } from 'session-tool'
 import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
@@ -432,7 +433,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     }
   }
 
-  async getVisibility(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility> {
+  async getVisibility(_caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility> {
     // Check kind:hidden mark
     const marks = await getMarks(sessionId)
     const hasHiddenMark = marks?.includes('kind:hidden') ?? false
@@ -869,17 +870,14 @@ export class SessionToolLocalService extends Service implements SessionToolServi
    * @returns the log-derived status, when the log is resolvable.
    */
   private async delegationStatusOf(sessionId: SessionId): Promise<DelegationStatus | undefined> {
-    // Try cached projection first (available if sessionProjections service composed)
-    const projection = this.ctx.sessionProjections?.get(sessionId)
-    if (projection) {
-      return projection.delegationStatus
-    }
-
-    // Fallback: read live or persisted events and fold
     const live = this.ctx.sessions.get(sessionId)
-    const events = live?.events
-    if (events !== undefined) {
-      return foldDelegationStatus(events)
+    if (live !== undefined) {
+      // Prefer the projection registry's cached cell (incrementally folded on
+      // commit) over refolding the full in-memory log; falls back to the
+      // fold when the registry is not composed for this deployment.
+      const state = this.ctx.sessionProjections?.stateOf(live, 'delegation')
+      if (state !== undefined) return state.status
+      return foldDelegationStatus(live.events)
     }
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : foldDelegationStatus(inspected.events)

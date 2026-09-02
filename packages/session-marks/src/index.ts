@@ -131,8 +131,12 @@ export async function put(
  * Atomically add and/or remove tags from one session's mark set.
  * The final set is normalized (dedupe, sort, size checks) as a whole.
  * Applies adds first, then removes; if a tag appears in both, remove wins.
- * @returns the final normalized set after the patch.
- * @throws TagInvalidError if the merged result fails normalization.
+ * Removing the last tag(s) clears the row entirely — mirrors the "no marks"
+ * state {@link put} represents as no row, never as an explicit empty array
+ * (which {@link normalizeMarks} rejects as invalid input).
+ * @returns the final normalized set after the patch, or `[]` when the row
+ *   was cleared.
+ * @throws TagInvalidError if a non-empty merged result fails normalization.
  */
 export async function patch(
   sessionId: string,
@@ -155,6 +159,14 @@ export async function patch(
     if (changes.remove !== undefined && changes.remove.length > 0) {
       const removeSet = new Set(changes.remove.map(t => t.trim()))
       updated = updated.filter(tag => !removeSet.has(tag))
+    }
+
+    if (updated.length === 0) {
+      if (table.has(id)) {
+        table.delete(id)
+        await saveTable(path, table)
+      }
+      return []
     }
 
     // Normalize the merged result

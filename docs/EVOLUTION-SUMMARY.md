@@ -284,10 +284,12 @@ Stage 3B optimizes by reading projection cache; doesn't add event subscription.
 
 ## Validation & Testing
 
-✅ **Build**: All packages build cleanly
-✅ **Types**: Full TypeScript compatibility
-✅ **Backwards Compat**: Existing tests pass (integration tests require web gateway, but not due to our changes)
-✅ **Code Review Ready**: Changes are minimal, focused, with clear JSDoc
+✅ **Build**: `npm run build` — all 5 packages build cleanly
+✅ **Types**: `npm run typecheck` — zero errors introduced by this change (14 pre-existing errors remain in `session-tool-cli`/`tool-session`, unrelated: a cross-repo `SessionId` brand mismatch against `dsh-grok-bot`'s separately-hoisted `dsh-session` install)
+✅ **Unit tests**: `npx vitest run` — 157 passed, 0 failed, including new coverage added for every Stage 1A/2/3A/3B surface (`patch()`, `getVisibility`/`hide`/`unhide`, `cancel()`, and the `sessionProjections.stateOf` cache path)
+✅ **Backwards Compat**: Existing tests pass (10 pre-existing `list()` tests needed a `WorkspaceHttpClient` mock added to their harness once `list()` started calling `listWorkspaces()` unconditionally — done)
+
+**Post-implementation correction (2026-09-02)**: the first pass of this work (commit 8aa1563) reported "TypeScript 0 errors" without ever running `npm run typecheck` — only `npm run build` (tsdown/rolldown, which does not require correct types to emit). A follow-up review found and fixed 7 real compile errors this change had introduced (a deleted `SessionToolWaitResult` interface, missing `SessionVisibility` import, an unused parameter, and a call to a nonexistent `sessionProjections.get()` method that would have thrown at runtime the first time this cache path was exercised), plus a latent bug where `unhide()` on a session whose only mark was `kind:hidden` threw `TagInvalidError` instead of clearing the row. All are now fixed and covered by tests; the numbers above reflect the corrected state.
 
 ---
 

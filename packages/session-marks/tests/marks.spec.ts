@@ -11,6 +11,7 @@ import {
   listByKind,
   marksPath,
   normalizeMarks,
+  patch,
   put,
 } from '../src/index.ts'
 
@@ -151,5 +152,75 @@ describe('put/get/listByKind', () => {
       if (previous === undefined) delete process.env.DSH_HOME
       else process.env.DSH_HOME = previous
     }
+  })
+})
+
+describe('patch', () => {
+  it('adds to an empty row and returns the normalized result', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    const result = await patch('s1', { add: ['kind:hidden'] }, opts)
+    expect(result).toEqual(['kind:hidden'])
+    expect(await get('s1', opts)).toEqual(['kind:hidden'])
+  })
+
+  it('unions adds with the existing row', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['plan'], opts)
+    const result = await patch('s1', { add: ['kind:hidden'] }, opts)
+    expect(result).toEqual(['kind:hidden', 'plan'])
+  })
+
+  it('removes only the named tags, leaving the rest', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['kind:hidden', 'plan'], opts)
+    const result = await patch('s1', { remove: ['kind:hidden'] }, opts)
+    expect(result).toEqual(['plan'])
+  })
+
+  it('applies adds then removes; a tag in both ends up removed', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['plan'], opts)
+    const result = await patch('s1', { add: ['kind:hidden'], remove: ['kind:hidden'] }, opts)
+    expect(result).toEqual(['plan'])
+  })
+
+  it('is idempotent: reapplying the same patch yields the same result', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await patch('s1', { add: ['kind:hidden'] }, opts)
+    const result = await patch('s1', { add: ['kind:hidden'] }, opts)
+    expect(result).toEqual(['kind:hidden'])
+  })
+
+  it('clears the row (not an error) when the merged result is empty', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['kind:hidden'], opts)
+    const result = await patch('s1', { remove: ['kind:hidden'] }, opts)
+    expect(result).toEqual([])
+    expect(await get('s1', opts)).toBeUndefined()
+  })
+
+  it('is a no-op when patching an unknown id to empty', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    const result = await patch('missing', { remove: ['kind:hidden'] }, opts)
+    expect(result).toEqual([])
+    expect(await get('missing', opts)).toBeUndefined()
+  })
+
+  it('serializes concurrent patches on the same id (no lost update)', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['base'], opts)
+    await Promise.all([
+      patch('s1', { add: ['a'] }, opts),
+      patch('s1', { add: ['b'] }, opts),
+    ])
+    expect(await get('s1', opts)).toEqual(['a', 'b', 'base'])
   })
 })
