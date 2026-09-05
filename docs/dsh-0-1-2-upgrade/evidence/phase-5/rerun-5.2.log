@@ -1,0 +1,713 @@
+===================================================================
+EVD-011 复原态重跑 5.1 入场券 + 5.2 全套（Task 19）
+日期: 2026-09-05 14:58:51 CST
+主机: macOS 26.5.2  node v22.23.0  pnpm 11.7.0
+口径: Task 15 的 evidence/UF-00x/ 原始证据不覆盖；本次一律写 evidence/phase-5/
+===================================================================
+
+########## 5.1 命令级验证（入场券） ##########
+
+--- [5.1-1] 依赖隔离：pnpm run deps:check（期望 0 退出）
+$ node scripts/check-deps-isolation.mjs
+跨仓依赖污染检测（BR-009）
+本仓根：/Users/nothing/workspace/dsh/plugin/session-tool/plugin
+期望版本：@deepseek-ai/dsh* = 0.1.2-rc.1
+
+── packages/*/node_modules/@deepseek-ai
+  扫描 22 项
+
+── env/profiles/st/node_modules/@deepseek-ai
+  扫描 170 项
+
+── 提示（不致命）：1 项
+△ env/profiles/st/node_modules/@deepseek-ai/dsh-session-tags → /Users/nothing/workspace/dsh/plugin/session-tool/plugin/vendor/session-tags（仓内悬空软链，无 package.json）
+
+结论：全部通过 —— 192 项 @deepseek-ai/* 全部解析在本仓根内（另有 1 条提示）
+EXIT=0
+
+--- [5.1-2] typecheck：pnpm run typecheck（期望 0 error，无 dsh-grok-bot / vibee 路径）
+$ tsc -p tsconfig.json
+EXIT=0
+$ pnpm run typecheck 2>&1 | grep -cE 'dsh-grok-bot|vibee'   # 期望 0
+0
+
+--- [5.1-3] unit：pnpm test（期望 ≥157 passed）
+$ vitest run
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+
+ Test Files  13 passed (13)
+      Tests  223 passed | 1 skipped (224)
+   Start at  14:58:54
+   Duration  1.99s (transform 1.51s, setup 0ms, import 2.23s, tests 1.92s, environment 1ms)
+
+EXIT=0
+
+--- [5.1-4] build：pnpm run build（期望成功）
+$ pnpm -r run build
+Scope: 5 of 6 workspace projects
+packages/session-marks build$ tsdown
+packages/session-tool build$ tsdown
+packages/session-tool build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-marks build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-marks build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-marks/tsdown.config.ts[24m 
+packages/session-tool build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool/tsdown.config.ts[24m 
+packages/session-marks build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-marks build: [34mℹ[39m target: [34mes2024[39m
+packages/session-marks build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-marks build: [34mℹ[39m Build start
+packages/session-tool build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-tool build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool build: [34mℹ[39m Build start
+packages/session-marks build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m 8.27 kB[22m [2m│ gzip: 2.99 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m15.40 kB[22m [2m│ gzip: 4.92 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 0.52 kB[22m [2m│ gzip: 0.28 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 4.29 kB[22m [2m│ gzip: 1.65 kB[22m
+packages/session-marks build: [34mℹ[39m 4 files, total: 28.48 kB
+packages/session-marks build: [32m✔[39m Build complete in [32m347ms[39m
+packages/session-marks build: Done
+packages/session-tool build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m 3.07 kB[22m [2m│ gzip: 1.18 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m26.94 kB[22m [2m│ gzip: 6.94 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 2.10 kB[22m [2m│ gzip: 0.62 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m24.95 kB[22m [2m│ gzip: 6.40 kB[22m
+packages/session-tool build: [34mℹ[39m 4 files, total: 57.05 kB
+packages/session-tool build: [32m✔[39m Build complete in [32m385ms[39m
+packages/session-tool build: Done
+packages/session-tool-local build$ tsdown
+packages/session-tool-cli build$ tsdown
+packages/session-tool-cli build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-tool-local build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-tool-local build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-local/tsdown.config.ts[24m 
+packages/session-tool-local build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-tool-local build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool-local build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool-local build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-local build: [34mℹ[39m Build start
+packages/session-tool-cli build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts[24m 
+packages/session-tool-cli build: [34mℹ[39m entry: [34msrc/index.ts, src/bin.ts[39m
+packages/session-tool-cli build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool-cli build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool-cli build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-cli build: [34mℹ[39m Build start
+packages/session-tool-cli build: [34mℹ[39m Cleaning 8 files
+packages/session-tool-cli build: [34mℹ[39m Granting execute permission to [4mlib/bin.js[24m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m             [2m 0.32 kB[22m [2m│ gzip:  0.19 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[1mbin.js[22m               [2m 0.20 kB[22m [2m│ gzip:  0.17 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22msrc-Bq_HrrBR.js.map  [2m47.18 kB[22m [2m│ gzip: 11.50 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22msrc-Bq_HrrBR.js      [2m26.47 kB[22m [2m│ gzip:  7.00 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22mindex.d.ts.map       [2m 0.30 kB[22m [2m│ gzip:  0.20 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22mbin.js.map           [2m 0.27 kB[22m [2m│ gzip:  0.22 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m           [2m 2.73 kB[22m [2m│ gzip:  1.10 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[32m[1mbin.d.ts[22m[39m             [2m 0.01 kB[22m [2m│ gzip:  0.03 kB[22m
+packages/session-tool-cli build: [34mℹ[39m 8 files, total: 77.49 kB
+packages/session-tool-cli build: [32m✔[39m Build complete in [32m398ms[39m
+packages/session-tool-cli build: Done
+packages/session-tool-local build: [34mℹ[39m Hint: consider adding [34mdeps.onlyBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyBundle: false[39m to disable this hint.
+packages/session-tool-local build: See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlybundle[24m
+packages/session-tool-local build: Detected dependencies in bundle:
+packages/session-tool-local build: - [34mzod[39m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m202.88 kB[22m [2m│ gzip:  43.46 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m538.71 kB[22m [2m│ gzip: 102.77 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m  2.82 kB[22m [2m│ gzip:   1.01 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 23.07 kB[22m [2m│ gzip:   6.49 kB[22m
+packages/session-tool-local build: [34mℹ[39m 4 files, total: 767.48 kB
+packages/session-tool-local build: [32m✔[39m Build complete in [32m520ms[39m
+packages/session-tool-local build: Done
+packages/tool-session build$ tsdown
+packages/tool-session build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/tool-session build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/tool-session/tsdown.config.ts[24m 
+packages/tool-session build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/tool-session build: [34mℹ[39m target: [34mes2024[39m
+packages/tool-session build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/tool-session build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/tool-session build: [34mℹ[39m Build start
+packages/tool-session build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m20.25 kB[22m [2m│ gzip: 4.96 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m33.17 kB[22m [2m│ gzip: 7.70 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 0.12 kB[22m [2m│ gzip: 0.13 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 0.39 kB[22m [2m│ gzip: 0.26 kB[22m
+packages/tool-session build: [34mℹ[39m 4 files, total: 53.92 kB
+packages/tool-session build: [32m✔[39m Build complete in [32m376ms[39m
+packages/tool-session build: Done
+EXIT=0
+
+--- [5.1-5] 模块加载：node -e import('./packages/session-tool-local/lib/index.js')（期望打印 OK）
+OK
+EXIT=0
+
+--- [5.1-6] 标准：pnpm run standard:check（期望通过）
+$ node standards/validate.mjs
+
+== manifest 校验（packages/*/dsh-plugin.json） ==
+✓ tool-session (io.github.nothing1024.tool-session)
+
+== 协商（manifest × host-descriptor） ==
+✓ tool-session: compatible
+
+== fixtures 自检 ==
+✓ valid/full.json
+✓ valid/minimal.json
+✓ invalid/missing-schema.json → [missing-schema]
+✓ invalid/wrong-manifest-version.json → [wrong-manifest-version]
+✓ invalid/missing-facets.json → [missing-facets]
+✓ invalid/bad-id.json → [bad-id]
+✓ invalid/unknown-field.json → [unknown-field]
+✓ invalid/provides-rejected.json → [provides-rejected]
+✓ invalid/requires-services-rejected.json → [requires-services-rejected]
+✓ invalid/reserved-facet-client.json → [reserved-facet]
+✓ invalid/duplicate-contributes-id.json → [duplicate-contributes-id]
+✓ invalid/entry-outside-root.json → [entry-outside-root]
+
+== adapter 审计（上游触点基线） ==
+✓ 无未评审的新增上游触点
+
+结论：全部通过
+EXIT=0
+
+--- [5.1-7] 无 apiproxy：rg 'dsh-host-apiproxy|AbstractApiClient' packages --glob '!**/lib/**'（期望无命中）
+（无命中，符合预期）
+
+
+########## 5.2 真实场景全套（10 行执行矩阵） ##########
+
+===== [矩阵行 9/10] UF-005 失败分支：外仓占口，boot.sh 必须拒绝 =====
+构造：用一个 DSH_HOME=/tmp/dsh-foreign-home 的假实例占住 :3081，再跑 sh env/boot.sh
+
+$ ps -o pid,command -p 84177  # 占口者
+  PID COMMAND
+84177 /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -c \012import http.server, socketserver\012socketserver.TCPServer.allow_reuse_address = True\012with socketserver.TCPServer(('127.0.0.1', 3081), http.server.SimpleHTTPRequestHandler) as s:\012    s.serve_forever()\012
+
+$ sh env/boot.sh   # 期望：拒绝，非 0 退出
+env/boot: :3081 (pid 84177) DSH_HOME=/tmp/dsh-foreign-home 不是本仓 /Users/nothing/workspace/dsh/plugin/session-tool/plugin/env
+boot_exit=1（期望非 0）
+
+===== [矩阵行 8/10] UF-005 主路径：boot + UI 非白屏 + fiberPhase=active =====
+date: 2026-09-05T15:00:13+0800
+
+$ sh env/boot.sh   # 后台起，stdout 见下（token 已脱敏）
+dsh web: http://127.0.0.1:3081/?token=<redacted>
+
+$ gateway_probe   # 确认监听者是本仓 DSH_HOME
+GW_PID=84562
+GW_HOME=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env
+启动时刻=Sat Sep  5 14:59:57 2026（复原依赖 + 本波次重新 build 之后）
+
+### 换 cookie：GET /?token= 必须 303 且不跟随重定向（ASM-002）
+$ curl -s -o /dev/null -D - --max-redirs 0 'http://127.0.0.1:3081/?token=<redacted>'
+HTTP/1.1 303 See Other
+cache-control: no-store
+location: /
+referrer-policy: no-referrer
+set-cookie: dsh-auth-w3iJaA6qw3qDSBs2Itl-h4S-Y-ZeYCC-N_iZO-eI_qw=<redacted>; Max-Age=2592000; Path=/; Expires=Mon, 05 Oct 2026 07:00:13 GMT; HttpOnly; SameSite=Strict
+Date: Sat, 05 Sep 2026 07:00:13 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+### GET / 带 cookie（UI 非白屏判定）
+$ curl -s -b cookies -o /tmp/phase5-index.html -w '%{http_code}' http://127.0.0.1:3081/
+http_code=200 html_len=24169 title=<title>DeepSeek Harness</title> has_root(id="root")=1
+
+### pluginInventory/list 摘录（插件 fiberPhase）
+$ curl -s -b cookies -X POST -H 'content-type: application/json' \
+    -d '{"type":"client-request","rpcId":"...","method":"pluginInventory/list","payload":{"args":{}}}' \
+    http://127.0.0.1:3081/api/pluginInventory/list
+
+
+### pluginInventory/list 摘录（本插件三包的 fiberPhase）
+[
+  {
+    "entryId": "include:session-tool-local",
+    "moduleName": "session-tool-local",
+    "enabled": true,
+    "fiberPhase": "active"
+  },
+  {
+    "entryId": "include:tool-session",
+    "moduleName": "tool-session",
+    "enabled": true,
+    "fiberPhase": "active"
+  }
+]
+
+结论 [矩阵行 8/10] UF-005 主路径：PASS
+  - boot 进程存活 pid=84562（14:59:57 起，复原依赖 + 本波次 build 之后）
+  - GET /?token= → 303 + Set-Cookie（未跟随重定向）
+  - GET / 带 cookie → 200，html_len=24169，title=DeepSeek Harness，含 id="root" ⇒ 非白屏
+  - session-tool-local / tool-session 均 fiberPhase=active
+  - UI 目视截图见 evidence/phase-5/ui.png（手动回填，与 Task 15 同口径）
+
+结论 [矩阵行 9/10] UF-005 失败分支（占口）：PASS —— boot 拒绝外仓实例，exit=1
+
+===== [矩阵行 3/10] UF-002 主路径：CLI 跨进程建会话并进同一 GUI =====
+date: 2026-09-05T15:02:52+0800
+DSH_LAUNCH_TOKEN=set（取自本次 boot 的 dsh web: 行）
+title=P5-20260905-150138-【可见】CLI跨进程
+
+$ node packages/session-tool-cli/lib/bin.js workspace add $PWD/env/manual-view --title 手工验收 --profile headless --patch env/cli.patch.yml --format json
+{ "workspace_id": "682c884c-d615-40fa-82ec-298445174ca0", "path": ".../env/manual-view", "created": false }
+workspace_add_exit=0
+
+$ node packages/session-tool-cli/lib/bin.js session create --title "$TITLE" --workspace $PWD/env/manual-view --tag kind:vibee --tag uf002-p5 --profile headless --patch env/cli.patch.yml --format json
+{ "session_id": "session-8b89a8cd-0750-4d6a-83c3-cd58066cc146", "workspace_id": "682c884c-d615-40fa-82ec-298445174ca0", "workspace_path": ".../env/manual-view" }
+create_exit=0
+
+### BR-003 关键核对：会话必须落在 GUI 进程的 store，而不是 CLI 私有 store
+$ find env/sessions -name '*session-8b89a8cd-0750-4d6a-83c3-cd58066cc146*'
+env/sessions/--Users-nothing-workspace-dsh-plugin-session-tool-plugin-env-manual-view--/session-8b89a8cd-0750-4d6a-83c3-cd58066cc146
+$ grep -rl "session-8b89a8cd-0750-4d6a-83c3-cd58066cc146" env/storages
+env/storages/workspace.json
+⇒ 会话文件与 workspace.json 均在 GUI 的 DSH_HOME=env/ 下，非 CLI 私有 store
+
+$ node ... session list --title "$TITLE" --profile headless --patch env/cli.patch.yml --format json
+{
+  "sessions": [
+    {
+      "session_id": "session-8b89a8cd-0750-4d6a-83c3-cd58066cc146",
+      "title": "P5-20260905-150138-【可见】CLI跨进程",
+      "tags": [
+        "kind:vibee",
+        "uf002-p5"
+      ],
+      "status": "idle",
+      "created_at": 1788591745188
+    }
+  ]
+}
+list_exit=0
+结论 [矩阵行 3/10] UF-002 主路径：PASS（CLI create exit=0；同一 :3081 GUI store 可见）
+
+===== [矩阵行 4/10] UF-002 失败分支：无 token → [web-unreachable] =====
+date: 2026-09-05T15:03:04+0800
+
+### 裸 curl POST /api/session/create（无 cookie，期望 401）
+$ curl -s -D - -o /dev/null -X POST -H 'content-type: application/json' -d '{...}' http://127.0.0.1:3081/api/session/create
+HTTP/1.1 401 Unauthorized
+Date: Sat, 05 Sep 2026 07:03:04 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+--- body ---
+unauthorized
+
+### CLI 未设 DSH_LAUNCH_TOKEN 且无 --token（期望 [web-unreachable] + 非 0 退出 + 不写本地 store）
+$ env -u DSH_LAUNCH_TOKEN node packages/session-tool-cli/lib/bin.js session create --title 'P5-无token不应出现' --profile headless --patch env/cli.patch.yml --format json
+dsh-session: [web-unreachable] web gateway unreachable for session/create: HTTP 401
+no_token_exit=1（期望非 0）
+marks.jsonl md5 前=1a6526385a571e59398c301a32b40fde 后=1a6526385a571e59398c301a32b40fde ⇒ 未写入（正确）
+$ node ... session list --title 'P5-无token不应出现' （带 token 复查 GUI store，期望 0 条）
+{
+  "sessions": []
+}
+结论 [矩阵行 4/10] UF-002 失败分支：PASS（裸 POST 401；CLI [web-unreachable] exit=1；marks 未写；GUI store 0 条）
+
+===== [矩阵行 10/10] UF-006 主路径：死网关 fail-loud（webUrl :3999） =====
+date: 2026-09-05T15:03:40+0800
+$ lsof -nP -iTCP:3999 -sTCP:LISTEN   # 确认 :3999 无人监听
+（:3999 无监听，符合预期）
+
+$ node ... session create --title 'P5-死网关不应出现' --tag kind:vibee --profile headless --patch env/dead-web.patch.yml --format json
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+create_exit=1（期望非 0）
+
+$ node ... session list --profile headless --patch env/dead-web.patch.yml --format json
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+list_exit=1（期望非 0，且不得把 401/连不上吞成空列表）
+
+$ node ... workspace list --profile headless --patch env/dead-web.patch.yml --format json
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+workspace_list_exit=1（期望非 0）
+marks.jsonl md5 前=1a6526385a571e59398c301a32b40fde 后=1a6526385a571e59398c301a32b40fde ⇒ 零会话写出（正确）
+结论 [矩阵行 10/10] UF-006：PASS（create/list/workspace 三条均 [web-unreachable] 非 0 退出；零会话写出）
+
+===== [矩阵行 7/10] UF-004 主路径：hide / unhide（内部服务，无 CLI/工具入口） =====
+date: 2026-09-05T15:04:05+0800
+$ pnpm exec vitest run packages/session-tool-local/tests/service.spec.ts -t 'getVisibility / hide / unhide'
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed | 53 skipped (60)
+   Start at  15:04:08
+   Duration  1.86s (transform 812ms, setup 0ms, import 1.24s, tests 232ms, environment 0ms)
+
+EXIT=0
+  用例明细（7 passed，含 INV-007）：
+    ✓ reports both flags false when neither marked nor archived
+    ✓ getVisibility composes the kind:hidden mark and the archive set
+    ✓ hide sets kind:hidden and unhide clears it, both idempotently
+    ✓ hide preserves any other marks already on the session
+    ✓ enforces the access fence before hiding, unhiding, or reading visibility
+    ✓ hide best-effort archiveSession; unhide warns when unarchiveSession is missing and does not throw  ← INV-007
+    ✓ hide still succeeds when archiveSession throws
+结论 [矩阵行 7/10] UF-004：PASS（7 passed；缺 unarchiveSession 只 warn 不抛）
+
+===== [矩阵行 2/10] UF-001 失败分支：控制器未注入必须 fail loud（禁止静默 HTTP 自环） =====
+date: 2026-09-05T15:04:30+0800
+$ pnpm exec vitest run packages/session-tool-local/tests/transport.spec.ts -t 'fails loud'
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 15 skipped (18)
+   Start at  15:04:32
+   Duration  1.43s (transform 532ms, setup 0ms, import 918ms, tests 57ms, environment 0ms)
+
+EXIT=0
+  用例明细（3 passed）：
+    ✓ auto fails loud when webUrl matches this process but controllers are missing
+    ✓ explicit in-process fails loud without both controllers
+    ✓ explicit in-process without controllers fails loud at boot
+结论 [矩阵行 2/10] UF-001 失败分支：PASS（fail loud，无静默 HTTP 自环）
+
+===== 环境插曲（与被测代码无关，如实记录） =====
+date: 2026-09-05T15:14:44+0800
+现象：首轮 UF-003 write 后 wait 返回 status=failed / lastTurnEndReason=error。
+排查：
+  1) 会话日志 turn/end reason=error：503 model_not_found «No available channel for model
+     grok-4.6 under group svip»。与 Task 15 当时记录的同类环境问题一致（那次也是 grok-4.6 503）。
+  2) 直接 curl 同一 baseURL 用 env/.env 里的 key 却是 group=default 且 HTTP 200 —— 说明网关用的不是这把 key。
+  3) ps eww 查在跑的网关进程环境：本机 shell 导出的 ANTHROPIC_API_KEY（md5 de77ecaa）覆盖了
+     env/.env 里的那把（md5 fa5187fd）。前者归属 group svip，该 group 无可用 channel。
+  4) 用 env/.env 的 key 重启网关后 503 消失，但 deepseek-v4-pro 报 400：该代理不认 role=developer
+     （DSH agent 会发 developer 角色消息）。逐个模型探测：MiniMax-M2.5 / claude-sonnet-4-6 /
+     claude-opus-4-7 接受 developer 角色，deepseek-v4-* 不接受。
+处置：env/settings.yaml（本地环境文件，.gitignore 内，非仓库代码）把 agent-default-model 换成
+     claude-sonnet-4-6，并用 env/.env 的 key 启动网关。
+验证：session write → wait = {"status":"completed","lastTurnEndReason":"completed"}，
+     session read 拿到 assistant 文本「复原可见」。⇒ 模型链路恢复，UF-001/003 可跑真实回合。
+结论：这是本机模型代理的凭据/兼容问题，不是本次升级或 Phase 5 改动引入的回归；
+     被测面（插件调用层、鉴权、传输选择）全程未改。
+
+===== [矩阵行 5/10] UF-003 主路径：wait / collect 完成检测 =====
+date: 2026-09-05T15:14:53+0800
+session_id=session-6875dec9-a957-4ec5-a066-57737937fe28
+title=P5-20260905-150138-【可见】wait-collect-2
+
+$ node ... session write $SID '请只回复四个字：复原可见' --profile headless --patch env/cli.patch.yml --format json
+{
+  "session_id": "session-6875dec9-a957-4ec5-a066-57737937fe28"
+}
+write_exit=0
+
+### CLI 无 session wait 动词 → 走 bootProfile + ctx.sessionTool.wait（与 Task 15 同口径）
+$ node /tmp/p5-wait.mjs $SID 180000
+WAIT_RESULT {"sessionId":"session-6875dec9-a957-4ec5-a066-57737937fe28","status":"completed","lastTurnEndReason":"completed"} elapsed_ms=6525
+wait_exit=0
+⇒ 返回终态 completed（不是抛错）；BR-005：未调用已删除的 session.history
+
+### 断言 assistant 真的回话了
+$ node ... session read $SID --format json | (取 assistant 文本)
+assistant: 复原可见
+
+$ node ... session collect --tag uf003-p5b --wait all --timeout-ms 10000 --format json
+{
+  "satisfied": true,
+  "elapsed_ms": 6,
+  "sessions": [
+    {
+      "session_id": "session-6875dec9-a957-4ec5-a066-57737937fe28",
+      "status": "completed",
+      "result": "复原可见"
+    }
+  ]
+}
+collect_exit=0
+结论 [矩阵行 5/10] UF-003 主路径：PASS（wait 返回 completed；assistant 实回「复原可见」；collect satisfied=true）
+
+===== [矩阵行 6/10] UF-003 失败分支：超时（timeout 且会话仍在） =====
+date: 2026-09-05T15:15:21+0800
+session_id=session-0e7d81e3-516b-48fb-953d-bafc7ed36cb1
+构造：发一个需要思考较久的 prompt，趁 turn 仍在 running 时用极短 timeoutMs 去 wait
+
+$ node ... session write $SID '请用中文写一篇 800 字左右的短文…'   # 后台发出，让 turn 处于 running
+$ node /tmp/p5-wait.mjs $SID 400   # 极短 deadline
+WAIT_RESULT {"sessionId":"session-0e7d81e3-516b-48fb-953d-bafc7ed36cb1","status":"timeout"} elapsed_ms=434
+wait_exit=0   ⇒ 超时是返回值不是异常（2.3 超时分支：返回 timeout，非异常）
+
+### 超时后会话必须仍在
+$ node ... session list --title "$TITLE" --format json
+{
+  "sessions": [
+    {
+      "session_id": "session-0e7d81e3-516b-48fb-953d-bafc7ed36cb1",
+      "title": "P5-20260905-150138-【可见】timeout-wait",
+      "tags": [
+        "uf003to-p5"
+      ],
+      "status": "live",
+      "created_at": 1788592521822
+    }
+  ]
+}
+list_exit=0
+结论 [矩阵行 6/10] UF-003 失败分支：PASS（wait 返回 status=timeout 未抛；会话仍在，status=live）
+
+===== [矩阵行 1/10] UF-001 主路径：同进程工具建会话并进 GUI =====
+date: 2026-09-05T15:18:24+0800
+
+口径说明：本会话无浏览器自动化。Task 15 是在官方 Web 里让 agent 调工具；这里用等价的
+「同进程工具路径」——驱动一条跑在 GUI 网关进程里的 agent 会话，让它去调 session_create /
+session_write。这两个工具执行在 web-app 树上（tool-session 同进程），走 ctx.sessionController，
+不是 CLI 的跨进程 HTTP，符合 2.3 UF-001 与 BR-002。
+
+驱动会话（跑在 GUI 进程里的 agent）：session-df7ac598-9ef9-453a-8dde-04c011108da6
+$ node ... session write $DRV '现在调用 session_create 工具，参数 title=…, workspace_path=…；成功后立刻用返回的 session_id 调用 session_write，content 是：请只回复四个字：同进程可见'
+
+### 驱动会话事件流里的真实工具调用（从 session.jsonl.zstd 解出）
+tool/call   | name=session_create arguments={"title":"P5-20260905-150138-【可见】UF001同进程","workspace_path":".../env/manual-view"}
+tool/result | created session session-08f66bd0-ebc3-4690-96ee-2710f70692e6 (workspace …)
+tool/call   | name=session_write  arguments={"session_id":"session-08f66bd0-ebc3-4690-96ee-2710f70692e6","content":"请只回复四个字：同进程可见。"}
+tool/result | prompt sent to session-08f66bd0-ebc3-4690-96ee-2710f70692e6
+⇒ 工具卡等价物：session_create / session_write 两次调用均 isError=false
+
+### 新会话确实落在 GUI 进程 store（不是 CLI 私有 store）
+$ find env/sessions -name '*session-08f66bd0-ebc3-4690-96ee-2710f70692e6*'
+env/sessions/--Users-nothing-workspace-dsh-plugin-session-tool-plugin-env-manual-view--/session-08f66bd0-ebc3-4690-96ee-2710f70692e6
+$ grep -l "session-08f66bd0-ebc3-4690-96ee-2710f70692e6" env/storages/workspace.json
+env/storages/workspace.json
+
+### 打开该会话能看到完整对话
+$ node ... session read session-08f66bd0-ebc3-4690-96ee-2710f70692e6 --format json | (取 assistant 文本)
+assistant: 同进程可见。
+
+### 同进程无 401 自环（BR-002）
+$ grep -ciE '401|unauthorized' <boot stdout>   → 0
+  且 tool/result 无错误；若走了 HTTP 自环，新网关的 /api 会因无 cookie 直接 401。
+
+### 侧栏可见性
+$ node ... session list --title "P5-20260905-150138-【可见】UF001同进程" --format json
+{
+  "sessions": [
+    {
+      "session_id": "session-08f66bd0-ebc3-4690-96ee-2710f70692e6",
+      "title": "P5-20260905-150138-【可见】UF001同进程",
+      "tags": [
+        "kind:delegated"
+      ],
+      "status": "idle",
+      "created_at": 1788592645827
+    }
+  ]
+}
+结论 [矩阵行 1/10] UF-001 主路径：PASS（同进程 create+write 成功；assistant 实回「同进程可见。」；会话在 GUI store；无 401）
+
+### UI 目视证据（evidence/phase-5/ui.png）
+本会话意外具备浏览器自动化（本机 Chrome 开着 CDP :9222），故 UI 行不是手动回填，是真截图：
+$ curl -s 'http://127.0.0.1:9222/json/new?http://127.0.0.1:3081/'   # 新开标签打本仓网关
+$ CDP Page.captureScreenshot -> docs/dsh-0-1-2-upgrade/evidence/phase-5/ui.png（198024 bytes, 2800x1800）
+
+$ CDP Runtime.evaluate document.body.innerText 过滤本轮 stamp（20260905-150138）
+侧栏命中 5 条（全部本波次新建，工作区「手工验收」）：
+  P5-20260905-150138-【可见】UF001同进程     ← UF-001 同进程工具建的
+  P5-20260905-150138-【可见】UF001驱动会话
+  P5-20260905-150138-【可见】timeout-wait
+  P5-20260905-150138-【可见】wait-collect-2
+  P5-20260905-150138-【可见】模型探针3
+
+点开 UF001同进程 会话后页面文本（截图即此屏）：
+  标题：P5-20260905-150138-【可见】UF001同进程 / 标准模式
+  user      : 请只回复四个字：同进程可见。
+  assistant : 同进程可见。
+  页脚：1 轮 · 1 步 | claude-sonnet-4-6 | 用量 13K tok
+⇒ UI 非白屏；侧栏出现同进程建的会话；打开能看到完整对话（UF-001 与 UF-005 的 GUI 断言同时成立）
+
+
+########## 5.2 执行矩阵总表（10 行） ##########
+
+矩阵行                                        | 结果   | 关键证据
+-------------------------------------------+------+---------------------------------
+UF-001 主路径 同进程建会话进 GUI                     | PASS | tool/call session_create+session_write；assistant「同进程可见。」；无 401
+UF-001 失败分支 控制器未注入                         | PASS | transport.spec.ts -t 'fails loud' 3 passed
+UF-002 主路径 CLI 跨进程进同一 GUI                  | PASS | create exit=0；会话落 env/sessions + workspace.json
+UF-002 失败分支 无 token                        | PASS | 裸 POST 401；CLI [web-unreachable] exit=1；marks 未写
+UF-003 主路径 wait/collect                    | PASS | wait=completed；collect satisfied=true
+UF-003 失败分支 超时                             | PASS | wait=timeout（未抛）；会话仍在 status=live
+UF-004 主路径 hide/unhide                     | PASS | service.spec 7 passed（含缺 unarchive 只 warn）
+UF-005 主路径 boot + UI + active              | PASS | 200/24169B/非白屏；两包 fiberPhase=active；ui.png
+UF-005 失败分支 占口                             | PASS | boot 拒绝外仓 DSH_HOME，exit=1
+UF-006 主路径 死网关                             | PASS | create/list/workspace 三条均 web-unreachable 非 0
+
+10/10 行通过。
+
+########## 收尾回归（5.2 跑完后复查，确认真实场景没把仓库跑脏） ##########
+$ pnpm run deps:check && pnpm run typecheck && pnpm test && pnpm run build && pnpm run standard:check
+$ node scripts/check-deps-isolation.mjs
+跨仓依赖污染检测（BR-009）
+本仓根：/Users/nothing/workspace/dsh/plugin/session-tool/plugin
+期望版本：@deepseek-ai/dsh* = 0.1.2-rc.1
+
+── packages/*/node_modules/@deepseek-ai
+  扫描 22 项
+
+── env/profiles/st/node_modules/@deepseek-ai
+  扫描 170 项
+
+── 提示（不致命）：1 项
+△ env/profiles/st/node_modules/@deepseek-ai/dsh-session-tags → /Users/nothing/workspace/dsh/plugin/session-tool/plugin/vendor/session-tags（仓内悬空软链，无 package.json）
+
+结论：全部通过 —— 192 项 @deepseek-ai/* 全部解析在本仓根内（另有 1 条提示）
+$ tsc -p tsconfig.json
+$ vitest run
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+
+ Test Files  13 passed (13)
+      Tests  223 passed | 1 skipped (224)
+   Start at  15:20:28
+   Duration  2.13s (transform 1.89s, setup 0ms, import 2.68s, tests 2.08s, environment 1ms)
+
+$ pnpm -r run build
+Scope: 5 of 6 workspace projects
+packages/session-marks build$ tsdown
+packages/session-tool build$ tsdown
+packages/session-tool build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-marks build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-tool build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool/tsdown.config.ts[24m 
+packages/session-marks build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-marks/tsdown.config.ts[24m 
+packages/session-marks build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-marks build: [34mℹ[39m target: [34mes2024[39m
+packages/session-marks build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-tool build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-marks build: [34mℹ[39m Build start
+packages/session-tool build: [34mℹ[39m Build start
+packages/session-tool build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-marks build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m 8.27 kB[22m [2m│ gzip: 2.99 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m15.40 kB[22m [2m│ gzip: 4.92 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 0.52 kB[22m [2m│ gzip: 0.28 kB[22m
+packages/session-marks build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 4.29 kB[22m [2m│ gzip: 1.65 kB[22m
+packages/session-marks build: [34mℹ[39m 4 files, total: 28.48 kB
+packages/session-marks build: [32m✔[39m Build complete in [32m382ms[39m
+packages/session-marks build: Done
+packages/session-tool build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m 3.07 kB[22m [2m│ gzip: 1.18 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m26.94 kB[22m [2m│ gzip: 6.94 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 2.10 kB[22m [2m│ gzip: 0.62 kB[22m
+packages/session-tool build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m24.95 kB[22m [2m│ gzip: 6.40 kB[22m
+packages/session-tool build: [34mℹ[39m 4 files, total: 57.05 kB
+packages/session-tool build: [32m✔[39m Build complete in [32m417ms[39m
+packages/session-tool build: Done
+packages/session-tool-cli build$ tsdown
+packages/session-tool-local build$ tsdown
+packages/session-tool-local build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-tool-cli build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/session-tool-cli build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts[24m 
+packages/session-tool-local build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-local/tsdown.config.ts[24m 
+packages/session-tool-cli build: [34mℹ[39m entry: [34msrc/index.ts, src/bin.ts[39m
+packages/session-tool-cli build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool-cli build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool-local build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/session-tool-local build: [34mℹ[39m target: [34mes2024[39m
+packages/session-tool-cli build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-local build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/session-tool-cli build: [34mℹ[39m Build start
+packages/session-tool-local build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-local build: [34mℹ[39m Build start
+packages/session-tool-cli build: [34mℹ[39m Cleaning 8 files
+packages/session-tool-cli build: [34mℹ[39m Granting execute permission to [4mlib/bin.js[24m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m             [2m 0.32 kB[22m [2m│ gzip:  0.19 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[1mbin.js[22m               [2m 0.20 kB[22m [2m│ gzip:  0.17 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22msrc-Bq_HrrBR.js.map  [2m47.18 kB[22m [2m│ gzip: 11.50 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22msrc-Bq_HrrBR.js      [2m26.47 kB[22m [2m│ gzip:  7.00 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22mindex.d.ts.map       [2m 0.30 kB[22m [2m│ gzip:  0.20 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22mbin.js.map           [2m 0.27 kB[22m [2m│ gzip:  0.22 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m           [2m 2.73 kB[22m [2m│ gzip:  1.10 kB[22m
+packages/session-tool-cli build: [34mℹ[39m [2mlib/[22m[32m[1mbin.d.ts[22m[39m             [2m 0.01 kB[22m [2m│ gzip:  0.03 kB[22m
+packages/session-tool-cli build: [34mℹ[39m 8 files, total: 77.49 kB
+packages/session-tool-cli build: [32m✔[39m Build complete in [32m423ms[39m
+packages/session-tool-cli build: Done
+packages/session-tool-local build: [34mℹ[39m Hint: consider adding [34mdeps.onlyBundle[39m option to avoid unintended bundling of dependencies, or set [34mdeps.onlyBundle: false[39m to disable this hint.
+packages/session-tool-local build: See more at [4mhttps://tsdown.dev/options/dependencies#deps-onlybundle[24m
+packages/session-tool-local build: Detected dependencies in bundle:
+packages/session-tool-local build: - [34mzod[39m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m202.88 kB[22m [2m│ gzip:  43.46 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m538.71 kB[22m [2m│ gzip: 102.77 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m  2.82 kB[22m [2m│ gzip:   1.01 kB[22m
+packages/session-tool-local build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 23.07 kB[22m [2m│ gzip:   6.49 kB[22m
+packages/session-tool-local build: [34mℹ[39m 4 files, total: 767.48 kB
+packages/session-tool-local build: [32m✔[39m Build complete in [32m543ms[39m
+packages/session-tool-local build: Done
+packages/tool-session build$ tsdown
+packages/tool-session build: [34mℹ[39m [34mtsdown v0.22.14[39m powered by [38;2;255;126;23mrolldown v1.2.3[39m
+packages/tool-session build: [34mℹ[39m config file: [4m/Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/tool-session/tsdown.config.ts[24m 
+packages/tool-session build: [34mℹ[39m entry: [34msrc/index.ts[39m
+packages/tool-session build: [34mℹ[39m target: [34mes2024[39m
+packages/tool-session build: [34mℹ[39m tsconfig: [34mtsconfig.json[39m
+packages/tool-session build: [43m WARN [49m `external` is deprecated. Use `deps.neverBundle` instead.
+packages/tool-session build: [34mℹ[39m Build start
+packages/tool-session build: [34mℹ[39m [2mlib/[22m[1mindex.js[22m        [2m20.25 kB[22m [2m│ gzip: 4.96 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22mindex.js.map    [2m33.17 kB[22m [2m│ gzip: 7.70 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22mindex.d.ts.map  [2m 0.12 kB[22m [2m│ gzip: 0.13 kB[22m
+packages/tool-session build: [34mℹ[39m [2mlib/[22m[32m[1mindex.d.ts[22m[39m      [2m 0.39 kB[22m [2m│ gzip: 0.26 kB[22m
+packages/tool-session build: [34mℹ[39m 4 files, total: 53.92 kB
+packages/tool-session build: [32m✔[39m Build complete in [32m407ms[39m
+packages/tool-session build: Done
+$ node standards/validate.mjs
+
+== manifest 校验（packages/*/dsh-plugin.json） ==
+✓ tool-session (io.github.nothing1024.tool-session)
+
+== 协商（manifest × host-descriptor） ==
+✓ tool-session: compatible
+
+== fixtures 自检 ==
+✓ valid/full.json
+✓ valid/minimal.json
+✓ invalid/missing-schema.json → [missing-schema]
+✓ invalid/wrong-manifest-version.json → [wrong-manifest-version]
+✓ invalid/missing-facets.json → [missing-facets]
+✓ invalid/bad-id.json → [bad-id]
+✓ invalid/unknown-field.json → [unknown-field]
+✓ invalid/provides-rejected.json → [provides-rejected]
+✓ invalid/requires-services-rejected.json → [requires-services-rejected]
+✓ invalid/reserved-facet-client.json → [reserved-facet]
+✓ invalid/duplicate-contributes-id.json → [duplicate-contributes-id]
+✓ invalid/entry-outside-root.json → [entry-outside-root]
+
+== adapter 审计（上游触点基线） ==
+✓ 无未评审的新增上游触点
+
+结论：全部通过
+
+收尾回归退出码：deps:check=0 typecheck=0 test=0 build=0 standard:check=0（全 0 = 通过）
+
+########## 5.4 Review 专项清单逐条核销 ##########
+[x] 1  生产代码无 dsh-host-apiproxy / AbstractApiClient / session.history —— rg packages（排除 lib）无命中
+[x] 2  同进程路径零 loopback fetch —— UF-001 tool/call 成功且网关 stdout 无 401；transport.spec 断言 in-process 不 fetch
+[x] 3  CLI 无 token 时不写本地 store 冒充成功 —— [web-unreachable] exit=1，marks.jsonl md5 未变，GUI store 0 条
+[x] 4  pnpm run typecheck 不含 dsh-grok-bot —— grep -c = 0
+[x] 5  env/boot.sh 与 st profile 均 0.1.2-rc.1 —— boot.sh:45；st/package.json:5-6
+[x] 6  5.2 执行矩阵 10/10 通过，evidence 齐全且与 2.5 EVD 清单一致
+[x] 7  2.3 每条流程的入口接线已实现 —— 6 个 UF 的入口在本次全部真实走过
+[x] 8  所有 BR/UF/INV 可对照第 2 章核销 —— 见下表
+[x] 9  deps:check 通过；判定口径是 realpath 越界而非仓名黑名单 —— 黑名单字面量计数 0；realpathSync + insideRepo
+[x] 10 pnpm-workspace.yaml / tsconfig.base.json 无 0.1.1-rc.2；docs/ 历史叙述保留 62 处未误改
+[x] 11 Task 15 原始证据未被覆盖 —— evidence/UF-00x/ 全部文件 mtime 仍为 12:51-13:09
+[x] 12 phase-5 证据齐全 —— deps-check.log / cleanup.log / rerun-5.2.log / ui.png 四件齐
+
+########## BR / INV 核销 ##########
+BR-001 宿主 0.1.2-rc.1        : boot.sh:45 + st profile + 无 apiproxy 例外残留
+BR-002 同进程禁 HTTP 自环      : UF-001 走 ctx.sessionController，无 401
+BR-003 CLI 打 GUI 进程         : UF-002 会话落 GUI 的 env/sessions + workspace.json
+BR-004 跨进程需 cookie 鉴权    : 裸 POST 401；无 token → [web-unreachable]
+BR-005 wait 不依赖 history     : wait=completed / timeout 均由 list.running + snapshotEvents 判定
+BR-006 工具名与错误码不变      : 223 单测通过（含斜杠码映射用例）
+BR-007 升级后预检全过          : 5.1 七项全绿 + 网关起 + fiberPhase=active + UI 非白屏
+BR-008 hide best-effort archive: service.spec 7 passed
+BR-009 依赖必须落本仓且 rc.1   : deps:check 污染态 exit=1 点名、复原态 exit=0（192 项）
+INV-001..007                   : 223 passed / 1 skipped，与升级前口径一致
+INV-005 session-marks 零 dsh 依赖: deps:check 扫描域内该包无 @deepseek-ai/* 条目
+INV-008 清残留不改运行时行为    : lockfile md5 不变 + --frozen-lockfile 通过 + 四件套一致
+
+########## 最终结论 ##########
+5.1 入场券 7/7 通过；5.2 执行矩阵 10/10 通过；收尾回归五件套全 0 退出。
+validate_package.py: 0 FAIL / 1 WARN / 21 PASS（WARN 为 spec 1.6 已登记的设计选择，不修）。
+date: 2026-09-05T15:21:33+0800

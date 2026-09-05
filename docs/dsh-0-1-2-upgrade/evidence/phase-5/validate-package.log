@@ -1,0 +1,26 @@
+
+== validate_package: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/docs/dsh-0-1-2-upgrade ==
+[WARN] 真实场景任务（任务 15）不在最后一个 Phase（P5）——如为多包统筹结构请确认设计意图
+[PASS] spec.md 存在（984 行）
+[PASS] tasks.csv 表头正确（8 列）
+[PASS] tasks.csv 序号 1..19 连续, 共 19 条任务
+[PASS] 所有详情锚点在 spec.md 中有对应 Task 标题
+[PASS] 前置依赖引用有效、无循环、方向与 Phase 顺序一致
+[PASS] 每个 Phase 最后一条任务均为回归验证
+[PASS] tasks.csv 状态列取值全部合法
+[PASS] handoff.md 引用路径全部存在且均为相对路径
+[PASS] §0 人话摘要在位（7 行正文）
+[PASS] BR/UF/INV/EVD 引用闭环（定义 34 个）
+[PASS] §3.3 定位清单 待勘察/ASM 占比 0%（0/22）
+[PASS] 任务验证命令 待勘察/ASM 占比 0%（0/38）
+[PASS] 全部 6 个 UF 均有步骤级流程脚本
+[PASS] 全部 6 个流程脚本均含入口接线清单
+[PASS] 存在真实场景测试章节, 且有任务覆盖执行
+[PASS] 5.2 环境准备完整（启动命令 + 访问入口）
+[PASS] 5.2 执行矩阵引用了 10 条具体 evidence 路径
+[PASS] 真实场景任务已完成, 5.2 引用证据齐全（10 条路径）
+[PASS] 无残留模板占位符
+[PASS] --repo 核验: §3.3 全部 22 条 rg anchor 命中
+[PASS] evidence/ 目录存在
+
+结果: 0 FAIL / 1 WARN / 21 PASS
