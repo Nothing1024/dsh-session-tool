@@ -16,5 +16,5 @@
 15,P4:文档与真实场景,执行 spec 5.2 真实场景全套测试,spec.md#task-15,14,5.2 执行矩阵全部通过,已完成,UF-001..006 evidence 齐全；UF-005 ui.png 已截
 16,P4:文档与真实场景,执行 Phase 4 回归验证,spec.md#task-16,15,typecheck+test+build+standard:check,已完成,223 pass/1 skip；typecheck/build/standard 0 error
 17,P5:跨仓污染防护与复原态复验,新增跨仓依赖污染检测命令,spec.md#task-17,无,pnpm run deps:check 复原态 0 退出 / 污染态非 0,已完成,BR-009；realpath 越界判定、零仓名黑名单；复原态 0 退出/污染态 1 退出并点名；evidence/phase-5/deps-check.log
-18,P5:跨仓污染防护与复原态复验,清理两处失效历史残留,spec.md#task-18,无,rg 0.1.1-rc.2 pnpm-workspace.yaml tsconfig.base.json 无命中,待开始,INV-008；docs/ 历史叙述不动
+18,P5:跨仓污染防护与复原态复验,清理两处失效历史残留,spec.md#task-18,无,rg 0.1.1-rc.2 pnpm-workspace.yaml tsconfig.base.json 无命中,已完成,INV-008；lockfile md5 前后一致且 --frozen-lockfile 通过；四件套无变化；docs/ 未动
 19,P5:跨仓污染防护与复原态复验,复原态重跑 5.2 真实场景全套并收尾回归,spec.md#task-19,17;18,deps:check+typecheck+test+build+standard:check 全过 + 5.2 矩阵全行,待开始,覆盖并取代 Task 15/16 为最终验收；证据写 evidence/phase-5/
