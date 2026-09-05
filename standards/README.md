@@ -13,7 +13,7 @@ node standards/validate.mjs --update-baseline   # 评审后固化 adapter 基线
 |---|---|
 | `validate.mjs` | 自包含检查器：manifest 校验 + 纯函数协商 + fixtures 自检 + adapter 审计 |
 | `dsh-plugin.schema.json` / `host-descriptor.schema.json` | 上游 schema 本地快照（仅参考；本仓权威校验在 validate.mjs） |
-| `host-descriptor.json` | profile `st` 的部署描述（:3081，DSH 0.1.1-rc.2） |
+| `host-descriptor.json` | profile `st` 的部署描述（:3081，DSH 0.1.2-rc.1） |
 | `adapter-baseline.json` | packages/*/src 的上游 import 基线（新增触点须评审） |
 | `fixtures/` | 合法/非法 manifest 样本，每条"必须"配一个违反它的样本 |
 

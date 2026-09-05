@@ -45,10 +45,11 @@ sh env/setup.sh
 sh env/boot.sh                 # loopback :3081
 ```
 
-网关起来后一键 CLI 矩阵（命令 + 退出码 + stdout/stderr，覆盖 UF-001..008）。
+网关起来后一键 CLI 矩阵（命令 + 退出码 + stdout/stderr，覆盖脚本自己的 UF-001..008；**不是** `docs/dsh-0-1-2-upgrade/spec.md` 的 UF-001..006）。跨进程必须带 launch token：从 `sh env/boot.sh` stdout 的 `dsh web:` URL 取 `token=`，写入 `DSH_LAUNCH_TOKEN`。
 会话标题用中文标出【可见】/【标题隐藏】/【标记隐藏】/【委派】，挂在 workspace「手工验收」里，方便在 http://127.0.0.1:3081 侧栏对照。
 
 ```sh
+export DSH_LAUNCH_TOKEN='<token from dsh web: URL>'
 bash scripts/manual-test.sh                 # 默认给每条可查看会话写不同中文提示（走模型；空会话官方栏不出现）
 bash scripts/manual-test.sh --no-write      # 只建会话、不打对话
 # 或：pnpm env:test
@@ -60,43 +61,55 @@ bash scripts/manual-test.sh --no-write      # 只建会话、不打对话
 
 ### 调试（网关内部状态）
 
-CLI 矩阵之外，想直接看「插件挂上了没」或某条会话日志，打本仓网关的 HTTP RPC。带斜杠的方法（typert）payload 包在 `args` 里；带点号的方法（api-gateway）payload 就是参数本身。
+CLI 矩阵之外，想直接看「插件挂上了没」或某条会话日志，打本仓网关的 HTTP RPC。0.1.2 起 `/api` 要浏览器 cookie：先 `GET /?token=` 换 cookie（**不要跟随 303**，curl 不要加 `-L`），再 POST。typert 方法是斜杠路径，payload 包在 `{ args }` 里。`session.history` 已删除。
 
 ```sh
 # 确认 :3081 的 DSH_HOME 是本仓 env/（别人占口会失败）
 export DSH_HOME="$PWD/env" GW_PORT=3081 EXPECTED_HOME="$PWD/env"
 . env/gateway-id.sh && gateway_require && echo "pid=$GW_PID home=$GW_HOME"
 
+# launch token 来自 boot stdout：dsh web: http://127.0.0.1:3081/?token=...
+: "${DSH_LAUNCH_TOKEN:?set from dsh web: URL token=}"
+
+# 换 cookie：默认 curl 不跟随重定向，才能读到 303 的 Set-Cookie
+COOKIE=$(curl -sS -D - -o /dev/null "http://127.0.0.1:3081/?token=${DSH_LAUNCH_TOKEN}" \
+  | awk 'BEGIN{IGNORECASE=1} /^set-cookie:/{sub(/\r$/,""); sub(/^[^:]+:[[:space:]]*/,""); split($0,a,";"); print a[1]; exit}')
+
 # 插件是否 active
 curl -sS -X POST http://127.0.0.1:3081/api/pluginInventory/list \
   -H 'Content-Type: application/json' \
+  -H "Cookie: ${COOKIE}" \
   -d '{"type":"client-request","rpcId":"dbg","method":"pluginInventory/list","payload":{"args":{}}}'
 
-# 某条会话的投影后日志（未脱敏原文，只用于本机排障）
-curl -sS -X POST http://127.0.0.1:3081/api/session.history \
+# 某条会话的一页日志（session/page；throughSeq 必须是已有 seq，一般用 follow 首帧 cursor）
+curl -sS -X POST http://127.0.0.1:3081/api/session/page \
   -H 'Content-Type: application/json' \
-  -d '{"type":"client-request","rpcId":"dbg","method":"session.history","payload":{"sessionId":"<id>","maxMessages":20}}'
+  -H "Cookie: ${COOKIE}" \
+  -d '{"type":"client-request","rpcId":"dbg","method":"session/page","payload":{"args":{"request":{"address":{"kind":"session","sessionId":"<id>"},"throughSeq":0,"maxMessages":20}}}}'
+
+# 冷会话排障也可以本地 inspect，不打 HTTP：
+# node packages/session-tool-cli/lib/bin.js --profile headless --patch env/cli.patch.yml session read <id>
 ```
 
 ## CLI 用法
 
 ```sh
-node packages/session-tool-cli/lib/bin.js session create [--title T] [--tag T] [--parent ID] [--workspace PATH] [--profile <name>]
+node packages/session-tool-cli/lib/bin.js session create [--title T] [--tag T] [--parent ID] [--workspace PATH] [--profile <name>] [--token TOKEN]
 node packages/session-tool-cli/lib/bin.js session read <session_id> [--since-seq N] [--max-blocks N]
 node packages/session-tool-cli/lib/bin.js session write <session_id> <text...>
 node packages/session-tool-cli/lib/bin.js session list [--scope own|tree|all] [--root ID] [--tag T] [--title T] [--status live|idle] [--include-hidden] [--cursor C] [--limit N]
 node packages/session-tool-cli/lib/bin.js session rename <session_id> [--title T] [--tag T]
 node packages/session-tool-cli/lib/bin.js marks list [--kind K]
 node packages/session-tool-cli/lib/bin.js marks get --id ID
-node packages/session-tool-cli/lib/bin.js workspace add <path> [--title T] [--profile <name>]
-node packages/session-tool-cli/lib/bin.js workspace list [--profile <name>]
-node packages/session-tool-cli/lib/bin.js workspace rename <workspace_id> --title <title> [--profile <name>]
-node packages/session-tool-cli/lib/bin.js workspace delete <workspace_id> [--profile <name>]
+node packages/session-tool-cli/lib/bin.js workspace add <path> [--title T] [--profile <name>] [--token TOKEN]
+node packages/session-tool-cli/lib/bin.js workspace list [--profile <name>] [--token TOKEN]
+node packages/session-tool-cli/lib/bin.js workspace rename <workspace_id> --title <title> [--profile <name>] [--token TOKEN]
+node packages/session-tool-cli/lib/bin.js workspace delete <workspace_id> [--profile <name>] [--token TOKEN]
 ```
 
 仓内未 link 全局 `dsh-session`；上面的 `bin.js` 就是 CLI。参数与工具 output 同构。
 
-- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点可用 `DSH_SESSION_ANCHOR` 覆盖；
+- 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点可用 `DSH_SESSION_ANCHOR` 覆盖；打已运行 GUI 时设 `DSH_LAUNCH_TOKEN` 或 `--token`（boot stdout `dsh web:` URL 的 `token=`）；
 - 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON（workspace 子命令为 CLI 自有 JSON 投影）；
 - CLI 是人工身份（`kind: cli`），豁免 owner fence；`own` scope 仅 agent 可用。
 - `marks` 子命令只读 `$DSH_HOME/session-tool/marks.jsonl`，不 boot profile。后期 Web 只许吃 `listByKind` / `get`，不要改官方会话栏。
@@ -113,7 +126,7 @@ node packages/session-tool-cli/lib/bin.js workspace delete <workspace_id> [--pro
 
 ## Workspace（围绕 web 进程）
 
-独立 session 要进 GUI，创建/写入必须走 **web 进程**的网关，而不是 headless 本地 store。workspace 注册表也归 web 进程；本插件经 HTTP carrier（`POST /api/workspace.*` / `POST /api/session.*`）操作，插件进程内不持有这些状态：
+独立 session 要进 GUI，创建/写入必须走 **web 进程**的网关，而不是 headless 本地 store。workspace 注册表也归 web 进程；跨进程经 HTTP carrier（`POST /api/workspace/create` 等 / `POST /api/session/create` 等，须带 cookie）操作，同进程走 `sessionController` / `workspaceController`，插件进程内不持有这些状态：
 
 - `session_create` 的 `workspace_path` / CLI `session create --workspace <path>`：先经网关幂等注册（同 canonical path 复用），再以网关返回的 **canonical path 作为新会话 header 的 `cwd`** 建会话；
 - `dsh-session workspace add/list/rename/delete`：注册 / 列表 / 改名 / 删除（保留目录与会话日志）；
@@ -137,7 +150,7 @@ pnpm run standard:check   # dsh-community-standard v0.15 对齐检查（见 stan
 
 - **委派 = 普通持久会话**：`parentSession` 只记录血缘，不形成运行时父子锁。父停子不停。
 - **换引擎不换壳**：`subagent` / `send_message` / `list_agents` / workflow / ralph 的名字和 schema 保持原样，底层改走 session 栈。
-- **session_write 是对话**：经网关 `session.prompt` 投递并拿模型回复；冷会话可 resume。`session_read` 读本地持久日志，不 acquire agent。
+- **session_write 是对话**：经网关 `session/prompt`（同进程则 `sessionController.prompt`）投递并拿模型回复；冷会话可 resume。`session_read` 读本地持久日志，不 acquire agent。
 - **完成态从日志推导**：delegation 投影（idle/running/completed/failed/aborted/max-tokens）纯函数折叠，进程重启不丢。
 - **续写授权在插件工具层**：默认 `workspace`；`creator` / `anyone` 只约束 `session_write` / `session_collect`，不改官方 GUI 既有会话。
 - **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根）、`all`（Config：`allowAllScope` + `cliAllowAll`）；默认双闸隐藏（`~` 标题或 `kind:hidden`）。

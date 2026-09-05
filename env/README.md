@@ -2,7 +2,7 @@
 
 本目录是一份独立的 `DSH_HOME`（loopback）。不要 `--lan`。口固定 **3081**，不要打别人的 3080。
 
-官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.1-rc.2**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.1-rc.2 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：保留名 `kind:vibee` / `kind:delegated` / `kind:hidden` / `ui:aux`；官方 GUI 不显示；后期 Web 用 `listByKind`。
+官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.2-rc.1**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.2-rc.1 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：保留名 `kind:vibee` / `kind:delegated` / `kind:hidden` / `ui:aux`；官方 GUI 不显示；后期 Web 用 `listByKind`。
 
 ```text
 env/
@@ -22,9 +22,10 @@ sh env/boot.sh            # :3081；已起且身份对本仓则直接退出
 
 `boot.sh` / 矩阵会核对监听进程的 `DSH_HOME` 是本目录。口被别人占着会失败，不会偷偷打过去。
 
-网关起来后可一键跑 CLI 矩阵。标题带中文【可见】/【标题隐藏】/【标记隐藏】，会话挂在 workspace「手工验收」（`env/manual-view`，不删）：
+网关起来后可一键跑 CLI 矩阵。标题带中文【可见】/【标题隐藏】/【标记隐藏】，会话挂在 workspace「手工验收」（`env/manual-view`，不删）。脚本自己的 UF-001..008 **不是** `docs/dsh-0-1-2-upgrade/spec.md` 的 UF-001..006。跨进程须带 launch token（boot stdout 的 `dsh web:` URL 里 `token=`）：
 
 ```sh
+export DSH_LAUNCH_TOKEN='<token from dsh web: URL>'
 bash scripts/manual-test.sh            # 默认写中文提示；结果 env/manual-test-last.txt
 bash scripts/manual-test.sh --no-write # 只建会话
 ```

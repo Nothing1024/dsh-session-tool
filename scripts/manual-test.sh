@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
-# session-tool 一键 CLI 矩阵：每条命令写退出码 + stdout/stderr，并断言 UF-001..008。
+# session-tool 一键 CLI 矩阵：每条命令写退出码 + stdout/stderr，并断言本脚本的 UF-001..008。
+#
+# 编号声明：本脚本的 UF-001..008 不是 docs/dsh-0-1-2-upgrade/spec.md 的 UF-001..006。
+# spec 5.2 是另一套用户可见场景；本矩阵不能代替 5.2。
+#
+# 鉴权：跨进程打 :3081 必须带 launch token（ASM-002）。读取 DSH_LAUNCH_TOKEN；
+# 若未设，则从 DSH_WEB_LINE（或 DSH_LAUNCH_TOKEN 里整段 `dsh web:` URL）解析 token=。
+# 来源是 boot stdout 的 `dsh web: http://127.0.0.1:3081/?token=...` 行。
 #
 # 需要 :3081 上本仓网关已起（sh env/boot.sh）。不要 --profile st（那是正在跑的 web）。
 # 先核监听进程的 DSH_HOME 是本仓 env/，再打；别人的 :3081 直接失败。
 #
+#   export DSH_LAUNCH_TOKEN='<token from dsh web: URL>'
 #   bash scripts/manual-test.sh              # 默认会给几条可见会话写中文提示（走模型）
 #   bash scripts/manual-test.sh --no-write   # 只建会话、不打对话
 #   bash scripts/manual-test.sh --out PATH
@@ -53,7 +61,7 @@ while [ $# -gt 0 ]; do
     --no-write) WITH_WRITE=0; shift ;;
     --out) OUT=$2; shift 2 ;;
     -h|--help)
-      sed -n '2,18p' "$0"
+      sed -n '2,21p' "$0"
       exit 0
       ;;
     *)
@@ -118,8 +126,8 @@ run_cli() {
   display=$(quote_args "$@")
   say ''
   say "## $heading"
-  say "\$ DSH_HOME=$DSH_HOME node $CLI_REL $display"
-  env DSH_HOME="$DSH_HOME" node "$CLI_BIN" "$@" >"$stdout_f" 2>"$stderr_f"
+  say "\$ DSH_HOME=$DSH_HOME DSH_LAUNCH_TOKEN=set node $CLI_REL $display"
+  env DSH_HOME="$DSH_HOME" DSH_LAUNCH_TOKEN="$DSH_LAUNCH_TOKEN" node "$CLI_BIN" "$@" >"$stdout_f" 2>"$stderr_f"
   LAST_EXIT=$?
   LAST_STDOUT=$(cat "$stdout_f")
   LAST_STDERR=$(cat "$stderr_f")
@@ -168,6 +176,39 @@ stderr_has() {
   case "$LAST_STDERR" in *"$1"*) return 0 ;; *) return 1 ;; esac
 }
 
+# Pull token= out of a `dsh web:` URL (first URL, not the LAN duplicate), or return a raw token unchanged.
+parse_launch_token() {
+  case "$1" in
+    *token=*|*dsh\ web:*)
+      printf '%s\n' "$1" | grep -oE 'https?://[^[:space:]]+' | head -n 1 | sed -nE 's/.*[?&]token=([^&]*).*/\1/p'
+      ;;
+    *)
+      printf '%s\n' "$1"
+      ;;
+  esac
+}
+
+# Prefer DSH_LAUNCH_TOKEN; otherwise parse DSH_WEB_LINE (boot `dsh web:` row).
+resolve_launch_token() {
+  if [ -z "${DSH_LAUNCH_TOKEN:-}" ] && [ -n "${DSH_WEB_LINE:-}" ]; then
+    DSH_LAUNCH_TOKEN=$DSH_WEB_LINE
+  fi
+  if [ -n "${DSH_LAUNCH_TOKEN:-}" ]; then
+    parsed=$(parse_launch_token "$DSH_LAUNCH_TOKEN")
+    if [ -n "$parsed" ]; then
+      DSH_LAUNCH_TOKEN=$parsed
+    fi
+  fi
+  if [ -z "${DSH_LAUNCH_TOKEN:-}" ]; then
+    echo "缺少 launch token。从 boot stdout 的 dsh web: 行取 token= 后：" >&2
+    echo "  export DSH_LAUNCH_TOKEN=<token>" >&2
+    echo "  # 或：export DSH_WEB_LINE='dsh web: http://127.0.0.1:3081/?token=...'" >&2
+    echo "  bash scripts/manual-test.sh" >&2
+    exit 1
+  fi
+  export DSH_LAUNCH_TOKEN
+}
+
 marks_excerpt() {
   if [ ! -f "$MARKS" ]; then
     say 'marks.jsonl：（没有文件）'
@@ -211,8 +252,15 @@ EXPECTED_HOME="$DSH_HOME"
 . "$DSH_HOME/gateway-id.sh"
 gateway_require
 GW=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 "http://127.0.0.1:${GW_PORT}/" || true)
-if [ "$GW" != 200 ]; then
+# 0.1.2 无 cookie 的 GET / 是 401；有 cookie 才 200。探活只排除连不上。
+if [ "$GW" != 200 ] && [ "$GW" != 303 ] && [ "$GW" != 401 ]; then
   echo "网关 http://127.0.0.1:${GW_PORT} 身份对但 HTTP=${GW}。先：sh env/boot.sh" >&2
+  exit 1
+fi
+resolve_launch_token
+TOKEN_GW=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 "http://127.0.0.1:${GW_PORT}/?token=${DSH_LAUNCH_TOKEN}" || true)
+if [ "$TOKEN_GW" != 303 ]; then
+  echo "launch token 换 cookie 失败：GET /?token= HTTP=${TOKEN_GW}（期望 303，且不要跟随重定向）。token 来自本次 boot 的 dsh web: 行。" >&2
   exit 1
 fi
 
@@ -226,7 +274,8 @@ say "profile：headless + $PATCH"
 say "本轮标题前缀：$PREFIX"
 say "本轮标记：$RUN_TAG"
 say "前台分组：workspace「${WS_TITLE}」→ $WS_DIR"
-say "说明：不要再 boot --profile st。CLI 打已在跑的 :${GW_PORT}（须本仓 DSH_HOME）。"
+say "DSH_LAUNCH_TOKEN：已设置（不打印）"
+say "说明：不要再 boot --profile st。CLI 打已在跑的 :${GW_PORT}（须本仓 DSH_HOME）。本脚本 UF-001..008 不是 spec UF-001..006。"
 say "监听："
 (lsof -nP -iTCP:"$GW_PORT" -sTCP:LISTEN || true) | tee -a "$OUT"
 say ''
