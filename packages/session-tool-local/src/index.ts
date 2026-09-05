@@ -1,21 +1,20 @@
 /**
  * Remote provider for the session-tool Service Definition: implements
- * `ctx.sessionTool` over the web gateway (`dsh web`)'s HTTP carrier. Session
- * creation, writing (conversation prompts), renaming, and listing go through
- * the gateway so the web process owns every session it serves — sessions are
- * live there, published to every GUI client through the ordinary event push.
- * Reading stays local (persistence inspection, no agent acquisition); the
- * owner fence, scope gates, and hidden-prefix filtering run in this process
- * over a read-only header index. Session marks live in the plugin mark table
+ * `ctx.sessionTool` over the GUI process. Same-process (tool-session on the
+ * web-app tree) calls `ctx.sessionController` / `ctx.workspaceController`
+ * (ASM-001); the CLI posts authenticated HTTP at `Config.webUrl`. Reading
+ * stays local (persistence inspection, no agent acquisition); the owner
+ * fence, scope gates, and hidden-prefix filtering run in this process over
+ * a read-only header index. Session marks live in the plugin mark table
  * (`session-marks`); this provider never appends official `session/tags` events.
  * @module session-tool-local
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from 'schemastery'
-import { assertNever } from '@deepseek-ai/dsh-llm'
+import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import { get as getMarks, isTitleHidden, normalizeMarks, patch as patchMarks, put as putMarks, TagInvalidError } from 'session-marks'
@@ -53,6 +52,18 @@ import type {
 } from 'session-tool'
 import { SessionHttpClient } from './session-client.ts'
 import { WorkspaceHttpClient } from './workspace-client.ts'
+import { GatewayHttpRpc } from './http-rpc.ts'
+import { InProcessSessionClient } from './session-client-in-process.ts'
+import type {
+  InProcessSessionController,
+  InProcessSubagentRuntime,
+} from './session-client-in-process.ts'
+import { InProcessWorkspaceClient } from './workspace-client-in-process.ts'
+import type {
+  InProcessWorkspaceController,
+  InProcessWorkspaceRegistry,
+} from './workspace-client-in-process.ts'
+import { inProcessMissingControllersError, selectTransport, type TransportMode } from './transport.ts'
 import { loadLineage, putLineage, type LineageRecord } from './lineage.ts'
 import { delegationProjectionDefinition, viewDelegation } from './delegation-projection.ts'
 import type { DelegationStatus } from './delegation-projection.ts'
@@ -66,6 +77,13 @@ import type {
   SessionToolCollectResult,
   SessionToolCollectSession,
 } from 'session-tool'
+
+export { InProcessSessionClient } from './session-client-in-process.ts'
+export type { InProcessSessionClientDeps } from './session-client-in-process.ts'
+export { InProcessWorkspaceClient } from './workspace-client-in-process.ts'
+export type { InProcessWorkspaceClientDeps } from './workspace-client-in-process.ts'
+export { selectTransport, inProcessMissingControllersError } from './transport.ts'
+export type { TransportMode, ResolvedTransport } from './transport.ts'
 
 /** `all` scope gate levels for agent callers. */
 export type AllowAllScope = 'top-level' | 'any' | 'none'
@@ -98,12 +116,18 @@ export interface Config {
    */
   readonly hiddenPrefixes: string[]
   /**
-   * Base URL of the web gateway (`dsh web`), the workspace registry's
-   * authority and the session operations' execution point. Workspace
-   * registration and session create/write/rename/list go over this gateway's
-   * HTTP carrier; a reachable gateway is required for those operations.
+   * Base URL of the GUI web process. HTTP mode posts here. Auto mode uses
+   * host:port equality with this process's webServer listen address to pick
+   * in-process (ASM-001). Default `http://127.0.0.1:3080` so official web
+   * stays in-process instead of a 401 self-loop.
    */
   readonly webUrl: string
+  /**
+   * Transport: in-process controllers, authenticated HTTP, or auto (default).
+   * Auto is in-process only when sessionController+workspaceController exist
+   * and webUrl host:port equals this process webServer listen address.
+   */
+  readonly transport?: TransportMode
   /**
    * Continuation-authorization strength for the plugin tool path (default
    * `workspace`): who may write to or wait on another agent's delegated
@@ -141,14 +165,15 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     listMaxRows: z.number().step(1).min(1).default(100),
     hiddenPrefixes: z.array(z.string()).default(['~']),
     webUrl: z.string().default('http://127.0.0.1:3080'),
+    transport: z.union([z.const('in-process'), z.const('http'), z.const('auto')]).default('auto'),
     allowOthersToWrite: z.union([z.const('workspace'), z.const('creator'), z.const('anyone')]).default('workspace'),
     maxDelegationDepth: z.number().step(1).min(1),
     showDelegated: z.boolean().default(true),
   })
 
   private readonly config: Config
-  private readonly workspaceClient: WorkspaceHttpClient
-  private readonly sessionClient: SessionHttpClient
+  private workspaceClient!: WorkspaceHttpClient | InProcessWorkspaceClient
+  private sessionClient!: SessionHttpClient | InProcessSessionClient
   /** HTTP create-dropped parentSession / depth, keyed by child session id. */
   private readonly lineage = new Map<string, LineageRecord>()
   /** In-flight disk merge; concurrent headerIndex callers share one read. */
@@ -157,13 +182,72 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   constructor(ctx: Context, config: Config) {
     super(ctx, 'sessionTool')
     this.config = Object.freeze({ ...config })
-    this.workspaceClient = new WorkspaceHttpClient(config.webUrl)
-    this.sessionClient = new SessionHttpClient(config.webUrl)
+    this.bindTransport()
+    if ((config.transport ?? 'auto') === 'auto') {
+      // Controllers / webServer may activate after this fiber; re-select
+      // when the GUI trio is present so auto does not stay stuck on HTTP.
+      ctx.inject(['sessionController', 'workspaceController', 'webServer'], () => {
+        this.bindTransport()
+      })
+    }
     // Register the delegation status projection when the projection registry
     // is composed; a deployment without it degrades to log-tail reads.
     ctx.inject(['sessionProjections'], (projectionCtx) => {
       projectionCtx.sessionProjections.register(delegationProjectionDefinition)
     })
+  }
+
+  /** ASM-001: in-process on matching local listen + controllers, else HTTP. */
+  private bindTransport(): void {
+    const mode = selectTransport({
+      transport: this.config.transport ?? 'auto',
+      webUrl: this.config.webUrl,
+      sessionController: this.ctx.get('sessionController'),
+      workspaceController: this.ctx.get('workspaceController'),
+      webServer: this.ctx.get('webServer'),
+    })
+    if (mode === 'in-process') this.installInProcessClients()
+    else this.installHttpClients()
+  }
+
+  private installInProcessClients(): void {
+    const sessionController = this.ctx.get('sessionController') as InProcessSessionController | undefined
+    const workspaceController = this.ctx.get('workspaceController') as InProcessWorkspaceController | undefined
+    if (sessionController === undefined || workspaceController === undefined) {
+      throw inProcessMissingControllersError()
+    }
+    const subagents = this.ctx.get('subagents') as InProcessSubagentRuntime | undefined
+    this.sessionClient = new InProcessSessionClient({
+      sessionController,
+      sessions: this.ctx.sessions,
+      sessionPersistence: this.ctx.sessionPersistence,
+      ...subagents === undefined ? {} : { subagents },
+    })
+    const workspaceRegistry = (this.ctx.get('workspaceRegistry') as InProcessWorkspaceRegistry | undefined)
+      ?? EMPTY_WORKSPACE_REGISTRY
+    this.workspaceClient = new InProcessWorkspaceClient({
+      workspaceController,
+      workspaceRegistry,
+    })
+  }
+
+  private installHttpClients(): void {
+    const rpc = new GatewayHttpRpc({
+      webUrl: this.config.webUrl,
+      ...process.env.DSH_LAUNCH_TOKEN === undefined || process.env.DSH_LAUNCH_TOKEN === ''
+        ? {}
+        : { launchToken: process.env.DSH_LAUNCH_TOKEN },
+    })
+    this.workspaceClient = new WorkspaceHttpClient(rpc)
+    this.sessionClient = new SessionHttpClient(rpc, {
+      inspectEvents: (sessionId) => this.inspectEventsForWait(sessionId),
+    })
+  }
+
+  /** Persistence inspect for HTTP wait turn/end; missing id is no turn/end. */
+  private async inspectEventsForWait(sessionId: string): Promise<readonly { readonly type: string; readonly data?: unknown }[] | undefined> {
+    const inspected = await this.inspectSession(SessionId(sessionId))
+    return inspected?.events
   }
 
   // ---- public contract ---------------------------------------------------
@@ -854,8 +938,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   /** Read the last assistant text block of a session's log, when one exists. */
   private async lastAssistantText(sessionId: SessionId): Promise<string | undefined> {
     const live = this.ctx.sessions.get(sessionId)
-    const events = live?.events
-    if (events !== undefined) return lastAssistantTextOf(events)
+    if (live !== undefined) return lastAssistantTextOf(live.snapshotEvents())
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : lastAssistantTextOf(inspected.events)
   }
@@ -877,7 +960,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       // fold when the registry is not composed for this deployment.
       const state = this.ctx.sessionProjections?.stateOf(live, 'delegation')
       if (state !== undefined) return state.status
-      return foldDelegationStatus(live.events)
+      return foldDelegationStatus(live.snapshotEvents())
     }
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : foldDelegationStatus(inspected.events)
@@ -973,7 +1056,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     const live = this.ctx.sessions.get(id)
     if (live !== undefined) {
       await this.assertAccess(caller, id, index)
-      return { meta: live.header, events: live.events }
+      return { meta: live.header, events: live.snapshotEvents(), inheritedEventCount: live.inheritedEventCount }
     }
     const inspection = await this.inspectSession(id)
     if (inspection === undefined) {
@@ -1050,25 +1133,39 @@ function requireMarks(tags: readonly string[]): string[] {
 function messageRow(event: SessionEvent): SessionToolMessageRow | undefined {
   switch (event.type) {
     case 'user/message':
-      return { seq: event.seq, role: 'user', blocks: event.data.content }
+      return { seq: Number(event.seq), role: 'user', blocks: event.data.content }
     case 'assistant/message':
-      return { seq: event.seq, role: 'assistant', blocks: event.data.message.content }
+      return { seq: Number(event.seq), role: 'assistant', blocks: event.data.message.content }
     case 'tool/result':
-      return { seq: event.seq, role: 'tool', blocks: event.data.message.content }
+      return { seq: Number(event.seq), role: 'tool', blocks: event.data.message.content }
     default:
       return undefined
   }
 }
 
+/** Header/offset for the log-tail fallback; the unit ignores both. */
+const FOLD_IDLE_HEADER: SessionHeader = {
+  version: 0,
+  id: SessionId('fold-idle'),
+  createdAt: 0,
+  isSeeded: false,
+}
+
 /** Fold the delegation projection unit over one event prefix. */
 function foldDelegationStatus(events: readonly SessionEvent[]): DelegationStatus {
-  let state = delegationProjectionDefinition.init()
+  let state = delegationProjectionDefinition.init(FOLD_IDLE_HEADER, SessionLogOffset(0))
   for (const event of events) state = delegationProjectionDefinition.apply(state, event)
   return viewDelegation(state).status
 }
 
 /** Collect poll interval (ms): the status snapshot cadence while waiting. */
 const COLLECT_POLL_MS = 250
+
+/** Fallback registry when in-process list runs without workspaceRegistry. */
+const EMPTY_WORKSPACE_REGISTRY: InProcessWorkspaceRegistry = {
+  list: () => [],
+  archivedSessionIds: [],
+}
 
 /** Sleep helper for the collect poll loop. */
 function sleep(ms: number): Promise<void> {

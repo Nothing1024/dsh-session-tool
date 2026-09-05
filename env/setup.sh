@@ -34,4 +34,4 @@ cd "$ST"
 pnpm install
 echo "env/setup: ok"
 echo "boot: $ROOT/boot.sh"
-echo "or:   DSH_HOME=$ROOT npx --yes @deepseek-ai/dsh@0.1.1-rc.2 --profile st --port 3081 --no-open"
+echo "or:   DSH_HOME=$ROOT npx --yes @deepseek-ai/dsh@0.1.2-rc.1 --profile st --port 3081 --no-open"

@@ -14,7 +14,8 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { GenericCallView, JsonValue, ToolExecution } from '@deepseek-ai/dsh-tools'
+import type { GenericCallView, ToolExecution } from '@deepseek-ai/dsh-tools'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionToolCaller } from 'session-tool'
 

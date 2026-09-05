@@ -11,7 +11,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { get, marksPath, put } from 'session-marks'
 import SessionToolLocalService from 'session-tool-local'
 import type { Config as ToolConfig } from 'session-tool-local'
@@ -318,7 +318,7 @@ describe('SessionToolLocalService (remote)', () => {
         turn: 1,
         step: 2,
         message: createToolResultMessage({
-          callId: CallId('call-1'),
+          callId: ToolCallId('call-1'),
           content: [{ type: 'text', text: 'tool says' }],
           isError: false,
         }),
@@ -704,6 +704,53 @@ describe('SessionToolLocalService (remote)', () => {
       await expect(ctx.sessionTool.unhide(agent('caller'), SessionId('foreign')))
         .rejects.toThrow(SessionToolUnauthorizedError)
       expect(await get('foreign')).toBeUndefined()
+    })
+
+    it('hide best-effort archiveSession; unhide warns when unarchiveSession is missing and does not throw', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      const archiveSession = vi.fn().mockResolvedValue(undefined)
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        await ctx.plugin({
+          name: 'fake-registry',
+          apply(c) {
+            c.provide('workspaceRegistry', { archiveSession })
+          },
+        })
+        const hidden = await ctx.sessionTool.hide(agent('caller'), SessionId('session-1'))
+        expect(hidden.hasHiddenMark).toBe(true)
+        expect(archiveSession).toHaveBeenCalledWith(SessionId('session-1'))
+        const unhidden = await ctx.sessionTool.unhide(agent('caller'), SessionId('session-1'))
+        expect(unhidden.hasHiddenMark).toBe(false)
+        expect(await get('session-1')).toBeUndefined()
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('unarchiveSession'))
+      } finally {
+        warn.mockRestore()
+      }
+    })
+
+    it('hide still succeeds when archiveSession throws', async () => {
+      callerSession('caller')
+      const target = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      await ctx.sessions.flush(target)
+      const archiveSession = vi.fn().mockRejectedValue(new Error('archive boom'))
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        await ctx.plugin({
+          name: 'fake-registry-throw',
+          apply(c) {
+            c.provide('workspaceRegistry', { archiveSession })
+          },
+        })
+        const hidden = await ctx.sessionTool.hide(agent('caller'), SessionId('session-1'))
+        expect(hidden.hasHiddenMark).toBe(true)
+        expect(await get('session-1')).toEqual(['kind:hidden'])
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('archiveSession failed'))
+      } finally {
+        warn.mockRestore()
+      }
     })
   })
 

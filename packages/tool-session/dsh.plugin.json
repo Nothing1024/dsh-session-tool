@@ -4,7 +4,7 @@
   "main": "./lib/index.js",
   "description": "Session management tools: session_create/read/write/list/rename/wait/collect over ctx.sessionTool.",
   "engines": {
-    "dsh": ">=0.1.1-rc.2"
+    "dsh": ">=0.1.2-rc.1"
   },
   "contributes": {
     "tools": [],

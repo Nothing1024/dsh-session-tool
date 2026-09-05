@@ -1,31 +1,29 @@
 /**
- * HTTP client for the web gateway's session domain. Every session operation
- * of this provider goes through the gateway's fetch carrier
- * (`POST /api/session.*`, JSON envelopes), so sessions created, written, and
- * renamed here are the web process's own live sessions — published to every
- * GUI client through the ordinary event push. The carrier is the
- * host-apiproxy `AbstractApiClient`, imported through the `./client` subpath
- * so no host-side implementation is pulled into this headless process.
- *
- * rc.7 has no `session.durableCreate` / `session.wait`. This adapter keeps
- * the SessionHttpClient surface and maps those calls onto `session.create`
- * + `session.rename` and a `session.list` poll. parentSessionId and
- * delegationDepth have no create/rename field on rc.7 and are not sent.
- * Session marks are not a gateway write.
- *
- * Transport failures surface as `SessionWebUnreachableError`; the gateway's
- * business errors surface as `SessionToolError` with the wire code.
+ * Authenticated HTTP client for the GUI process session domain. Unary calls
+ * POST `/api/session/{create,prompt,cancel,rename,list}` with Connection
+ * `{ args }` envelopes (ASM-003). Cookie auth is ASM-002. Wait uses
+ * `session/list` running plus local persistence inspect for `turn/end`.
  * @module session-tool-local
  */
 
-import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
-import type { RpcResponse } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { randomUUID } from 'node:crypto'
 import { SessionToolError, SessionWebUnreachableError } from 'session-tool'
 import type { SessionToolErrorCode } from 'session-tool'
-// Side-effect type import: resolve the title projection key onto the
-// merge-extensible SessionProjectionMap this client reads. Plugin marks are
-// not a gateway projection.
-import type {} from '@deepseek-ai/dsh-session-title'
+import {
+  GatewayHttpRpc,
+  HTTP_WIRE_CODES,
+  throwGatewayFailure,
+  type GatewayHttpRpcOptions,
+} from './http-rpc.ts'
+import { lastTurnEndReason, settleWait, type WaitEvent } from './wait-settle.ts'
+
+/** Title field on a list projection block. */
+function listRowTitle(values: unknown): string | undefined {
+  if (values === undefined || values === null || typeof values !== 'object') return undefined
+  if (!('title' in values)) return undefined
+  const title = values.title
+  return typeof title === 'string' ? title : undefined
+}
 
 /** One gateway session list row (wire SessionSummary + title projection). */
 export interface SessionListRow {
@@ -51,43 +49,42 @@ export interface DurableCreateResult {
   readonly title?: string
 }
 
-/** Wire codes this client translates onto the session-tool seam. */
-const SESSION_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = {
-  'session-not-found': 'session-not-found',
-  'title-invalid': 'title-invalid',
-  'tag-invalid': 'tag-invalid',
-  'workspace-not-found': 'workspace-not-found',
-}
+/**
+ * Wire codes this client translates onto the session-tool seam.
+ * Slash codes from 0.1.2 map to the existing hyphen vocabulary (BR-006).
+ */
+export const SESSION_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = HTTP_WIRE_CODES
 
-/** Poll interval for the rc.7 wait substitute (`session.list` running bit). */
+/** Poll interval for the wait substitute (`session/list` running bit). */
 const WAIT_POLL_MS = 250
 
+/** Local inspect used by wait to read the last `turn/end` (BR-005). */
+export type SessionInspectEvents = (sessionId: string) => Promise<readonly WaitEvent[] | undefined>
+
+/** Options accepted beside a webUrl string constructor. */
+export type SessionHttpClientOptions = Omit<GatewayHttpRpcOptions, 'webUrl'> & {
+  /** Persistence inspect for wait turn/end; omitted treats every session as cold. */
+  readonly inspectEvents?: SessionInspectEvents
+}
+
 /**
- * The session gateway client: an `AbstractApiClient` subclass whose only
- * aspects are the transport (global fetch) and the base URL (the configured
- * web gateway).
+ * Cross-process session client. Token cookie exchange and unary POST live in
+ * {@link GatewayHttpRpc}; this class owns session method payloads.
  */
-export class SessionHttpClient extends AbstractApiClient {
-  /** @param webUrl - the web gateway base URL (e.g. `http://127.0.0.1:3080`). */
-  constructor(private readonly webUrl: string, timeoutMs?: number) {
-    super(timeoutMs)
-    new URL(webUrl)
-  }
+export class SessionHttpClient {
+  private readonly rpc: GatewayHttpRpc
+  private readonly inspectEvents: SessionInspectEvents | undefined
 
-  /** Transport aspect: plain global fetch. */
-  protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {
-    return fetch(input, init)
-  }
-
-  /** Base URL aspect: every request targets the configured gateway. */
-  protected override resolveBase(): string {
-    return this.webUrl
+  constructor(webUrlOrRpc: string | GatewayHttpRpc, options?: SessionHttpClientOptions) {
+    this.inspectEvents = options?.inspectEvents
+    this.rpc = typeof webUrlOrRpc === 'string'
+      ? new GatewayHttpRpc({ webUrl: webUrlOrRpc, ...options })
+      : webUrlOrRpc
   }
 
   /**
-   * Create a durable session WITHOUT starting a turn. rc.7 `session.create`
-   * only accepts workspace/cwd/sessionId/agentPreset; a requested title is
-   * applied by a follow-up `session.rename`.
+   * Create a durable session WITHOUT starting a turn. A requested title is
+   * applied by a follow-up `session/rename`. Lineage fields are not sent.
    */
   async durableCreate(options: {
     sessionId?: string
@@ -97,64 +94,62 @@ export class SessionHttpClient extends AbstractApiClient {
     cwd?: string
     delegationDepth?: number
   }): Promise<DurableCreateResult> {
-    return await this.invoke('session.create', async () => {
-      const created = this.unwrap(await this.sessions.create({
-        ...options.sessionId === undefined ? {} : { sessionId: options.sessionId as never },
-        ...options.workspaceId === undefined ? {} : { workspaceId: options.workspaceId as never },
-        ...options.cwd === undefined ? {} : { cwd: options.cwd },
-      }))
+    return await this.invoke('session/create', async () => {
+      const created = await this.call<{ sessionId: string }>('session/create', {
+        request: {
+          ...options.sessionId === undefined ? {} : { sessionId: options.sessionId },
+          ...options.workspaceId === undefined ? {} : { workspaceId: options.workspaceId },
+          ...options.cwd === undefined ? {} : { cwd: options.cwd },
+        },
+      })
       if (options.title === undefined) return { sessionId: created.sessionId }
-      const renamed = this.unwrap(await this.sessions.rename({
-        sessionId: created.sessionId,
-        title: options.title,
-      }))
+      const renamed = await this.call<{ title: string; seq: number }>('session/rename', {
+        request: { sessionId: created.sessionId, title: options.title },
+      })
       return { sessionId: created.sessionId, title: renamed.title }
     })
   }
 
   /**
-   * Send one prompt: the web process resumes the session's agent (creating
-   * it from the durable log on first touch) and delivers the message into
-   * the conversation loop. The reply streams back through the gateway's
-   * event push; this call settles when the message is admitted.
-   * @param sessionId - target session.
-   * @param content - non-empty prompt text.
-   * @returns the admission result.
+   * Admit one queued text prompt. Settles when the gateway accepts the
+   * message; the reply streams through the ordinary session event push.
    */
   async prompt(sessionId: string, content: string): Promise<{ accepted: true }> {
-    return await this.invoke('session.prompt', async () => {
-      const response = await this.sessions.prompt({
-        sessionId: sessionId as never,
-        mode: 'queue',
-        content: [{ type: 'text', text: content }],
+    return await this.invoke('session/prompt', async () => {
+      return await this.call<{ accepted: true }>('session/prompt', {
+        request: {
+          requestId: randomUUID(),
+          sessionId,
+          mode: 'queue',
+          content: [{ type: 'text', text: content }],
+        },
       })
-      return this.unwrap(response)
     })
   }
 
   /**
-   * Deliver a prompt to a continuable rc.7 subagent child. The gateway
-   * rejects `session.prompt` on these sessions (`agent-busy`); the address
-   * is the durable parent/child pair, not the session-only door.
+   * Deliver a prompt to a continuable subagent child via `subagents/prompt`.
    */
   async subagentPrompt(parentSessionId: string, childSessionId: string, content: string): Promise<{ accepted: true }> {
-    return await this.invoke('subagent.prompt', async () => {
-      const response = await this.subagents.prompt({
-        parentSessionId: parentSessionId as never,
-        childSessionId: childSessionId as never,
-        mode: 'continuable',
-        content: [{ type: 'text', text: content }],
+    return await this.invoke('subagents/prompt', async () => {
+      await this.call('subagents/prompt', {
+        request: {
+          requestId: randomUUID(),
+          parentSessionId,
+          childSessionId,
+          mode: 'continuable',
+          content: [{ type: 'text', text: content }],
+        },
       })
-      this.unwrap(response)
       return { accepted: true }
     })
   }
 
   /**
-   * Wait for a session's agent to settle. rc.7 has no `session.wait`; this
-   * polls `session.list` `running` and reads the last `turn/end` from
-   * `session.history`. A cold session settles immediately. `timeoutMs`
-   * bounds the wait and reports `timeout` without error.
+   * Wait for a session's agent to settle. Polls `session/list` `running`
+   * and reads the last `turn/end` from local persistence inspect. A cold
+   * session with no turn/end is `idle`. `timeoutMs` reports `timeout`
+   * without error.
    */
   async wait(sessionId: string, options: {
     until?: 'idle' | 'turn-end'
@@ -163,7 +158,7 @@ export class SessionHttpClient extends AbstractApiClient {
     status: 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
     lastTurnEndReason?: { kind: string }
   }> {
-    return await this.invoke('session.list', async () => {
+    return await this.invoke('session/list', async () => {
       const deadline = options.timeoutMs === undefined
         ? Number.POSITIVE_INFINITY
         : Date.now() + options.timeoutMs
@@ -178,92 +173,82 @@ export class SessionHttpClient extends AbstractApiClient {
     })
   }
 
-  /**
-   * Cancel a session's active turn, preserving pending inbox work that
-   * resumes in FIFO order after cancellation settles. The session is kept,
-   * never deleted.
-   * @param sessionId - target session.
-   * @returns the admission result.
-   */
+  /** Cancel a session's active turn; pending inbox work is preserved. */
   async cancel(sessionId: string): Promise<{ accepted: true }> {
-    return await this.invoke('session.cancel', async () => {
-      const response = await this.sessions.cancel({ sessionId: sessionId as never })
-      return this.unwrap(response)
+    return await this.invoke('session/cancel', async () => {
+      return await this.call<{ accepted: true }>('session/cancel', {
+        request: { sessionId },
+      })
     })
   }
 
-  /** List every served session (web view: cwd-bearing sessions) with title projection. */
+  /** List every served session with title projection (`session/list`). */
   async list(): Promise<readonly SessionListRow[]> {
-    return await this.invoke('session.list', async () => {
-      const response = await this.sessions.list({})
-      const { items } = this.unwrap(response)
+    return await this.invoke('session/list', async () => {
+      const { items } = await this.call<{ items: readonly Record<string, unknown>[] }>('session/list', {
+        _request: {},
+      })
       return items.map((item): SessionListRow => {
-        const values = item.projections?.values
+        const title = listRowTitle(
+          isRecord(item.projections) ? item.projections.values : undefined,
+        )
         return {
-          sessionId: item.sessionId,
-          ...item.parentSessionId === undefined ? {} : { parentSessionId: item.parentSessionId },
-          ...item.cwd === undefined ? {} : { cwd: item.cwd },
-          ...values?.title === undefined || values.title === null ? {} : { title: values.title },
-          running: item.running,
-          updatedAt: item.updatedAt,
+          sessionId: String(item.sessionId),
+          ...typeof item.parentSessionId === 'string' ? { parentSessionId: item.parentSessionId } : {},
+          ...typeof item.cwd === 'string' ? { cwd: item.cwd } : {},
+          ...title === undefined ? {} : { title },
+          running: item.running === true,
+          updatedAt: typeof item.updatedAt === 'number' ? item.updatedAt : 0,
         }
       })
     })
   }
 
-  /**
-   * Rename a session. rc.7 `session.rename` accepts only `title`.
-   */
+  /** Rename a session (`session/rename`, title only). */
   async rename(sessionId: string, options: { title: string }): Promise<{
     title?: string
     seq: number
   }> {
-    return await this.invoke('session.rename', async () => {
-      const value = this.unwrap(await this.sessions.rename({
-        sessionId: sessionId as never,
-        title: options.title,
-      }))
-      return { title: value.title, seq: value.seq }
+    return await this.invoke('session/rename', async () => {
+      const value = await this.call<{ title: string; seq: number }>('session/rename', {
+        request: { sessionId, title: options.title },
+      })
+      return { title: value.title, seq: Number(value.seq) }
     })
   }
 
-  /** One list/history cut: undefined means the wait should keep polling. */
+  /** One list cut: undefined means the wait should keep polling. */
   private async settleFromGateway(sessionId: string, until: 'idle' | 'turn-end'): Promise<{
     status: 'idle' | 'completed' | 'failed' | 'aborted'
     lastTurnEndReason?: { kind: string }
   } | undefined> {
-    const { items } = this.unwrap(await this.sessions.list({}))
+    const items = await this.list()
     const running = items.find(item => item.sessionId === sessionId)?.running === true
-    if (until === 'turn-end') {
-      const reason = await this.readLastTurnEndReason(sessionId)
-      if (reason === undefined) return running ? undefined : { status: 'idle' }
-      return { status: statusFromTurnEnd(reason.kind), lastTurnEndReason: reason }
-    }
-    if (running) return undefined
-    const reason = await this.readLastTurnEndReason(sessionId)
-    if (reason === undefined) return { status: 'idle' }
-    return { status: statusFromTurnEnd(reason.kind), lastTurnEndReason: reason }
+    return settleWait({
+      running,
+      lastTurnEndReason: await this.readLastTurnEndReason(sessionId),
+      until,
+    })
   }
 
-  /** Latest `turn/end` reason on the session log, or undefined if none/missing. */
+  /** Latest `turn/end` reason from local inspect; missing inspect is cold. */
   private async readLastTurnEndReason(sessionId: string): Promise<{ kind: string } | undefined> {
-    const response = await this.sessions.history({ sessionId: sessionId as never })
-    if (!response.result.ok && response.result.error.code === 'session-not-found') {
+    const inspect = this.inspectEvents
+    if (inspect === undefined) return undefined
+    try {
+      const events = await inspect(sessionId)
+      return events === undefined ? undefined : lastTurnEndReason(events)
+    } catch {
       return undefined
     }
-    let found: { kind: string } | undefined
-    for (const entry of this.unwrap(response).events) {
-      const kind = turnEndKind(entry.event)
-      if (kind !== undefined) found = { kind }
-    }
-    return found
   }
 
-  /**
-   * Run one gateway call, translating every failure onto the session-tool
-   * seam: business errors with a known wire code keep that code; anything
-   * else becomes `SessionWebUnreachableError`.
-   */
+  private async call<V>(endpoint: string, args: Readonly<Record<string, unknown>>): Promise<V> {
+    const result = await this.rpc.call<V>(endpoint, args)
+    if (result.ok) return result.value
+    throwGatewayFailure(endpoint, result.error)
+  }
+
   private async invoke<V>(method: string, call: () => Promise<V>): Promise<V> {
     try {
       return await call()
@@ -275,35 +260,12 @@ export class SessionHttpClient extends AbstractApiClient {
       )
     }
   }
-
-  /** Narrow an RpcResponse to its value, translating a business failure. */
-  private unwrap<V>(response: RpcResponse<V>): V {
-    if (response.result.ok) return response.result.value
-    const error = response.result.error
-    const mapped = SESSION_WIRE_CODES[error.code]
-    if (mapped !== undefined) {
-      throw new SessionToolError(error.message, mapped, { cause: error })
-    }
-    throw new SessionWebUnreachableError(
-      `web gateway rejected the session call: ${error.code}: ${error.message}`,
-      { cause: error },
-    )
-  }
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function statusFromTurnEnd(kind: string): 'completed' | 'failed' | 'aborted' {
-  if (kind === 'completed') return 'completed'
-  if (kind === 'aborted' || kind === 'interrupted') return 'aborted'
-  return 'failed'
-}
-
-function turnEndKind(event: { type: string; data?: unknown }): string | undefined {
-  if (event.type !== 'turn/end') return undefined
-  if (event.data === null || typeof event.data !== 'object') return undefined
-  const kind = (event.data as { reason?: { kind?: unknown } }).reason?.kind
-  return typeof kind === 'string' ? kind : undefined
+function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

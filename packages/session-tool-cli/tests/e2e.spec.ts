@@ -50,6 +50,28 @@ function runCli(home: string, args: readonly string[]): { stdout: string; stderr
 
 describe('dsh-session CLI e2e', () => {
   const skip = !existsSync(CLI_BIN) || !existsSync(DSH_BIN)
+
+  it('keeps the no-gateway fixture on web-unreachable for every web-dependent verb', () => {
+    const transcript = readFileSync(FIXTURE, 'utf8')
+    const labels = [
+      'create (web unreachable)',
+      'write (web unreachable)',
+      'rename (web unreachable)',
+      'list (web unreachable)',
+      'workspace list (web unreachable)',
+    ]
+    for (const label of labels) {
+      const block = transcript.split('## ').find(chunk => chunk.startsWith(label))
+      expect(block, label).toBeDefined()
+      expect(block, label).toContain('[web-unreachable]')
+      expect(block, label).toMatch(/^exit [^0]/m)
+    }
+    expect(transcript).toContain('## read local (no session)')
+    expect(transcript).toContain('## read local missing')
+    expect(transcript).toContain('[session-not-found]')
+    expect(transcript).not.toMatch(/session_hide|session hide/)
+  })
+
   it.skipIf(skip)('replays the fail-loud flow (no web gateway) against the recorded fixture', () => {
     const home = mkdtempSync(join(tmpdir(), 'dsh-session-e2e-'))
     try {

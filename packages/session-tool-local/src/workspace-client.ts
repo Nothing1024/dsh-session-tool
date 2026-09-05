@@ -1,22 +1,19 @@
 /**
- * HTTP client for the web gateway's workspace domain. The web process
- * (`dsh web`) is the workspace registry's authority; this provider holds no
- * workspace state of its own and reaches the registry exclusively through the
- * gateway's fetch carrier (`POST /api/workspace.*`, JSON envelopes). The
- * carrier is the host-apiproxy `AbstractApiClient` — imported through the
- * package's `./client` subpath so no host-side implementation (api-proxy and
- * its service injects) is pulled into this headless process.
- *
- * Transport failures (connection refused, timeout, non-2xx status, protocol
- * mismatch) surface as `SessionWebUnreachableError`; the gateway's business
- * errors surface as `SessionToolError` with the wire code.
+ * Authenticated HTTP client for the GUI process workspace domain. Mutations
+ * POST `/api/workspace/{create,rename,delete}` with Connection `{ args }`
+ * envelopes. List reads `workspace/follow` first baseline then cancel
+ * (no `workspace.list` unary).
  * @module session-tool-local
  */
 
-import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
-import type { RpcResponse, WorkspaceId } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { SessionToolError, SessionWebUnreachableError } from 'session-tool'
 import type { SessionToolErrorCode } from 'session-tool'
+import {
+  GatewayHttpRpc,
+  HTTP_WIRE_CODES,
+  throwGatewayFailure,
+  type GatewayHttpRpcOptions,
+} from './http-rpc.ts'
 
 /** One gateway workspace row (wire projection of the host workspace entity). */
 export interface WorkspaceView {
@@ -43,79 +40,77 @@ export interface WorkspaceAddResult {
 }
 
 /** Workspace wire codes this client translates onto the session-tool seam. */
-const WORKSPACE_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = {
-  'workspace-not-found': 'workspace-not-found',
-  'workspace-name-conflict': 'workspace-name-conflict',
-  'workspace-invalid-path': 'workspace-invalid-path',
-}
+export const WORKSPACE_WIRE_CODES: Readonly<Record<string, SessionToolErrorCode>> = HTTP_WIRE_CODES
+
+/** Options accepted beside a webUrl string constructor. */
+export type WorkspaceHttpClientOptions = Omit<GatewayHttpRpcOptions, 'webUrl'>
 
 /**
- * The workspace gateway client: an `AbstractApiClient` subclass whose only
- * aspects are the transport (global fetch) and the base URL (the configured
- * web gateway). All protocol invariants — rpcId minting, envelope wrap/unwrap,
- * zod parsing, unary timeout — live in the base class.
+ * Cross-process workspace client. Cookie exchange and unary POST live in
+ * {@link GatewayHttpRpc}.
  */
-export class WorkspaceHttpClient extends AbstractApiClient {
-  /** @param webUrl - the web gateway base URL (e.g. `http://127.0.0.1:3080`). */
-  constructor(private readonly webUrl: string, timeoutMs?: number) {
-    super(timeoutMs)
-    // Fail configuration loud at construction: a malformed gateway URL would
-    // otherwise surface as an opaque transport error on the first call.
-    new URL(webUrl)
-  }
+export class WorkspaceHttpClient {
+  private readonly rpc: GatewayHttpRpc
 
-  /** Transport aspect: plain global fetch (Node ≥22 and browsers both provide it). */
-  protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {
-    return fetch(input, init)
-  }
-
-  /** Base URL aspect: every request targets the configured gateway. */
-  protected override resolveBase(): string {
-    return this.webUrl
+  constructor(webUrlOrRpc: string | GatewayHttpRpc, options?: WorkspaceHttpClientOptions) {
+    this.rpc = typeof webUrlOrRpc === 'string'
+      ? new GatewayHttpRpc({ webUrl: webUrlOrRpc, ...options })
+      : webUrlOrRpc
   }
 
   /**
    * Register (or reuse) a workspace over an existing directory. Idempotent by
    * canonical path: a directory already owned returns the existing workspace.
-   * @param path - existing directory to adopt, in any path spelling.
-   * @returns the workspace and whether this call minted it.
    */
   async addWorkspace(path: string): Promise<WorkspaceAddResult> {
-    return await this.invoke('workspace.create', async () => {
-      const response = await this.workspace.create({ path })
-      return this.unwrap(response)
+    return await this.invoke('workspace/create', async () => {
+      const result = await this.call<{ workspace: WorkspaceView; created: boolean }>('workspace/create', {
+        request: { path },
+      })
+      return {
+        workspace: asWorkspaceView(result.workspace),
+        created: result.created,
+      }
     })
   }
 
-  /** List all workspaces in the registry's durable order, plus the archive set. */
+  /**
+   * List all workspaces plus the archive set. Reads `workspace/follow` first
+   * baseline frame, then cancels the stream.
+   */
   async listWorkspaces(): Promise<{ items: readonly WorkspaceView[]; archivedSessionIds: readonly string[] }> {
-    return await this.invoke('workspace.list', async () => {
-      return this.unwrap(await this.workspace.list({}))
+    return await this.invoke('workspace/follow', async () => {
+      const frame = await this.rpc.followFirst('workspace/follow', {})
+      return baselineOf(frame)
     })
   }
 
   /** Rename a workspace (the title is trimmed; blank or duplicate titles reject). */
   async renameWorkspace(workspaceId: string, title: string): Promise<WorkspaceView> {
-    return await this.invoke('workspace.rename', async () => {
-      const { workspace } = this.unwrap(await this.workspace.rename({ workspaceId: workspaceId as WorkspaceId, title }))
-      return workspace
+    return await this.invoke('workspace/rename', async () => {
+      const { workspace } = await this.call<{ workspace: WorkspaceView }>('workspace/rename', {
+        request: { workspaceId, title },
+      })
+      return asWorkspaceView(workspace)
     })
   }
 
   /** Delete a workspace registration (directory and session logs are retained). */
   async deleteWorkspace(workspaceId: string): Promise<boolean> {
-    return await this.invoke('workspace.delete', async () => {
-      const { deleted } = this.unwrap(await this.workspace.delete({ workspaceId: workspaceId as WorkspaceId }))
+    return await this.invoke('workspace/delete', async () => {
+      const { deleted } = await this.call<{ deleted: boolean }>('workspace/delete', {
+        request: { workspaceId },
+      })
       return deleted
     })
   }
 
-  /**
-   * Run one gateway call, translating every failure onto the session-tool
-   * seam: business errors with a known workspace wire code keep that code;
-   * anything else — unknown business code, transport throw, non-2xx status,
-   * timeout, envelope/parse mismatch — becomes `SessionWebUnreachableError`.
-   */
+  private async call<V>(endpoint: string, args: Readonly<Record<string, unknown>>): Promise<V> {
+    const result = await this.rpc.call<V>(endpoint, args)
+    if (result.ok) return result.value
+    throwGatewayFailure(endpoint, result.error)
+  }
+
   private async invoke<V>(method: string, call: () => Promise<V>): Promise<V> {
     try {
       return await call()
@@ -127,18 +122,34 @@ export class WorkspaceHttpClient extends AbstractApiClient {
       )
     }
   }
+}
 
-  /** Narrow an RpcResponse to its value, translating a business failure. */
-  private unwrap<V>(response: RpcResponse<V>): V {
-    if (response.result.ok) return response.result.value
-    const error = response.result.error
-    const mapped = WORKSPACE_WIRE_CODES[error.code]
-    if (mapped !== undefined) {
-      throw new SessionToolError(error.message, mapped, { cause: error })
-    }
-    throw new SessionWebUnreachableError(
-      `web gateway rejected the workspace call: ${error.code}: ${error.message}`,
-      { cause: error },
-    )
+function asWorkspaceView(workspace: WorkspaceView): WorkspaceView {
+  return {
+    workspaceId: String(workspace.workspaceId),
+    path: workspace.path,
+    title: workspace.title,
+    sessionIds: workspace.sessionIds.map(String),
+    createdAt: workspace.createdAt,
+    updatedAt: workspace.updatedAt,
   }
+}
+
+function baselineOf(frame: unknown): { items: readonly WorkspaceView[]; archivedSessionIds: readonly string[] } {
+  if (!isRecord(frame) || frame.type !== 'baseline' || !isRecord(frame.value)) {
+    throw new TypeError('workspace/follow first frame was not a baseline')
+  }
+  const itemsRaw = frame.value.items
+  const archivedRaw = frame.value.archivedSessionIds
+  if (!Array.isArray(itemsRaw) || !Array.isArray(archivedRaw)) {
+    throw new TypeError('workspace/follow baseline missing items or archivedSessionIds')
+  }
+  return {
+    items: itemsRaw.map(row => asWorkspaceView(row as WorkspaceView)),
+    archivedSessionIds: archivedRaw.map(String),
+  }
+}
+
+function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

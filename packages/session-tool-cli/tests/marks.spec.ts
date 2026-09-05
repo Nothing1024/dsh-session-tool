@@ -121,7 +121,15 @@ describe('marks argv/shape', () => {
     const collectCmd = session?.commands.find(command => command.name() === 'collect')
     expect(collectCmd).toBeDefined()
     const collectFlags = (collectCmd?.options ?? []).map(option => option.long)
-    expect(collectFlags).toEqual(expect.arrayContaining(['--tag', '--root', '--wait', '--profile']))
+    expect(collectFlags).toEqual(expect.arrayContaining(['--tag', '--root', '--wait', '--profile', '--token']))
+    const createCmd = session?.commands.find(command => command.name() === 'create')
+    const createFlags = (createCmd?.options ?? []).map(option => option.long)
+    expect(createFlags).toEqual(expect.arrayContaining(['--profile', '--patch', '--token']))
+    const workspace = program.commands.find(command => command.name() === 'workspace')
+    const workspaceList = workspace?.commands.find(command => command.name() === 'list')
+    const workspaceFlags = (workspaceList?.options ?? []).map(option => option.long)
+    expect(workspaceFlags).toEqual(expect.arrayContaining(['--token']))
+    expect(createFlags).not.toContain('--hide')
   })
 
   it('lists and gets jsonl rows without a gateway', async () => {

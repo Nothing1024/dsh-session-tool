@@ -2,9 +2,21 @@
 // mapping, prompt/assistant tracking, identity-preserving no-op events, and
 // restart replay (the same fold over the same events yields the same state).
 import { describe, expect, it } from 'vitest'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
+import { SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { delegationProjectionDefinition, viewDelegation } from '../src/delegation-projection.ts'
 import type { DelegationProjection } from '../src/delegation-projection.ts'
+
+const IDLE_HEADER: SessionHeader = {
+  version: 0,
+  id: SessionId('idle'),
+  createdAt: 0,
+  isSeeded: false,
+}
+
+function idleInit() {
+  return delegationProjectionDefinition.init(IDLE_HEADER, SessionLogOffset(0))
+}
 
 let nextSeq = 0
 function event(type: string, data: Record<string, unknown>, overrides: Record<string, unknown> = {}): SessionEvent {
@@ -33,7 +45,7 @@ function assistantMessage(seq: number): SessionEvent {
 }
 
 function fold(events: readonly SessionEvent[]): DelegationProjection {
-  let state = delegationProjectionDefinition.init()
+  let state = idleInit()
   for (const item of events) state = delegationProjectionDefinition.apply(state, item)
   return viewDelegation(state)
 }
@@ -81,7 +93,7 @@ describe('delegation projection', () => {
   })
 
   it('returns the same state reference for unrelated events (zero downstream work)', () => {
-    const state = delegationProjectionDefinition.init()
+    const state = idleInit()
     const unrelated = event('session/tags', { tags: ['a'] })
     expect(delegationProjectionDefinition.apply(state, unrelated)).toBe(state)
     const title = event('session/title', { title: 't' })
@@ -89,7 +101,7 @@ describe('delegation projection', () => {
   })
 
   it('does not double-count a repeated assistant seq', () => {
-    const state = delegationProjectionDefinition.init()
+    const state = idleInit()
     const running = delegationProjectionDefinition.apply(state, turnStart(1))
     const first = delegationProjectionDefinition.apply(running, assistantMessage(5))
     const again = delegationProjectionDefinition.apply(first, assistantMessage(5))
@@ -97,7 +109,7 @@ describe('delegation projection', () => {
   })
 
   it('exposes rc.7 schema.parse(view(state)) so mixed-version gateways can snapshot', () => {
-    const state = delegationProjectionDefinition.init()
+    const state = idleInit()
     const viewed = delegationProjectionDefinition.view(state)
     expect(viewed).toEqual({ status: 'idle', promptCount: 0 })
     expect(delegationProjectionDefinition.schema.parse(viewed)).toEqual(viewed)

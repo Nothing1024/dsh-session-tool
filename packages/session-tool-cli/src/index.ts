@@ -129,8 +129,8 @@ interface ComposedProfile {
  * @param patchFiles - `--patch` overlay paths, in argv order.
  * @returns the profile and its effective patch stack.
  */
-export function composeProfile(name: string, patchFiles: readonly string[]): ComposedProfile {
-  healProfilesModuleFallback(installAnchor())
+export async function composeProfile(name: string, patchFiles: readonly string[]): Promise<ComposedProfile> {
+  await healProfilesModuleFallback({ installAnchor: installAnchor() })
   const profile = loadProfile(NAME, name, installAnchor())
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
@@ -166,7 +166,7 @@ export function stripOneShotRunner(patches: readonly PatchOptions[]): PatchOptio
  * @returns the settled root context.
  */
 export async function bootProfile(profileName: string, patchFiles: readonly string[]): Promise<Context> {
-  const composed = composeProfile(profileName, patchFiles)
+  const composed = await composeProfile(profileName, patchFiles)
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
   const ctx = await boot(NAME, rootConfig, structuredClone(stripOneShotRunner(composed.patches)), async (hostCtx) => {
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(NAME))
@@ -448,8 +448,18 @@ function parseCollectFilterStatus(
 }
 
 /** Wrap one verb body: run it, report failures, and settle the exit code. */
+function applyLaunchToken(token: unknown): void {
+  if (typeof token === 'string' && token !== '') {
+    process.env.DSH_LAUNCH_TOKEN = token
+  }
+}
+
 function verb<A extends unknown[]>(action: (...args: A) => Promise<void>): (...args: A) => Promise<void> {
   return async (...args: A) => {
+    const opts = args.at(-1)
+    if (opts !== null && typeof opts === 'object' && 'token' in opts) {
+      applyLaunchToken(opts.token)
+    }
     try {
       await action(...args)
     } catch (error: unknown) {
@@ -495,6 +505,7 @@ export function buildProgram(): Command {
   const bootOptions = (command: Command): Command => command
     .option('--profile <name>', 'profile under $DSH_HOME/profiles to boot (default headless)', 'headless')
     .option('--patch <file>', 'additional patch overlay', collect, [])
+    .option('--token <token>', 'GUI launch token (overrides DSH_LAUNCH_TOKEN; from dsh web: URL token=)')
 
   bootOptions(session
     .command('create')

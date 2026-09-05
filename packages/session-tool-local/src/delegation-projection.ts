@@ -108,11 +108,11 @@ export const delegationProjectionDefinition = {
   // rc.7 `sessionProjections.snapshot` reads `schema.parse(view(state))`.
   // 0.1.1+ reads `stateSchema` + `wire.viewSchema`. Serve both so a mixed
   // profile (vibee on rc.7, this package on 0.1.1 types) does not 500 every
-  // session.history with `Cannot read properties of undefined (reading 'parse')`.
+  // cold history page with `Cannot read properties of undefined (reading 'parse')`.
   schema: projectionSchema,
   view: viewDelegation,
   stateSchema,
-  init: (): DelegationState => ({ status: 'idle', promptCount: 0 }),
+  init: (_header, _inheritedEventCount): DelegationState => ({ status: 'idle', promptCount: 0 }),
   apply: (state, event) => {
     if (event.type === 'turn/start') {
       return state.status === 'running' ? state : { ...state, status: 'running' }
@@ -127,9 +127,10 @@ export const delegationProjectionDefinition = {
       return { ...state, promptCount: state.promptCount + 1 }
     }
     if (event.type === 'assistant/message') {
-      return state.lastAssistantSeq === event.seq
+      const lastAssistantSeq = Number(event.seq)
+      return state.lastAssistantSeq === lastAssistantSeq
         ? state
-        : { ...state, lastAssistantSeq: event.seq }
+        : { ...state, lastAssistantSeq }
     }
     // Compaction is append-only in this codebase (`compact/start` /
     // `compact/end` enclose the summarized span; the log is never replaced),
