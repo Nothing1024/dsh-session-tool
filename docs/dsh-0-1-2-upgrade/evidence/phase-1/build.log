@@ -1,0 +1,93 @@
+# Task 5 build
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T02:38:28+0800
+cmd: pnpm run build
+
+$ pnpm -r run build
+Scope: 5 of 6 workspace projects
+packages/session-marks build$ tsdown
+packages/session-tool build$ tsdown
+packages/session-tool build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-marks build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool/tsdown.config.ts 
+packages/session-marks build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-marks/tsdown.config.ts 
+packages/session-tool build: ℹ entry: src/index.ts
+packages/session-tool build: ℹ target: es2024
+packages/session-marks build: ℹ entry: src/index.ts
+packages/session-marks build: ℹ target: es2024
+packages/session-marks build: ℹ tsconfig: tsconfig.json
+packages/session-tool build: ℹ tsconfig: tsconfig.json
+packages/session-tool build: ℹ Build start
+packages/session-marks build: ℹ Build start
+packages/session-tool build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-marks build: ℹ lib/index.js         8.27 kB │ gzip: 2.99 kB
+packages/session-marks build: ℹ lib/index.js.map    15.40 kB │ gzip: 4.92 kB
+packages/session-marks build: ℹ lib/index.d.ts.map   0.52 kB │ gzip: 0.28 kB
+packages/session-marks build: ℹ lib/index.d.ts       4.29 kB │ gzip: 1.65 kB
+packages/session-marks build: ℹ 4 files, total: 28.48 kB
+packages/session-marks build: ✔ Build complete in 432ms
+packages/session-marks build: Done
+packages/session-tool build: ℹ lib/index.js         3.07 kB │ gzip: 1.18 kB
+packages/session-tool build: ℹ lib/index.js.map    26.94 kB │ gzip: 6.94 kB
+packages/session-tool build: ℹ lib/index.d.ts.map   2.10 kB │ gzip: 0.62 kB
+packages/session-tool build: ℹ lib/index.d.ts      24.95 kB │ gzip: 6.40 kB
+packages/session-tool build: ℹ 4 files, total: 57.05 kB
+packages/session-tool build: ✔ Build complete in 472ms
+packages/session-tool build: Done
+packages/session-tool-cli build$ tsdown
+packages/session-tool-local build$ tsdown
+packages/session-tool-cli build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool-local build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/session-tool-local build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-local/tsdown.config.ts 
+packages/session-tool-cli build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/session-tool-cli/tsdown.config.ts 
+packages/session-tool-local build: ℹ entry: src/index.ts
+packages/session-tool-local build: ℹ target: es2024
+packages/session-tool-cli build: ℹ entry: src/index.ts, src/bin.ts
+packages/session-tool-cli build: ℹ target: es2024
+packages/session-tool-local build: ℹ tsconfig: tsconfig.json
+packages/session-tool-cli build: ℹ tsconfig: tsconfig.json
+packages/session-tool-local build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-cli build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/session-tool-local build: ℹ Build start
+packages/session-tool-cli build: ℹ Build start
+packages/session-tool-cli build: ℹ Cleaning 8 files
+packages/session-tool-cli build: ℹ Granting execute permission to lib/bin.js
+packages/session-tool-cli build: ℹ lib/index.js              0.32 kB │ gzip:  0.20 kB
+packages/session-tool-cli build: ℹ lib/bin.js                0.20 kB │ gzip:  0.18 kB
+packages/session-tool-cli build: ℹ lib/src-B_DC0LWN.js.map  46.57 kB │ gzip: 11.30 kB
+packages/session-tool-cli build: ℹ lib/src-B_DC0LWN.js      26.12 kB │ gzip:  6.86 kB
+packages/session-tool-cli build: ℹ lib/index.d.ts.map        0.30 kB │ gzip:  0.20 kB
+packages/session-tool-cli build: ℹ lib/bin.js.map            0.27 kB │ gzip:  0.22 kB
+packages/session-tool-cli build: ℹ lib/index.d.ts            2.73 kB │ gzip:  1.10 kB
+packages/session-tool-cli build: ℹ lib/bin.d.ts              0.01 kB │ gzip:  0.03 kB
+packages/session-tool-cli build: ℹ 8 files, total: 76.52 kB
+packages/session-tool-cli build: ✔ Build complete in 391ms
+packages/session-tool-cli build: Done
+packages/session-tool-local build: ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+packages/session-tool-local build: See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+packages/session-tool-local build: Detected dependencies in bundle:
+packages/session-tool-local build: - zod
+packages/session-tool-local build: ℹ lib/index.js        179.82 kB │ gzip: 38.94 kB
+packages/session-tool-local build: ℹ lib/index.js.map    484.71 kB │ gzip: 92.51 kB
+packages/session-tool-local build: ℹ lib/index.d.ts.map    1.16 kB │ gzip:  0.47 kB
+packages/session-tool-local build: ℹ lib/index.d.ts       11.11 kB │ gzip:  3.51 kB
+packages/session-tool-local build: ℹ 4 files, total: 676.79 kB
+packages/session-tool-local build: ✔ Build complete in 485ms
+packages/session-tool-local build: Done
+packages/tool-session build$ tsdown
+packages/tool-session build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/tool-session build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/tool-session/tsdown.config.ts 
+packages/tool-session build: ℹ entry: src/index.ts
+packages/tool-session build: ℹ target: es2024
+packages/tool-session build: ℹ tsconfig: tsconfig.json
+packages/tool-session build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/tool-session build: ℹ Build start
+packages/tool-session build: ℹ lib/index.js        20.25 kB │ gzip: 4.96 kB
+packages/tool-session build: ℹ lib/index.js.map    33.17 kB │ gzip: 7.70 kB
+packages/tool-session build: ℹ lib/index.d.ts.map   0.12 kB │ gzip: 0.13 kB
+packages/tool-session build: ℹ lib/index.d.ts       0.39 kB │ gzip: 0.26 kB
+packages/tool-session build: ℹ 4 files, total: 53.92 kB
+packages/tool-session build: ✔ Build complete in 352ms
+packages/tool-session build: Done
+
+BUILD_EXIT=0

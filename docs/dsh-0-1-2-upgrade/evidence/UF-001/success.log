@@ -1,0 +1,49 @@
+# UF-001 主路径：同进程工具建会话并进 GUI
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:08:30Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-001
+gateway: http://127.0.0.1:3081 DSH_HOME=env/ (st profile, tool-session fiberPhase=active)
+
+## 操作
+在官方 Web（DeepSeek-V4-Pro）已开会话里让 agent 调 session_create 再 session_write。
+这是 GUI web-app 树上的 tool-session，走 ctx.sessionController（同进程，不 HTTP 自环）。
+
+prompt:
+  Call the session_create tool now. title=UF-001-inproc-visible
+  workspace_path=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env/manual-view
+  Then session_write ... 请只回复四个字：同进程可见
+
+## 工具卡（Chrome a11y snapshot）
+- 工具调用 session_create · UF-001-inproc-visible
+- 工具调用 session_write · session-f9e58895-37f3-4ac1-9a3a-6221999e7a99
+- 已完成两个工具调用：
+  session_create 成功：标题 UF-001-inproc-visible，工作区 env/manual-view，
+  创建了会话 session-f9e58895-37f3-4ac1-9a3a-6221999e7a99
+  session_write 成功：提示词已发送
+
+## CLI list（HTTP 打同一 :3081，证明会话在 GUI store）
+{
+  "sessions": [
+    {
+      "session_id": "session-f9e58895-37f3-4ac1-9a3a-6221999e7a99",
+      "title": "UF-001-inproc-visible",
+      "tags": ["kind:delegated"],
+      "status": "idle"
+    }
+  ]
+}
+
+## GUI 侧栏
+search UF-001-inproc-visible → treeitem "已完成 UF-001-inproc-visible 手工验收"
+打开该会话：user「请只回复四个字：同进程可见」/ assistant「同进程可见」
+
+## 同进程无 401
+boot-stdout.log 无 401。session 落在 $DSH_HOME/env/sessions/.../session-f9e58895-...
+workspace.json 含该 id。
+
+screenshots:
+  evidence/UF-001/tools.png
+  evidence/UF-001/sidebar.png
+  evidence/UF-001/conversation.png
+
+PASS: 同进程 session_create + session_write；侧栏可见；打开能看到对话；无 401 自环

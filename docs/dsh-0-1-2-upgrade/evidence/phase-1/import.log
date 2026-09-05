@@ -1,0 +1,12 @@
+# Task 5 node import
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T02:38:47+0800
+cmd: node -e "import('./packages/session-tool-local/lib/index.js').then(()=>console.log('OK'))"
+
+OK
+IMPORT_EXIT=0
+
+# apiproxy still resolvable from session-tool-local (not repo root)
+cmd: node --input-type=module from packages/session-tool-local
+apiproxy /Users/nothing/workspace/dsh/plugin/session-tool/plugin/node_modules/.pnpm/@deepseek-ai+dsh-host-apiproxy@0.1.1-rc.2_8a2d60040748833e7d7fd17bad6faf74/node_modules/@deepseek-ai/dsh-host-apiproxy/lib/types/fetch/client.js
+APIPROXY_RESOLVE_EXIT=0

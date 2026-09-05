@@ -1,0 +1,21 @@
+# UF-006 死网关 fail-loud
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:02:38Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-006
+DSH_SESSION_ANCHOR=/Users/nothing/.npm/_npx/2f3a729d991ac520/node_modules/@deepseek-ai/dsh/package.json (same npx dsh as env/boot.sh)
+
+## session create --patch env/dead-web.patch.yml (webUrl :3999)
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+create_exit=1
+
+## session list --patch env/dead-web.patch.yml
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+list_exit=1
+
+## workspace list --patch env/dead-web.patch.yml
+dsh-session: [web-unreachable] web gateway unreachable for GET /?token=: fetch failed
+workspace_list_exit=1
+
+create_exit=1 list_exit=1 ws_exit=1
+
+PASS: dead-web verbs failed with [web-unreachable]

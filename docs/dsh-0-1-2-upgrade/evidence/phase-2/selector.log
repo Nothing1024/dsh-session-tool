@@ -1,0 +1,27 @@
+# Task 8 transport selector
+date: 2026-09-05T04:09:38Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-8 (v0.2.0)
+
+## Verify: selector tests (same-process does not fetch; http mode fetches)
+command: pnpm exec vitest run --config vitest.config.ts packages/session-tool-local/tests/transport.spec.ts
+
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/transport.spec.ts (18 tests) 32ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  12:09:39
+   Duration  224ms (transform 70ms, setup 0ms, import 120ms, tests 32ms, environment 0ms)
+
+
+vitest_exit=0
+
+## Notes
+- Config.transport: in-process | http | auto (default auto).
+- auto: in-process iff sessionController+workspaceController exist AND webUrl host:port equals this process webServer listen.
+- in-process missing controllers fails loud (no HTTP loopback).
+- CLI-shaped auto (controllers present, webUrl not this listen) fetches.
+- Official default webUrl 3080 + same-process web 3080 is in-process.

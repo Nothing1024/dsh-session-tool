@@ -1,0 +1,4 @@
+# env/boot.sh stdout/stderr
+date: 2026-09-05T04:51:36Z
+DSH_HOME will be set by boot.sh to env/
+dsh web: http://127.0.0.1:3081/?token=40gXOT6i10TiR66SbZ24XQ1M5_wBnC38nyTkfHS67Jk

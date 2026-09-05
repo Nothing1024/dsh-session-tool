@@ -1,0 +1,93 @@
+# Task 16 Phase 4 回归
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:09:18Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-16
+
+## pnpm run typecheck
+typecheck_exit=0
+$ tsc -p tsconfig.json
+## pnpm test
+test_exit=0
+$ vitest run
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 3ms
+ ✓ packages/session-marks/tests/marks.spec.ts (17 tests) 28ms
+ ✓ packages/session-tool-cli/tests/e2e.spec.ts (2 tests | 1 skipped) 2ms
+ ✓ packages/session-tool-local/tests/delegation-projection.spec.ts (9 tests) 5ms
+ ✓ packages/session-tool-cli/tests/marks.spec.ts (5 tests) 14ms
+ ✓ packages/session-tool-local/tests/http-auth.spec.ts (7 tests) 17ms
+ ✓ packages/tool-session/tests/tools.spec.ts (17 tests) 24ms
+ ✓ packages/session-tool-local/tests/wait.spec.ts (11 tests) 18ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (23 tests) 20ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (37 tests) 47ms
+ ✓ packages/session-tool-local/tests/workspace.spec.ts (12 tests) 39ms
+ ✓ packages/session-tool-local/tests/transport.spec.ts (18 tests) 37ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (60 tests) 1701ms
+       ✓ wait-all aggregates when every member is terminal  342ms
+       ✓ returns a timeout snapshot without error when the deadline passes  338ms
+       ✓ resolves a tag aggregation and reports an empty set as unsatisfied  519ms
+
+ Test Files  13 passed (13)
+      Tests  223 passed | 1 skipped (224)
+   Start at  13:09:21
+   Duration  2.01s (transform 1.48s, setup 0ms, import 2.18s, tests 1.95s, environment 1ms)
+
+## pnpm run build
+build_exit=0
+packages/session-tool-local build: ℹ lib/index.d.ts.map    2.82 kB │ gzip:   1.01 kB
+packages/session-tool-local build: ℹ lib/index.d.ts       23.07 kB │ gzip:   6.49 kB
+packages/session-tool-local build: ℹ 4 files, total: 767.48 kB
+packages/session-tool-local build: ✔ Build complete in 504ms
+packages/session-tool-local build: Done
+packages/tool-session build$ tsdown
+packages/tool-session build: ℹ tsdown v0.22.14 powered by rolldown v1.2.3
+packages/tool-session build: ℹ config file: /Users/nothing/workspace/dsh/plugin/session-tool/plugin/packages/tool-session/tsdown.config.ts 
+packages/tool-session build: ℹ entry: src/index.ts
+packages/tool-session build: ℹ target: es2024
+packages/tool-session build: ℹ tsconfig: tsconfig.json
+packages/tool-session build:  WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+packages/tool-session build: ℹ Build start
+packages/tool-session build: ℹ lib/index.js        20.25 kB │ gzip: 4.96 kB
+packages/tool-session build: ℹ lib/index.js.map    33.17 kB │ gzip: 7.70 kB
+packages/tool-session build: ℹ lib/index.d.ts.map   0.12 kB │ gzip: 0.13 kB
+packages/tool-session build: ℹ lib/index.d.ts       0.39 kB │ gzip: 0.26 kB
+packages/tool-session build: ℹ 4 files, total: 53.92 kB
+packages/tool-session build: ✔ Build complete in 359ms
+packages/tool-session build: Done
+## pnpm run standard:check
+standard_exit=0
+$ node standards/validate.mjs
+
+== manifest 校验（packages/*/dsh-plugin.json） ==
+✓ tool-session (io.github.nothing1024.tool-session)
+
+== 协商（manifest × host-descriptor） ==
+✓ tool-session: compatible
+
+== fixtures 自检 ==
+✓ valid/full.json
+✓ valid/minimal.json
+✓ invalid/missing-schema.json → [missing-schema]
+✓ invalid/wrong-manifest-version.json → [wrong-manifest-version]
+✓ invalid/missing-facets.json → [missing-facets]
+✓ invalid/bad-id.json → [bad-id]
+✓ invalid/unknown-field.json → [unknown-field]
+✓ invalid/provides-rejected.json → [provides-rejected]
+✓ invalid/requires-services-rejected.json → [requires-services-rejected]
+✓ invalid/reserved-facet-client.json → [reserved-facet]
+✓ invalid/duplicate-contributes-id.json → [duplicate-contributes-id]
+✓ invalid/entry-outside-root.json → [entry-outside-root]
+
+== adapter 审计（上游触点基线） ==
+✓ 无未评审的新增上游触点
+
+结论：全部通过
+## extra 5.1: import + no apiproxy + no grok-bot
+OK
+apiproxy_rg_exit=1
+PASS: typecheck has no dsh-grok-bot
+
+## exits typecheck=0 test=0 build=0 standard=0
+PASS: Task 16 command gate

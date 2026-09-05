@@ -1,0 +1,73 @@
+# Task 2 pin evidence
+
+- date: 2026-09-04T18:27:36Z
+- cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+- spec: docs/dsh-0-1-2-upgrade/spec.md Task 2 / BR-001
+
+## Commands
+
+1. Pin @deepseek-ai/dsh* (except dsh-host-apiproxy) to 0.1.2-rc.1; add dsh-util-values; bump cordis 4.0.1 -> 4.0.2; keep dsh-host-apiproxy 0.1.1-rc.2; do not add dsh-api-session-controller / dsh-api-workspace-controller / dsh-client-connection.
+2. rm -rf packages/*/node_modules && pnpm install  (root workspace; 3.4s, lockfile 655 entries pass)
+3. cd env/profiles/st && pnpm install  (2.2s; dsh-base/dsh-web-app 0.1.2-rc.1)
+
+## Verification
+
+```
+rg "0.1.1-rc.2" env/boot.sh env/setup.sh pnpm-workspace.yaml packages/*/package.json packages/tool-session/dsh.plugin.json env/profiles/st/package.json
+```
+
+```
+pnpm-workspace.yaml:  - '@deepseek-ai/dsh-host-apiproxy@0.1.1-rc.2'
+packages/session-tool-local/package.json:    "@deepseek-ai/dsh-host-apiproxy": "^0.1.1-rc.2",
+packages/session-tool-local/package.json:    "@deepseek-ai/dsh-host-apiproxy": "0.1.1-rc.2",
+```
+
+Result: only dsh-host-apiproxy rows remain (PASS BR-001).
+
+## Installed versions
+
+- @deepseek-ai/dsh-llm: 0.1.2-rc.1
+- @deepseek-ai/dsh-session: 0.1.2-rc.1
+- @deepseek-ai/dsh-tools: 0.1.2-rc.1
+- @deepseek-ai/dsh: 0.1.2-rc.1
+- @deepseek-ai/dsh-util-values: 0.1.2-rc.1 (added; import happens in Task 4)
+- @deepseek-ai/dsh-host-apiproxy: 0.1.1-rc.2 (kept)
+- @deepseek-ai/cordis: 4.0.2 (required by 0.1.2-rc.1 peers)
+- env/profiles/st @deepseek-ai/dsh-base: 0.1.2-rc.1
+- env/profiles/st @deepseek-ai/dsh-web-app: 0.1.2-rc.1
+
+## Not added (wait Task 6/7 import)
+
+- dsh-api-session-controller
+- dsh-api-workspace-controller
+- dsh-client-connection
+
+## Files touched
+
+- packages/session-tool/package.json
+- packages/session-tool-cli/package.json
+- packages/session-tool-local/package.json
+- packages/tool-session/package.json
+- packages/tool-session/dsh.plugin.json
+- pnpm-workspace.yaml (minimumReleaseAgeExclude)
+- package.json (cordis alias 4.0.2)
+- env/boot.sh
+- env/setup.sh
+- env/profiles/st/package.json
+- pnpm-lock.yaml (generated)
+- env/profiles/st/pnpm-lock.yaml (generated)
+
+## Task 3 — pnpm test after pin (expected red)
+
+Command: `pnpm test`  (2026-09-05)
+
+Result: **15 failed / 142 passed / 1 skipped** (158). Exit non-zero.
+
+Log: `evidence/phase-0/test-after-pin.log`
+
+This is **not** a green pin. Failures are the 0.1.2-rc.1 L1 breaks spec already recorded (Task 4), all in `packages/session-tool-local/tests/service.spec.ts`:
+
+- `inspection.events` / `live.events` no longer iterable (`Session.events` getter removed → `snapshotEvents()`): 14 tests
+- `CallId is not a function` (`CallId` → `ToolCallId`): 1 test (`maps assistant and tool events onto their roles`)
+
+Do not treat as full green. Source is unchanged on purpose; Task 4 owns the symbol/signature fixes.

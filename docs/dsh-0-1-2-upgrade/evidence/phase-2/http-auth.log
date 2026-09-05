@@ -1,0 +1,66 @@
+# Task 7 authenticated HTTP client
+date: 2026-09-04T20:36:46Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-7 (v0.2.0)
+
+## New / rewritten files
+packages/session-tool-local/src/http-rpc.ts
+packages/session-tool-local/src/session-client.ts
+packages/session-tool-local/src/workspace-client.ts
+packages/session-tool-local/src/index.ts (shared GatewayHttpRpc + DSH_LAUNCH_TOKEN)
+packages/session-tool-cli/src/index.ts (DSH_LAUNCH_TOKEN + --token)
+packages/session-tool-local/package.json (removed dsh-host-apiproxy)
+
+## Verify: unauthenticated POST -> web-unreachable; session/not-found stays session-not-found; 303 cookie
+command: pnpm exec vitest run --config vitest.config.ts packages/session-tool-local/tests/http-auth.spec.ts packages/session-tool-local/tests/session-client.spec.ts packages/session-tool-local/tests/workspace-client.spec.ts packages/session-tool-cli/tests/marks.spec.ts
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/http-auth.spec.ts (7 tests) 14ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (12 tests) 15ms
+ ✓ packages/session-tool-cli/tests/marks.spec.ts (5 tests) 16ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (17 tests) 40ms
+
+ Test Files  4 passed (4)
+      Tests  41 passed (41)
+   Start at  04:36:46
+   Duration  187ms (transform 177ms, setup 0ms, import 292ms, tests 85ms, environment 0ms)
+
+vitest_exit=0
+
+## Verify: rg AbstractApiClient|dsh-host-apiproxy on packages src ts (exclude tests/lib)
+command: rg -n "AbstractApiClient|dsh-host-apiproxy" packages --glob '*.ts' --glob '!**/tests/**' --glob '!**/lib/**'
+rg_apiproxy_exit=1 (1 = no matches, expected)
+
+## Verify: no dsh-host-apiproxy in packages/*/package.json
+rg_pkg_exit=1 (1 = no matches, expected)
+
+## Verify: GET /?token= uses redirect:manual
+packages/session-tool-local/src/http-rpc.ts:167:        redirect: 'manual',
+
+## Verify: slash-code mapping table
+packages/session-tool-local/src/http-rpc.ts:15:  'session/not-found': 'session-not-found',
+packages/session-tool-local/src/http-rpc.ts:17:  'session/title-invalid': 'title-invalid',
+packages/session-tool-local/src/http-rpc.ts:20:  'workspace/not-found': 'workspace-not-found',
+packages/session-tool-local/src/http-rpc.ts:22:  'workspace/name-conflict': 'workspace-name-conflict',
+packages/session-tool-local/src/http-rpc.ts:24:  'workspace/invalid-path': 'workspace-invalid-path',
+
+## Verify: no session_hide / dsh-session session hide
+hide_rg_exit=1 (1 = no matches, expected)
+
+## Verify: typecheck 0 error
+command: pnpm exec tsc -p tsconfig.json --pretty false --noEmit
+typecheck_exit=0
+
+## Notes
+- Unary POST path /api/session/create (slash) payload { args } matching dsh-client-connection client rpc. Did not import the browser client.js bundle (window.__ModuleLoader__); envelope fields copied from /tmp/rc1/conn-client-rpc.ts and gw-client-index.ts.
+- GET /?token= uses fetch redirect:'manual'; 303 Set-Cookie harvested; subsequent POST sends Cookie. Default follow is forbidden.
+- 401/403 -> SessionWebUnreachableError. session/not-found -> session-not-found (not web-unreachable).
+- Unmapped business codes (e.g. internal, gateway/internal) still become web-unreachable; message retains the original code. Listed slash table is complete for BR-006.
+- list uses session/list. workspace list reads workspace/follow first baseline then cancel (openStream injectable; production uses /api/remote.mux).
+- wait polls session/list running only (no session.history). Turn/end inspect is Task 9.
+- CLI: DSH_LAUNCH_TOKEN env required path; optional --token on bootOptions verbs overrides env. Token applied before bootProfile.
+- Does not read .credentials.yaml (no HMAC). Cookie bound to Config.webUrl host:port.
+- Deleted AbstractApiClient / dsh-host-apiproxy from session-tool-local package.json + src.
+- pnpm-workspace.yaml still lists apiproxy in minimumReleaseAgeExclude (not an import).
+- Tokened create integration is UF-002 / Task 15, not this task.

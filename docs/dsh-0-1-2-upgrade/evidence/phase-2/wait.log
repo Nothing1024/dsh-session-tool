@@ -1,0 +1,28 @@
+# Task 9 wait/collect settle
+date: 2026-09-05T04:09:38Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-9 (v0.2.0)
+
+## Verify: settle/wait tests (not full pnpm test)
+command: pnpm exec vitest run --config vitest.config.ts packages/session-tool-local/tests/wait.spec.ts packages/session-tool-local/tests/session-client.spec.ts packages/session-tool-local/tests/collect.spec.ts
+
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 2ms
+ ✓ packages/session-tool-local/tests/wait.spec.ts (11 tests) 15ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (17 tests) 40ms
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  12:09:39
+   Duration  173ms (transform 102ms, setup 0ms, import 150ms, tests 57ms, environment 0ms)
+
+
+vitest_exit=0
+
+## Notes
+- HTTP wait: session/list running + persistence.inspect last turn/end.
+- In-process wait: controller.list running + snapshotEvents (cold inspect fallback).
+- Cold session with no turn/end remains idle.
+- collect still polls COLLECT_POLL_MS and folds snapshotEvents/inspect (no history RPC).

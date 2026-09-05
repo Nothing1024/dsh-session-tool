@@ -1,0 +1,62 @@
+# UF-002 主路径 CLI 跨进程建会话并进同一 GUI
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:03:04Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-002
+DSH_SESSION_ANCHOR=/Users/nothing/.npm/_npx/2f3a729d991ac520/node_modules/@deepseek-ai/dsh/package.json
+DSH_LAUNCH_TOKEN=set (from boot dsh web: URL)
+title=UF52-20260905-130238-【可见】CLI跨进程
+
+## workspace add env/manual-view
+{
+  "workspace_id": "682c884c-d615-40fa-82ec-298445174ca0",
+  "path": "/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env/manual-view",
+  "created": false
+}
+workspace_add_exit=0
+
+## session create --workspace env/manual-view
+{
+  "session_id": "session-8d82a8d3-efb2-4ae2-b818-de0806009f2a",
+  "workspace_id": "682c884c-d615-40fa-82ec-298445174ca0",
+  "workspace_path": "/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env/manual-view"
+}
+create_exit=0
+
+## session list --title (same CLI, HTTP to :3081)
+{
+  "sessions": [
+    {
+      "session_id": "session-8d82a8d3-efb2-4ae2-b818-de0806009f2a",
+      "title": "UF52-20260905-130238-【可见】CLI跨进程",
+      "tags": [
+        "kind:vibee",
+        "uf002"
+      ],
+      "status": "idle",
+      "created_at": 1788584585846
+    }
+  ]
+}
+list_exit=0
+
+UF002_SESSION_ID=session-8d82a8d3-efb2-4ae2-b818-de0806009f2a
+UF002_TITLE=UF52-20260905-130238-【可见】CLI跨进程
+
+## POST /api/session/list with cookie (GUI process store)
+has_title False
+has_sid False
+hits []
+
+CHECK: see log; session_id=session-8d82a8d3-efb2-4ae2-b818-de0806009f2a
+
+## GUI 侧栏搜索（Chrome DevTools）
+search=UF52-20260905-130238
+snapshot treeitems:
+  已完成 UF52-20260905-130238-【可见】wait-collect 手工验收
+  已完成 UF52-20260905-130238-【可见】CLI跨进程 手工验收
+screenshot: evidence/UF-002/sidebar.png
+-rw-r--r--@ 1 nothing  staff  198022 Sep  5 13:05 /Users/nothing/workspace/dsh/plugin/session-tool/plugin/docs/dsh-0-1-2-upgrade/evidence/UF-002/sidebar.png
+sessions live in GUI DSH_HOME: env/sessions/.../session-8d82a8d3-efb2-4ae2-b818-de0806009f2a
+workspace.json contains session-8d82a8d3-efb2-4ae2-b818-de0806009f2a
+
+PASS: CLI create 退出 0；同一 :3081 GUI 侧栏名称匹配可见（非 CLI 私有 store）

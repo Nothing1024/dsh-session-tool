@@ -1,0 +1,43 @@
+# Task 6 in-process session/workspace client
+date: 2026-09-04T18:49:30Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-6 (v0.2.0)
+
+## New files
+packages/session-tool-local/src/in-process-wire.ts
+packages/session-tool-local/src/session-client-in-process.ts
+packages/session-tool-local/src/workspace-client-in-process.ts
+
+## Verify: rg AbstractApiClient|dsh-host-apiproxy on in-process new files
+command: rg -n "AbstractApiClient|dsh-host-apiproxy" packages/session-tool-local/src/session-client-in-process.ts packages/session-tool-local/src/workspace-client-in-process.ts packages/session-tool-local/src/in-process-wire.ts
+rg_exit=1 (1 = no matches, expected)
+PASS: no AbstractApiClient / dsh-host-apiproxy in in-process new files
+
+## Confirm HTTP files still reference apiproxy (Task 7 owns deletion)
+packages/session-tool-local/src/workspace-client.ts:6: * carrier is the host-apiproxy `AbstractApiClient` — imported through the
+packages/session-tool-local/src/workspace-client.ts:16:import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
+packages/session-tool-local/src/workspace-client.ts:17:import type { RpcResponse, WorkspaceId } from '@deepseek-ai/dsh-host-apiproxy/api'
+packages/session-tool-local/src/workspace-client.ts:53: * The workspace gateway client: an `AbstractApiClient` subclass whose only
+packages/session-tool-local/src/workspace-client.ts:58:export class WorkspaceHttpClient extends AbstractApiClient {
+packages/session-tool-local/src/session-client.ts:7: * host-apiproxy `AbstractApiClient`, imported through the `./client` subpath
+packages/session-tool-local/src/session-client.ts:21:import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
+packages/session-tool-local/src/session-client.ts:22:import type { RpcResponse } from '@deepseek-ai/dsh-host-apiproxy/api'
+packages/session-tool-local/src/session-client.ts:70: * The session gateway client: an `AbstractApiClient` subclass whose only
+packages/session-tool-local/src/session-client.ts:74:export class SessionHttpClient extends AbstractApiClient {
+
+## Confirm SessionToolLocalService still constructs HTTP clients (CLI not on in-process; BR-003)
+packages/session-tool-local/src/index.ts:165:    this.workspaceClient = new WorkspaceHttpClient(config.webUrl)
+packages/session-tool-local/src/index.ts:166:    this.sessionClient = new SessionHttpClient(config.webUrl)
+
+## Confirm no session_hide / dsh-session session hide
+hide_rg_exit=1 (1 = no matches, expected)
+
+## typecheck (apiproxy still present; 0 error)
+
+## Notes
+- create/prompt/cancel/rename/list -> sessionController (structural ctx.sessionController; no dsh-api-session-controller import).
+- workspace create/rename/delete -> workspaceController; listWorkspaces -> workspaceRegistry.list() + archivedSessionIds.
+- wait running -> controller.list; turn/end -> sessions.get(id).snapshotEvents() or sessionPersistence.inspect.
+- Remote slash codes mapped to hyphen: session/not-found, session/title-invalid->title-invalid, workspace/not-found, workspace/name-conflict, workspace/invalid-path.
+- subagent.prompt: uses injected ctx.subagents (SubagentRuntime) continuable prompt when present; if not injected, fails loud (no HTTP loopback). Task 8 can inject ctx.subagents from the web-app tree.
+- Classes are re-exported from session-tool-local index; SessionToolLocalService still constructs HTTP clients so CLI cannot write its own store (Task 8 selector).

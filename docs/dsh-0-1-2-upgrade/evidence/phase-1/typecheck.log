@@ -1,0 +1,8 @@
+# Task 4/5 typecheck
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-04T18:38:20Z
+cmd: pnpm run typecheck
+
+$ tsc -p tsconfig.json
+
+TYPECHECK_EXIT=0

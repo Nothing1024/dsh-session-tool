@@ -1,0 +1,50 @@
+# UF-005 boot + 占口失败分支
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T04:50:57Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-005
+
+## 干净状态探活（gateway-id）
+$ DSH_HOME=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env GW_PORT=3081 EXPECTED_HOME=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env . env/gateway-id.sh && gateway_probe && echo GW_PID=$GW_PID GW_HOME=$GW_HOME
+GW_PID=5923
+GW_HOME=/tmp/dsh-novel-msg-home
+EXPECTED_HOME=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env
+
+## UF-005 失败分支：外仓占口，gateway_refuse_foreign / boot.sh 应拒绝
+$ sh env/boot.sh
+env/boot: :3081 (pid 5923) DSH_HOME=/tmp/dsh-novel-msg-home 不是本仓 /Users/nothing/workspace/dsh/plugin/session-tool/plugin/env
+boot_exit=1
+
+PASS: 拒绝外仓占口 (pid=5923 home=/tmp/dsh-novel-msg-home)
+
+## env/boot.sh 成功主路径（腾口后本仓 DSH_HOME）
+date: 2026-09-05T04:54:32Z
+GW_PID=10457
+GW_HOME=/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env
+dsh web: http://127.0.0.1:3081/?token=<redacted>
+
+### GET /?token= (redirect: not followed) -> 303 Set-Cookie
+见上文失败分支之后的成功换 cookie；COOKIE_NAME=dsh-auth-w3iJaA6qw3qDSBs2Itl-h4S-Y-ZeYCC-N_iZO-eI_qw
+
+### GET / with cookie
+http_code=200 html_len=24169 title=DeepSeek Harness has_root=true 非白屏
+
+### pluginInventory/list 摘录
+[
+  {
+    "entryId": "include:session-tool-local",
+    "moduleName": "session-tool-local",
+    "enabled": true,
+    "fiberPhase": "active"
+  },
+  {
+    "entryId": "include:tool-session",
+    "moduleName": "tool-session",
+    "enabled": true,
+    "fiberPhase": "active"
+  }
+]
+tool-session fiberPhase=active
+
+### UI 截图
+evidence/UF-005/ui.png 已保存（Chrome DevTools take_screenshot，官方 UI + 侧栏，非白屏）
+-rw-r--r--@ 1 nothing  staff  222407 Sep  5 12:53 /Users/nothing/workspace/dsh/plugin/session-tool/plugin/docs/dsh-0-1-2-upgrade/evidence/UF-005/ui.png

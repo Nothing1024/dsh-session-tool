@@ -1,0 +1,329 @@
+$ vitest run
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 2ms
+ ✓ packages/session-marks/tests/marks.spec.ts (17 tests) 29ms
+ ✓ packages/tool-session/tests/tools.spec.ts (17 tests) 23ms
+ ↓ packages/session-tool-cli/tests/e2e.spec.ts (1 test | 1 skipped)
+ ✓ packages/session-tool-local/tests/delegation-projection.spec.ts (9 tests) 4ms
+ ✓ packages/session-tool-cli/tests/marks.spec.ts (5 tests) 12ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (11 tests) 17ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (22 tests) 44ms
+ ✓ packages/session-tool-local/tests/workspace.spec.ts (12 tests) 34ms
+ ❯ packages/session-tool-local/tests/service.spec.ts (58 tests | 15 failed) 1170ms
+       ✓ delegates to the gateway without tags, then puts marks after success 11ms
+       ✓ joins an agent caller tree by default and stays top-level for the CLI 4ms
+       ✓ auto-tags delegated creates and leaves a parentless CLI unmarked 5ms
+       ✓ rejects invalid tags before the gateway call 3ms
+       ✓ honours an explicit delegation depth and carries a deeper caller depth 3ms
+       ✓ passes the cwd through when no workspace binding is requested 3ms
+       ✓ inherits the caller cwd when create omits cwd and workspacePath 3ms
+       ✓ rejects a ghost caller, a missing parent, and a parent outside the lineage 4ms
+       ✓ propagates a gateway validation rejection and does not write marks 2ms
+       ✓ sends the prompt to the gateway and returns the session id 2ms
+       ✓ rejects empty content 1ms
+       × reads a locally persisted transcript with incremental and capped reads 40ms
+       × maps assistant and tool events onto their roles 27ms
+       × rejects missing and foreign sessions; the CLI bypasses the fence 3ms
+       ✓ lets a parent reach a child session but not a sibling 3ms
+       × admits the creator to a child whose live header dropped parentSession (rc.7) 4ms
+       × reloads remembered lineage so a creator can read after restart 5ms
+       × picks up CLI-written lineage without a process restart 2ms
+       ✓ resolves caller depth from the overlay when the live header omitted it 4ms
+       ✓ writes a badged rc.7 child through subagent.prompt, not session.prompt 3ms
+       ✓ keeps the fence before the subagent door and rejects a missing parent 2ms
+       ✓ creator mode admits only the lineage for write and wait 3ms
+       ✓ workspace mode admits same-workspace callers and rejects foreign workspaces 5ms
+       ✓ anyone mode admits every caller 3ms
+       ✓ maxDelegationDepth rejects a creation deeper than the ceiling 5ms
+       × showDelegated false hides delegated rows unless explicitly requested 3ms
+       ✓ renames title on the gateway and replaces tags in the mark table 2ms
+       ✓ replaces tags without calling the gateway when title is omitted 2ms
+       ✓ requires at least one of title or tags and maps validation codes 2ms
+       ✓ reports both flags false when neither marked nor archived 1ms
+       ✓ getVisibility composes the kind:hidden mark and the archive set 2ms
+       ✓ hide sets kind:hidden and unhide clears it, both idempotently 3ms
+       ✓ hide preserves any other marks already on the session 4ms
+       ✓ enforces the access fence before hiding, unhiding, or reading visibility 2ms
+       ✓ delegates to the gateway 1ms
+       ✓ enforces the access fence before delegating 2ms
+       ✓ delegates to the gateway and maps the terminal status 2ms
+       ✓ defaults the options and maps a timeout status through 1ms
+       ✓ enforces the access fence before delegating 1ms
+       × wait-all aggregates when every member is terminal 69ms
+       × wait-n returns early and cancel-rest cancels the unfinished members 72ms
+       × first-failed satisfies on the failed member 78ms
+       × returns a timeout snapshot without error when the deadline passes 75ms
+       ✓ resolves a tag aggregation and reports an empty set as unsatisfied  517ms
+       ✓ requires exactly one of root or tags, and a positive n for wait n 7ms
+       × lists the caller tree for scope own, with hidden titles excluded by default 5ms
+       ✓ hides ~ titles and kind:hidden unless includeHidden is set 6ms
+       ✓ filters by tag intersection, title substring, and status 7ms
+       × derives and filters by the delegation projection status 40ms
+       × filters origin=delegated by kind:delegated (bare delegated is compat) 6ms
+       ✓ paginates with cursor and limit 6ms
+       × enforces the tree root fence and the all-scope gates 3ms
+       ✓ denies the own scope to the CLI 2ms
+       ✓ rejects a missing tree root for the CLI too (no silent empty listing) 2ms
+       ✓ rejects an unknown cursor 2ms
+       ✓ reads through sessionProjections.stateOf when the registry is composed 28ms
+       ✓ rebuilds delegation statuses from persisted logs after a process restart 60ms
+       ✓ carries stable wire codes on the typed errors 4ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > reads a locally persisted transcript with incremental and capped reads
+TypeError: inspection.events is not iterable
+ ❯ Proxy.read packages/session-tool-local/src/index.ts:262:36
+    260|     const sinceSeq = options.sinceSeq ?? 0
+    261|     const messages: SessionToolMessageRow[] = []
+    262|     for (const event of inspection.events) {
+       |                                    ^
+    263|       if (event.seq < sinceSeq) continue
+    264|       const row = messageRow(event)
+ ❯ packages/session-tool-local/tests/service.spec.ts:292:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > maps assistant and tool events onto their roles
+TypeError: CallId is not a function
+ ❯ packages/session-tool-local/tests/service.spec.ts:321:19
+    319|         step: 2,
+    320|         message: createToolResultMessage({
+    321|           callId: CallId('call-1'),
+       |                   ^
+    322|           content: [{ type: 'text', text: 'tool says' }],
+    323|           isError: false,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > rejects missing and foreign sessions; the CLI bypasses the fence
+AssertionError: promise rejected "TypeError: inspection.events is not itera…" instead of resolving
+ ❯ packages/session-tool-local/tests/service.spec.ts:342:72
+    340|       await expect(ctx.sessionTool.read(agent('caller'), SessionId('fo…
+    341|         .rejects.toThrow(SessionToolUnauthorizedError)
+    342|       await expect(ctx.sessionTool.read(CLI, SessionId('foreign'), {})…
+       |                                                                        ^
+    343|     })
+    344|
+
+Caused by: TypeError: inspection.events is not iterable
+ ❯ Proxy.read packages/session-tool-local/src/index.ts:262:36
+ ❯ packages/session-tool-local/tests/service.spec.ts:342:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > admits the creator to a child whose live header dropped parentSession (rc.7)
+AssertionError: promise rejected "TypeError: inspection.events is not itera…" instead of resolving
+ ❯ packages/session-tool-local/tests/service.spec.ts:363:82
+    361|       const child = ctx.sessions.create(SessionId('child'), { meta: { …
+    362|       await ctx.sessions.flush(child)
+    363|       await expect(ctx.sessionTool.read(agent('caller'), SessionId('ch…
+       |                                                                                  ^
+    364|         .resolves.toMatchObject({ sessionId: 'child' })
+    365|       sessionClient().prompt.mockResolvedValue({ accepted: true })
+
+Caused by: TypeError: inspection.events is not iterable
+ ❯ Proxy.read packages/session-tool-local/src/index.ts:262:36
+ ❯ packages/session-tool-local/tests/service.spec.ts:363:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > reloads remembered lineage so a creator can read after restart
+AssertionError: promise rejected "TypeError: inspection.events is not itera…" instead of resolving
+ ❯ packages/session-tool-local/tests/service.spec.ts:382:82
+    380|       callerSession('caller')
+    381|       ctx.sessions.create(SessionId('child'), { meta: { cwd: '/proj' }…
+    382|       await expect(ctx.sessionTool.read(agent('caller'), SessionId('ch…
+       |                                                                                  ^
+    383|         .resolves.toBeDefined()
+    384|     })
+
+Caused by: TypeError: inspection.events is not iterable
+ ❯ Proxy.read packages/session-tool-local/src/index.ts:262:36
+ ❯ packages/session-tool-local/tests/service.spec.ts:382:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > picks up CLI-written lineage without a process restart
+TypeError: inspection.events is not iterable
+ ❯ Proxy.read packages/session-tool-local/src/index.ts:262:36
+    260|     const sinceSeq = options.sinceSeq ?? 0
+    261|     const messages: SessionToolMessageRow[] = []
+    262|     for (const event of inspection.events) {
+       |                                    ^
+    263|       if (event.seq < sinceSeq) continue
+    264|       const row = messageRow(event)
+ ❯ packages/session-tool-local/tests/service.spec.ts:388:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > showDelegated false hides delegated rows unless explicitly requested
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:348:43
+ ❯ Proxy.list packages/session-tool-local/src/index.ts:346:70
+ ❯ packages/session-tool-local/tests/service.spec.ts:586:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > wait-all aggregates when every member is terminal
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:829:33
+ ❯ Proxy.collectSnapshot packages/session-tool-local/src/index.ts:828:51
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ Proxy.collect packages/session-tool-local/src/index.ts:545:34
+ ❯ packages/session-tool-local/tests/service.spec.ts:829:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > wait-n returns early and cancel-rest cancels the unfinished members
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:829:33
+ ❯ Proxy.collectSnapshot packages/session-tool-local/src/index.ts:828:51
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ Proxy.collect packages/session-tool-local/src/index.ts:545:34
+ ❯ packages/session-tool-local/tests/service.spec.ts:845:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > first-failed satisfies on the failed member
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:829:33
+ ❯ Proxy.collectSnapshot packages/session-tool-local/src/index.ts:828:51
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ Proxy.collect packages/session-tool-local/src/index.ts:545:34
+ ❯ packages/session-tool-local/tests/service.spec.ts:864:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > returns a timeout snapshot without error when the deadline passes
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:829:33
+ ❯ Proxy.collectSnapshot packages/session-tool-local/src/index.ts:828:51
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ Proxy.collect packages/session-tool-local/src/index.ts:545:34
+ ❯ packages/session-tool-local/tests/service.spec.ts:876:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > lists the caller tree for scope own, with hidden titles excluded by default
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:348:43
+ ❯ Proxy.list packages/session-tool-local/src/index.ts:346:70
+ ❯ packages/session-tool-local/tests/service.spec.ts:941:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > derives and filters by the delegation projection status
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:348:43
+ ❯ Proxy.list packages/session-tool-local/src/index.ts:346:70
+ ❯ packages/session-tool-local/tests/service.spec.ts:1012:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > filters origin=delegated by kind:delegated (bare delegated is compat)
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:348:43
+ ❯ Proxy.list packages/session-tool-local/src/index.ts:346:70
+ ❯ packages/session-tool-local/tests/service.spec.ts:1043:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/15]⎯
+
+ FAIL  packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > enforces the tree root fence and the all-scope gates
+TypeError: events is not iterable
+ ❯ foldDelegationStatus packages/session-tool-local/src/index.ts:1066:23
+    1064| function foldDelegationStatus(events: readonly SessionEvent[]): Delega…
+    1065|   let state = delegationProjectionDefinition.init()
+    1066|   for (const event of events) state = delegationProjectionDefinition.a…
+       |                       ^
+    1067|   return viewDelegation(state).status
+    1068| }
+ ❯ Proxy.delegationStatusOf packages/session-tool-local/src/index.ts:880:14
+ ❯ Object.apply node_modules/.pnpm/@deepseek-ai+cordis@4.0.2_@deepseek-ai+cordis-plugin-include@1.0.7_@deepseek-ai+cordis-plugin-loader@1.0.3/node_modules/@deepseek-ai/cordis/lib/index.js:120:36
+ ❯ packages/session-tool-local/src/index.ts:348:43
+ ❯ Proxy.list packages/session-tool-local/src/index.ts:346:70
+ ❯ packages/session-tool-local/tests/service.spec.ts:1084:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/15]⎯
+
+
+ Test Files  1 failed | 8 passed | 1 skipped (10)
+      Tests  15 failed | 142 passed | 1 skipped (158)
+   Start at  02:27:49
+   Duration  1.47s (transform 984ms, setup 0ms, import 1.49s, tests 1.34s, environment 0ms)
+
+[ELIFECYCLE] Test failed. See above for more details.

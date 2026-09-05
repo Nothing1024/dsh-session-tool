@@ -1,0 +1,26 @@
+# Task 10 hide archive path
+date: 2026-09-05T04:09:38Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-10 (v0.2.0)
+
+## Verify
+command: pnpm exec vitest run packages/session-tool-local/tests/service.spec.ts -t "getVisibility / hide / unhide"
+
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/service.spec.ts (60 tests | 53 skipped) 38ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed | 53 skipped (60)
+   Start at  12:09:40
+   Duration  280ms (transform 114ms, setup 0ms, import 171ms, tests 38ms, environment 0ms)
+
+
+vitest_exit=0
+
+## Notes
+- hide still best-effort workspaceRegistry.archiveSession.
+- unhide without unarchiveSession warns and does not throw; kind:hidden is cleared.
+- archiveSession throw does not fail hide (mark already set).
+- No session_hide tool and no dsh-session session hide verb added.

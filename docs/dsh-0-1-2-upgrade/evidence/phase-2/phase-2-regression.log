@@ -1,0 +1,22 @@
+# Task 11 Phase 2 regression
+date: 2026-09-05T04:10:02Z
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-11 (v0.2.0)
+
+## Verify: rg AbstractApiClient|dsh-host-apiproxy|session.history on packages src ts (exclude tests/lib)
+command: rg -n "AbstractApiClient|dsh-host-apiproxy|session\.history" packages --glob '*.ts' --glob '!**/tests/**' --glob '!**/lib/**'
+rg_exit=1 (1 = no matches, expected)
+PASS: no AbstractApiClient / dsh-host-apiproxy / session.history in packages src
+
+## Verify: no session_hide tool / dsh-session session hide
+hide_rg_exit=1 (1 = no matches, expected)
+
+## Verify: pnpm run typecheck → 0 error
+command: pnpm run typecheck
+typecheck_exit=0
+
+## Notes
+- Did not run full pnpm test (dot-path HTTP assertions belong to Task 12).
+- Task 8 selector: 18 passed (same-process create does not fetch).
+- Task 9 wait/collect: wait.spec + session-client + collect 34 passed.
+- Task 10 hide: 7 passed / 53 skipped.

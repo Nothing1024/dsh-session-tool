@@ -1,0 +1,21 @@
+# UF-004 hide/unhide (unit, no CLI/tool entry)
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T04:51:19Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-004
+
+## command
+$ pnpm exec vitest run packages/session-tool-local/tests/service.spec.ts -t "getVisibility / hide / unhide"
+
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/service.spec.ts (60 tests | 53 skipped) 35ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed | 53 skipped (60)
+   Start at  12:51:20
+   Duration  297ms (transform 122ms, setup 0ms, import 184ms, tests 35ms, environment 0ms)
+
+
+vitest_exit=0
+PASS: getVisibility / hide / unhide 7 passed; 缺 unarchive 不抛（service.spec hide best-effort archive / unhide warns）

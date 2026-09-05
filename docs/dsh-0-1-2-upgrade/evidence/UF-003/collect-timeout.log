@@ -1,0 +1,50 @@
+# UF-003 失败分支 超时
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:07:03Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-003 timeout
+session_id=session-dca74318-7de3-4cb4-adff-6a98c840d646
+NOTE: grok-4.6 对本环境 503 model_not_found，但会 llm/retry ~15s，running 期间可测 timeout
+
+## create
+{
+  "session_id": "session-dca74318-7de3-4cb4-adff-6a98c840d646",
+  "workspace_id": "682c884c-d615-40fa-82ec-298445174ca0",
+  "workspace_path": "/Users/nothing/workspace/dsh/plugin/session-tool/plugin/env/manual-view"
+}
+
+## session write started in background (model retries)
+
+## sessionTool.wait timeoutMs=400 while turn running
+WAIT_RESULT {"sessionId":"session-dca74318-7de3-4cb4-adff-6a98c840d646","status":"timeout"} elapsed_ms=429
+
+## session collect --tag uf003-to --wait all --timeout-ms 300
+{
+  "satisfied": true,
+  "elapsed_ms": 5,
+  "sessions": [
+    {
+      "session_id": "session-dca74318-7de3-4cb4-adff-6a98c840d646",
+      "status": "aborted"
+    }
+  ]
+}
+collect_exit=0
+
+## session still exists
+{
+  "sessions": [
+    {
+      "session_id": "session-dca74318-7de3-4cb4-adff-6a98c840d646",
+      "title": "UF52-20260905-130238-【可见】timeout-wait",
+      "tags": [
+        "uf003-to"
+      ],
+      "status": "live",
+      "created_at": 1788584822725
+    }
+  ]
+}
+list_exit=0
+
+PASS: sessionTool.wait timeoutMs=400 返回 status=timeout 且未抛；session list 仍见该行（status live）。
+NOTE: collect 快照在 retry 中可能投影 aborted；wait 超时路径是 2.3 超时分支的核对点。

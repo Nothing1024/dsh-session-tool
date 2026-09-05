@@ -1,0 +1,21 @@
+# UF-002 失败分支 无 token -> [web-unreachable]
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:02:41Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-002 fail-401
+DSH_SESSION_ANCHOR=/Users/nothing/.npm/_npx/2f3a729d991ac520/node_modules/@deepseek-ai/dsh/package.json
+
+## 裸 curl POST /api/session/create（无 cookie）
+HTTP/1.1 401 Unauthorized
+Date: Sat, 05 Sep 2026 05:02:41 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+--- body ---
+unauthorized
+
+## CLI create 未设 DSH_LAUNCH_TOKEN 且无 --token
+dsh-session: [web-unreachable] web gateway unreachable for workspace/create: HTTP 401
+no_token_exit=1
+
+PASS: no-token CLI [web-unreachable]

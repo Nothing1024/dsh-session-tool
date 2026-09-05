@@ -1,0 +1,25 @@
+# UF-003 主路径 wait/collect 终态
+cwd: /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+date: 2026-09-05T05:06:05Z
+spec: docs/dsh-0-1-2-upgrade/spec.md#task-15 5.2 UF-003
+session_id=session-8e22ac45-0427-40dc-bb63-dbcaf724d412
+
+## CLI 等价 sessionTool.wait (no session wait verb; bootProfile + ctx.sessionTool.wait)
+WAIT_RESULT {"sessionId":"session-8e22ac45-0427-40dc-bb63-dbcaf724d412","status":"failed","lastTurnEndReason":"error"}
+wait_exit=0
+NOTE: 终态是 failed（turn/end reason=error），不是抛错。符合 2.3 成功主路径 completed/failed/aborted。
+
+## session collect --tag uf003 --wait all --timeout-ms 10000 (already terminal -> satisfied)
+{
+  "satisfied": true,
+  "elapsed_ms": 6,
+  "sessions": [
+    {
+      "session_id": "session-8e22ac45-0427-40dc-bb63-dbcaf724d412",
+      "status": "failed"
+    }
+  ]
+}
+collect_exit=0
+
+PASS: wait 返回终态且未抛；collect 聚合终态
