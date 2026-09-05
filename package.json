@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "standard:check": "node standards/validate.mjs",
+    "deps:check": "node scripts/check-deps-isolation.mjs",
     "env:setup": "sh env/setup.sh",
     "env:boot": "sh env/boot.sh",
     "env:test": "bash scripts/manual-test.sh"
@@ -24,6 +25,6 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "cordis": "npm:@deepseek-ai/cordis@4.0.1"
+    "cordis": "npm:@deepseek-ai/cordis@4.0.2"
   }
 }

@@ -1,0 +1,20 @@
+序号,Phase,名称,详情锚点,前置任务,验证命令,状态,备注
+1,P0:基线隔离与钉版本,隔离 SessionId 品牌类型解析,spec.md#task-1,无,pnpm run typecheck 输出不含 dsh-grok-bot,已完成,wipe packages/*/node_modules 后 pnpm install；copy 只是额外防硬链
+2,P0:基线隔离与钉版本,钉死 0.1.2-rc.1 依赖与 env 启动版本,spec.md#task-2,1,rg 0.1.1-rc.2 仅剩 dsh-host-apiproxy 行,已完成,apiproxy 留到 Task 6/7
+3,P0:基线隔离与钉版本,执行 Phase 0 回归验证,spec.md#task-3,1;2,pnpm test 或记录 pin 后预期失败清单,已完成,pin 后 15 fail/142 pass/1 skip；预期 L1 见 notes.md
+4,P1:L1编译修复,修复 L1 符号与函数签名,spec.md#task-4,3,pnpm run typecheck 0 error（仍保留 apiproxy）,已完成,apiproxy 仍 0.1.1-rc.2；title 投影走 listRowTitle
+5,P1:L1编译修复,执行 Phase 1 回归验证,spec.md#task-5,4,pnpm run typecheck && pnpm run build,已完成,import OK；apiproxy 仍可从 session-tool-local resolve
+6,P2:调用层双通道,实现同进程 session/workspace 客户端,spec.md#task-6,5,in-process 新文件无 AbstractApiClient,已完成,structural ctx.sessionController; CLI 仍 HTTP
+7,P2:调用层双通道,实现跨进程鉴权 HTTP 客户端,spec.md#task-7,5,303 cookie + 斜杠码映射 + 删除 apiproxy,已完成,303 cookie + slash map + apiproxy deleted
+8,P2:调用层双通道,接入传输选择器并改写 provider,spec.md#task-8,6;7,选择器用例：同进程不 fetch,已完成,auto 默认同进程不 fetch；CLI 形 webUrl 不命中监听走 HTTP
+9,P2:调用层双通道,改写 wait/collect 完成检测,spec.md#task-9,8,settle/wait 用例通过（非全量 pnpm test）,已完成,HTTP list+inspect；同进程 snapshotEvents；冷会话 idle
+10,P2:调用层双通道,改写 hide 归档路径,spec.md#task-10,8,vitest -t getVisibility / hide / unhide,已完成,archiveSession best-effort；缺 unarchive 只 warn；无 CLI/工具 hide
+11,P2:调用层双通道,执行 Phase 2 回归验证,spec.md#task-11,6;7;8;9;10,typecheck + src-only rg 无 apiproxy/history,已完成,src rg 无命中；typecheck 0 error；未跑全量 pnpm test
+12,P3:测试重写,重写网关客户端与服务层单测,spec.md#task-12,11,pnpm test 通过数≥157,已完成,223 passed / 1 skipped；新路径+401+斜杠码+303 cookie+in-process mock
+13,P3:测试重写,执行 Phase 3 回归验证,spec.md#task-13,12,pnpm test && pnpm run typecheck && pnpm run build,已完成,typecheck 0 error；build success；evidence/phase-3/unit.log
+14,P4:文档与真实场景,更新文档与 adapter-baseline,spec.md#task-14,13,pnpm run standard:check 通过,已完成,baseline 去掉 apiproxy；manual-test.sh 读 DSH_LAUNCH_TOKEN
+15,P4:文档与真实场景,执行 spec 5.2 真实场景全套测试,spec.md#task-15,14,5.2 执行矩阵全部通过,已完成,UF-001..006 evidence 齐全；UF-005 ui.png 已截
+16,P4:文档与真实场景,执行 Phase 4 回归验证,spec.md#task-16,15,typecheck+test+build+standard:check,已完成,223 pass/1 skip；typecheck/build/standard 0 error
+17,P5:跨仓污染防护与复原态复验,新增跨仓依赖污染检测命令,spec.md#task-17,无,pnpm run deps:check 复原态 0 退出 / 污染态非 0,已完成,BR-009；realpath 越界判定、零仓名黑名单；复原态 0 退出/污染态 1 退出并点名；evidence/phase-5/deps-check.log
+18,P5:跨仓污染防护与复原态复验,清理两处失效历史残留,spec.md#task-18,无,rg 0.1.1-rc.2 pnpm-workspace.yaml tsconfig.base.json 无命中,待开始,INV-008；docs/ 历史叙述不动
+19,P5:跨仓污染防护与复原态复验,复原态重跑 5.2 真实场景全套并收尾回归,spec.md#task-19,17;18,deps:check+typecheck+test+build+standard:check 全过 + 5.2 矩阵全行,待开始,覆盖并取代 Task 15/16 为最终验收；证据写 evidence/phase-5/

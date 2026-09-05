@@ -1,0 +1,136 @@
+===================================================================
+EVD-009 依赖污染检出与复原（Task 17 / BR-009 / ASM-006）
+日期: 2026-09-05 14:21:00 CST
+主机: macOS 26.5.2  node v22.23.0  pnpm 11.7.0
+判定口径: realpath 是否越出本仓根目录（非仓名黑名单）
+===================================================================
+
+### 段 1/3：复原态基线 —— pnpm run deps:check 应 0 退出
+$ pnpm run deps:check
+$ node scripts/check-deps-isolation.mjs
+跨仓依赖污染检测（BR-009）
+本仓根：/Users/nothing/workspace/dsh/plugin/session-tool/plugin
+期望版本：@deepseek-ai/dsh* = 0.1.2-rc.1
+
+── packages/*/node_modules/@deepseek-ai
+  扫描 22 项
+
+── env/profiles/st/node_modules/@deepseek-ai
+  扫描 170 项
+
+── 提示（不致命）：1 项
+△ env/profiles/st/node_modules/@deepseek-ai/dsh-session-tags → /Users/nothing/workspace/dsh/plugin/session-tool/plugin/vendor/session-tags（仓内悬空软链，无 package.json）
+
+结论：全部通过 —— 192 项 @deepseek-ai/* 全部解析在本仓根内（另有 1 条提示）
+EXIT=0
+
+### 段 2/3：人为制造一条越界软链 —— deps:check 必须非 0 退出并点名该条
+注：spec 4-Task17 给的示例用了 5 个 '..'（落在 session-tool/），实际需 6 个才能到 dsh/plugin/。
+    这里用可解析的真实路径，指向邻仓 vibee 的 rc.7 副本（只读引用，未改动邻仓任何文件）。
+
+$ ln -sfn ../../../../../../vibee/plugin/node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.0-rc.7_1dcde9bfc9fa0140c66648fbcb67b346/node_modules/@deepseek-ai/dsh-session \
+    packages/session-tool-local/node_modules/@deepseek-ai/dsh-session
+$ readlink packages/session-tool-local/node_modules/@deepseek-ai/dsh-session
+../../../../../../vibee/plugin/node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.0-rc.7_1dcde9bfc9fa0140c66648fbcb67b346/node_modules/@deepseek-ai/dsh-session
+
+$ pnpm run deps:check
+$ node scripts/check-deps-isolation.mjs
+跨仓依赖污染检测（BR-009）
+本仓根：/Users/nothing/workspace/dsh/plugin/session-tool/plugin
+期望版本：@deepseek-ai/dsh* = 0.1.2-rc.1
+
+── packages/*/node_modules/@deepseek-ai
+  扫描 22 项
+
+── env/profiles/st/node_modules/@deepseek-ai
+  扫描 170 项
+
+── 越界软链（跨仓污染）：1 项
+✗ packages/session-tool-local/node_modules/@deepseek-ai/dsh-session
+    realpath → /Users/nothing/workspace/dsh/plugin/vibee/plugin/node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.0-rc.7_1dcde9bfc9fa0140c66648fbcb67b346/node_modules/@deepseek-ai/dsh-session
+    版本 → 0.1.0-rc.7（越界）
+
+── 提示（不致命）：1 项
+△ env/profiles/st/node_modules/@deepseek-ai/dsh-session-tags → /Users/nothing/workspace/dsh/plugin/session-tool/plugin/vendor/session-tags（仓内悬空软链，无 package.json）
+
+结论：检出污染 —— 越界 1 项、版本漂移 0 项（共扫描 192 项）
+
+复原命令：
+  rm -rf packages/*/node_modules && pnpm install
+
+成因提示：邻仓若把本仓的包 glob 进自己的 pnpm workspace 并 overrides 钉版本，
+在邻仓跑 `pnpm install` 就会改写本仓的 node_modules（ASM-006）。本仓只能检测 + 复原。
+[ELIFECYCLE] Command failed with exit code 1.
+EXIT=1
+
+--- 佐证：同一污染态下 typecheck 会爆品牌类型错（这正是 deps:check 要提前拦掉的症状）
+$ pnpm run typecheck  # 只截取前若干行
+$ tsc -p tsconfig.json
+packages/session-tool-local/src/index.ts(17,21): error TS2614: Module '"@deepseek-ai/dsh-session"' has no exported member 'SessionLogOffset'. Did you mean to use 'import SessionLogOffset from "@deepseek-ai/dsh-session"' instead?
+packages/session-tool-local/src/index.ts(222,7): error TS2322: Type 'SessionStore' is not assignable to type 'InProcessSessionStore'.
+  Types of property 'get' are incompatible.
+    Type '(id: SessionId) => Session | undefined' is not assignable to type '(id: SessionId) => { snapshotEvents(): readonly { readonly type: string; readonly data?: unknown; }[]; } | undefined'.
+      Types of parameters 'id' and 'id' are incompatible.
+        Type 'import("/Users/nothing/workspace/dsh/plugin/vibee/plugin/node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.0-rc.7_1dcde9bfc9fa0140c66648fbcb67b346/node_modules/@deepseek-ai/dsh-session/lib/types/types").SessionId' is not assignable to type 'import("/Users/nothing/workspace/dsh/plugin/session-tool/plugin/node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.2-rc.1_@deepseek-ai+cordis@4.0.2_@deepseek-ai+dsh-scope@0._ee5063a80d448ae764858c08e7528ed1/node_modules/@deepseek-ai/dsh-session/lib/types/types").SessionId'.
+          Property '[BRAND]' is missing in type 'String & { readonly [BRAND]: "SessionId"; }' but required in type '{ readonly [BRAND]: "SessionId"; }'.
+packages/session-tool-local/src/index.ts(223,7): error TS2322: Type 'SessionPersistence' is not assignable to type 'InProcessSessionPersistence'.
+  Types of property 'inspect' are incompatible.
+    Type '(id: SessionId, signal?: AbortSignal | undefined) => Promise<SessionInspection>' is not assignable to type '(id: SessionId, signal?: AbortSignal | undefined) => Promise<{ readonly events: readonly { readonly type: string; readonly data?: unknown; }[]; }>'.
+      Types of parameters 'id' and 'id' are incompatible.
+
+错误总数统计：
+203
+BRAND 相关错误数：
+185
+
+（说明：本次注入 1 条越界软链得到 203 error / 185 条 BRAND；史上那次是 11 条越界软链、37 error。
+  数量不同不影响结论——症状同类：品牌类型跨物理副本互不兼容。deps:check 的价值在于把这条
+  反馈链从『跑完 typecheck 读 200 行报错』缩短成『一条命令直接点名越界软链』。）
+
+### 段 3/3：复原 —— rm -rf packages/*/node_modules && pnpm install，再确认 0 退出
+$ rm -rf packages/*/node_modules && pnpm install
+Scope: all 6 workspace projects
+✓ Lockfile passes supply-chain policies (verified 11h ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 2.6s using pnpm v11.7.0
+
+$ readlink packages/session-tool-local/node_modules/@deepseek-ai/dsh-session
+../../../../node_modules/.pnpm/@deepseek-ai+dsh-session@0.1.2-rc.1_@deepseek-ai+cordis@4.0.2_@deepseek-ai+dsh-scope@0._ee5063a80d448ae764858c08e7528ed1/node_modules/@deepseek-ai/dsh-session
+
+$ pnpm run deps:check
+$ node scripts/check-deps-isolation.mjs
+跨仓依赖污染检测（BR-009）
+本仓根：/Users/nothing/workspace/dsh/plugin/session-tool/plugin
+期望版本：@deepseek-ai/dsh* = 0.1.2-rc.1
+
+── packages/*/node_modules/@deepseek-ai
+  扫描 22 项
+
+── env/profiles/st/node_modules/@deepseek-ai
+  扫描 170 项
+
+── 提示（不致命）：1 项
+△ env/profiles/st/node_modules/@deepseek-ai/dsh-session-tags → /Users/nothing/workspace/dsh/plugin/session-tool/plugin/vendor/session-tags（仓内悬空软链，无 package.json）
+
+结论：全部通过 —— 192 项 @deepseek-ai/* 全部解析在本仓根内（另有 1 条提示）
+EXIT=0
+
+--- 复原确认：typecheck 回到 0 error
+$ pnpm run typecheck
+$ tsc -p tsconfig.json
+EXIT=0（0 = 无错误）
+
+===================================================================
+结论（EVD-009）：
+  段 1 复原态      : deps:check EXIT=0，192 项全部落在本仓根内
+  段 2 污染态      : deps:check EXIT=1，点名 packages/session-tool-local/node_modules/@deepseek-ai/dsh-session
+                     → realpath 落到 vibee 仓，版本 0.1.0-rc.7；同态 typecheck 203 error / 185 BRAND
+  段 3 复原后      : deps:check EXIT=0，typecheck EXIT=0
+  判定口径         : realpath 越出本仓根即污染，无仓名黑名单（grep -c 'vibee\|grok' 见下）
+  邻仓改动         : 无（仅只读引用其 store 路径）
+===================================================================
+
+$ grep -cE "'vibee'|\"vibee\"|'grok'|\"grok\"" scripts/check-deps-isolation.mjs   # 黑名单字面量数（期望 0）
+0
