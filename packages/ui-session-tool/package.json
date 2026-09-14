@@ -1,0 +1,67 @@
+{
+  "name": "ui-session-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:browser": "tsx tests/browser.e2e.mts"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "session-tool": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-session": "0.1.5-rc.1",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-session": "0.1.5-rc.1",
+    "@types/jsdom": "^21.1.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "jsdom": "^26.0.0",
+    "playwright-core": "1.58.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

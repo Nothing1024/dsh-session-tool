@@ -52,6 +52,24 @@ export interface GatewayHttpRpcOptions {
 
 const REMOTE_STREAM_MUX_PATH = '/api/remote.mux'
 
+/** Slash RPC name → rc.7 dotted route (`session/create` → `session.create`). */
+export function toDottedEndpoint(endpoint: string): string {
+  return endpoint.includes('/') ? endpoint.replaceAll('/', '.') : endpoint
+}
+
+/**
+ * rc.7 unary methods validate `payload` itself (`{ sessionId, title }`).
+ * Slash-era clients wrap the same fields as `{ args: { request } }`.
+ */
+export function flattenRc7Payload(args: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const request = args.request
+  if (typeof request === 'object' && request !== null && !Array.isArray(request)) {
+    return { ...request as Record<string, unknown> }
+  }
+  if ('_request' in args) return {}
+  return { ...args }
+}
+
 /**
  * One Connection HTTP session: token→cookie exchange once, then unary POSTs
  * and a follow-first-item-then-cancel stream helper.
@@ -63,6 +81,8 @@ export class GatewayHttpRpc {
   private readonly openStream: GatewayStreamOpener
   private cookie: string | undefined
   private cookieExchange: Promise<void> | undefined
+  /** Cached after the first non-404 unary; `dot` is rc.7 (`session.create`). */
+  private routeStyle: 'slash' | 'dot' | undefined
 
   constructor(options: GatewayHttpRpcOptions) {
     this.origin = new URL(options.webUrl)
@@ -79,20 +99,40 @@ export class GatewayHttpRpc {
 
   /**
    * POST `/api/{endpoint}` with Connection envelope `{ type, rpcId, method, payload: { args } }`.
+   * Slash endpoints (`session/create`) retry once on HTTP 404 using the dotted
+   * rc.7 route (`session.create`); method is rewritten to match the path, and
+   * the envelope payload is flattened (`payload: request` not `{ args }`).
    */
   async call<T>(endpoint: string, args: Readonly<Record<string, unknown>>): Promise<GatewayRpcResult<T>> {
     await this.ensureCookie()
+    const preferred = this.routeStyle === 'dot' ? toDottedEndpoint(endpoint) : endpoint
+    const first = await this.postEnvelope(preferred, args)
+    if (first.response.status === 404 && this.routeStyle !== 'dot' && preferred.includes('/')) {
+      const dotted = toDottedEndpoint(endpoint)
+      const second = await this.postEnvelope(dotted, args)
+      if (second.response.status !== 404) this.routeStyle = 'dot'
+      return await this.finishCall(dotted, second)
+    }
+    if (this.routeStyle === undefined && first.response.status !== 404) {
+      this.routeStyle = preferred.includes('/') ? 'slash' : 'dot'
+    }
+    return await this.finishCall(preferred, first)
+  }
+
+  private async postEnvelope(endpoint: string, args: Readonly<Record<string, unknown>>): Promise<{
+    readonly rpcId: string
+    readonly response: Response
+  }> {
     const rpcId = randomUUID()
     const message = {
       type: 'client-request',
       rpcId,
       method: endpoint,
-      payload: { args },
+      payload: endpoint.includes('/') ? { args } : flattenRc7Payload(args),
     }
     const url = new URL(`/api/${endpoint}`, this.origin)
-    let response: Response
     try {
-      response = await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -102,9 +142,17 @@ export class GatewayHttpRpc {
         redirect: 'error',
         ...this.timeoutMs === undefined ? {} : { signal: AbortSignal.timeout(this.timeoutMs) },
       })
+      return { rpcId, response }
     } catch (error: unknown) {
       throw unreachable(endpoint, error)
     }
+  }
+
+  private async finishCall<T>(
+    endpoint: string,
+    posted: { readonly rpcId: string; readonly response: Response },
+  ): Promise<GatewayRpcResult<T>> {
+    const { rpcId, response } = posted
     if (response.status === 401 || response.status === 403) {
       throw unreachable(endpoint, new Error(`HTTP ${response.status}`))
     }

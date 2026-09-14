@@ -14,3 +14,10 @@
     webUrl: 'http://127.0.0.1:3081'
     allowOthersToWrite: 'workspace'
     showDelegated: true
+
+# Settings.yaml is the live source. Pin composition fallback so a missing
+# settings document does not start agents on deepseek-flash.
+- id: agent-default-model
+  config:
+    provider: anthropic
+    model: grok-4.6

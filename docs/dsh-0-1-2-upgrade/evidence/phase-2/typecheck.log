@@ -1,4 +1,0 @@
-# Task 11 typecheck
-date: 2026-09-05T04:10:02Z
-command: pnpm run typecheck
-typecheck_exit=0

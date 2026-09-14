@@ -13,10 +13,10 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
-import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
+import { inspectPersistedSession, listPersistedHeaders } from './persistence-read.ts'
+import type { PersistedInspection } from './persistence-read.ts'
 import { get as getMarks, isTitleHidden, normalizeMarks, patch as patchMarks, put as putMarks, TagInvalidError } from 'session-marks'
 import {
   SessionEmptyContentError,
@@ -65,6 +65,7 @@ import type {
 } from './workspace-client-in-process.ts'
 import { inProcessMissingControllersError, selectTransport, type TransportMode } from './transport.ts'
 import { loadLineage, putLineage, type LineageRecord } from './lineage.ts'
+import { eventsOfLive, inheritedOfLive, type LiveLogEvent } from './live-events.ts'
 import { delegationProjectionDefinition, viewDelegation } from './delegation-projection.ts'
 import type { DelegationStatus } from './delegation-projection.ts'
 import {
@@ -174,6 +175,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   private readonly config: Config
   private workspaceClient!: WorkspaceHttpClient | InProcessWorkspaceClient
   private sessionClient!: SessionHttpClient | InProcessSessionClient
+  private projections: Context['sessionProjections'] | undefined
   /** HTTP create-dropped parentSession / depth, keyed by child session id. */
   private readonly lineage = new Map<string, LineageRecord>()
   /** In-flight disk merge; concurrent headerIndex callers share one read. */
@@ -194,6 +196,10 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     // is composed; a deployment without it degrades to log-tail reads.
     ctx.inject(['sessionProjections'], (projectionCtx) => {
       projectionCtx.sessionProjections.register(delegationProjectionDefinition)
+      projectionCtx.effect(() => {
+        this.projections = projectionCtx.sessionProjections
+        return () => { this.projections = undefined }
+      })
     })
   }
 
@@ -344,13 +350,16 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     const sinceSeq = options.sinceSeq ?? 0
     const messages: SessionToolMessageRow[] = []
     for (const event of inspection.events) {
-      if (event.seq < sinceSeq) continue
+      if (Number(event.seq ?? 0) < sinceSeq) continue
       const row = messageRow(event)
       if (row === undefined) continue
       messages.push(row)
       if (messages.length >= maxBlocks) break
     }
-    return { sessionId, messages }
+    return {
+      sessionId, messages,
+      ...(options.includeDelegationStatus ? { delegationStatus: foldDelegationStatus(inspection.events) } : {}),
+    }
   }
 
   async write(caller: SessionToolCaller, sessionId: SessionId, content: string): Promise<SessionToolWriteResult> {
@@ -692,7 +701,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
   /** Assert the caller may create under `parentId`: itself or an ancestor. */
   private assertCreateParent(caller: SessionToolCaller, parentId: SessionId, index: Map<SessionId, SessionHeader>): void {
-    if (caller.kind === 'cli') return
+    if (caller.kind !== 'agent') return
     if (parentId === caller.sessionId) return
     let current = index.get(parentId)
     while (current !== undefined) {
@@ -712,7 +721,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
    * session headers.
    */
   private async assertAccess(caller: SessionToolCaller, targetId: SessionId, index: Map<SessionId, SessionHeader>): Promise<void> {
-    if (caller.kind === 'cli') return
+    if (caller.kind !== 'agent') return
     if (targetId === caller.sessionId) return
     if (!index.has(targetId)) {
       throw new SessionNotFoundError(`session "${targetId}" does not exist`)
@@ -739,6 +748,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
 
   /** Enforce the `all`-scope gate for the caller identity. */
   private assertAllScope(caller: SessionToolCaller, index: Map<SessionId, SessionHeader>): void {
+    if (caller.kind === 'web') return
     if (caller.kind === 'cli') {
       if (!this.config.cliAllowAll) {
         throw new SessionScopeDeniedError('the "all" scope is disabled for the CLI (cliAllowAll: false)')
@@ -785,7 +795,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     targetId: SessionId,
     index: Map<SessionId, SessionHeader>,
   ): void {
-    if (caller.kind === 'cli') return
+    if (caller.kind !== 'agent') return
     // The lineage fence (self or ancestor) always admits; the config only
     // widens it for non-lineage callers.
     if (this.isAncestorOrSelf(caller.sessionId, targetId, index)) return
@@ -938,7 +948,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   /** Read the last assistant text block of a session's log, when one exists. */
   private async lastAssistantText(sessionId: SessionId): Promise<string | undefined> {
     const live = this.ctx.sessions.get(sessionId)
-    if (live !== undefined) return lastAssistantTextOf(live.snapshotEvents())
+    if (live !== undefined) return lastAssistantTextOf(eventsOfLive(live))
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : lastAssistantTextOf(inspected.events)
   }
@@ -958,9 +968,9 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       // Prefer the projection registry's cached cell (incrementally folded on
       // commit) over refolding the full in-memory log; falls back to the
       // fold when the registry is not composed for this deployment.
-      const state = this.ctx.sessionProjections?.stateOf(live, 'delegation')
+      const state = this.projections?.stateOf(live, 'delegation')
       if (state !== undefined) return state.status
-      return foldDelegationStatus(live.snapshotEvents())
+      return foldDelegationStatus(eventsOfLive(live))
     }
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : foldDelegationStatus(inspected.events)
@@ -981,7 +991,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     for (const session of this.ctx.sessions.list()) {
       index.set(session.id, session.header)
     }
-    const persisted = await this.ctx.sessionPersistence.list()
+    const persisted = await listPersistedHeaders(this.ctx.sessionPersistence)
     for (const header of persisted) {
       if (!index.has(header.id)) index.set(header.id, header)
     }
@@ -1051,12 +1061,12 @@ export class SessionToolLocalService extends Service implements SessionToolServi
    * persistence inspection. Never materializes (read-only). The access fence
    * runs against the merged header index.
    */
-  private async resolveInspection(caller: SessionToolCaller, id: SessionId): Promise<SessionInspection> {
+  private async resolveInspection(caller: SessionToolCaller, id: SessionId): Promise<PersistedInspection> {
     const index = await this.headerIndex()
     const live = this.ctx.sessions.get(id)
     if (live !== undefined) {
       await this.assertAccess(caller, id, index)
-      return { meta: live.header, events: live.snapshotEvents(), inheritedEventCount: live.inheritedEventCount }
+      return { meta: live.header, events: eventsOfLive(live), inheritedEventCount: inheritedOfLive(live) }
     }
     const inspection = await this.inspectSession(id)
     if (inspection === undefined) {
@@ -1067,15 +1077,8 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   }
 
   /** Read one cold session's events; `undefined` when the id is not persisted. */
-  private async inspectSession(id: SessionId): Promise<SessionInspection | undefined> {
-    try {
-      return await this.ctx.sessionPersistence.inspect(id)
-    } catch (error: unknown) {
-      if (error instanceof SessionNotFoundError) throw error
-      // A missing (never-materialized) session surfaces as a backend miss;
-      // treat any read failure as absence for the caller to classify.
-      return undefined
-    }
+  private async inspectSession(id: SessionId): Promise<PersistedInspection | undefined> {
+    return await inspectPersistedSession(this.ctx.sessionPersistence, id)
   }
 }
 
@@ -1130,31 +1133,42 @@ function requireMarks(tags: readonly string[]): string[] {
 }
 
 /** Project one event onto a readable message row; non-message events project to nothing. */
-function messageRow(event: SessionEvent): SessionToolMessageRow | undefined {
-  switch (event.type) {
-    case 'user/message':
-      return { seq: Number(event.seq), role: 'user', blocks: event.data.content }
-    case 'assistant/message':
-      return { seq: Number(event.seq), role: 'assistant', blocks: event.data.message.content }
-    case 'tool/result':
-      return { seq: Number(event.seq), role: 'tool', blocks: event.data.message.content }
-    default:
-      return undefined
+function messageRow(event: LiveLogEvent): SessionToolMessageRow | undefined {
+  const seq = Number(event.seq ?? 0)
+  const data = event.data
+  if (data === undefined || data === null || typeof data !== 'object') return undefined
+  if (event.type === 'user/message' && 'content' in data) {
+    const content = data.content
+    if (!Array.isArray(content)) return undefined
+    return { seq, role: 'user', blocks: content as SessionToolMessageRow['blocks'] }
   }
+  if ((event.type === 'assistant/message' || event.type === 'tool/result') && 'message' in data) {
+    const message = data.message
+    if (message === undefined || message === null || typeof message !== 'object' || !('content' in message)) {
+      return undefined
+    }
+    const content = message.content
+    if (!Array.isArray(content)) return undefined
+    const role = event.type === 'assistant/message' ? 'assistant' : 'tool'
+    return { seq, role, blocks: content as SessionToolMessageRow['blocks'] }
+  }
+  return undefined
 }
 
 /** Header/offset for the log-tail fallback; the unit ignores both. */
 const FOLD_IDLE_HEADER: SessionHeader = {
-  version: 0,
+  version: 0 as SessionHeader['version'],
   id: SessionId('fold-idle'),
   createdAt: 0,
   isSeeded: false,
 }
 
 /** Fold the delegation projection unit over one event prefix. */
-function foldDelegationStatus(events: readonly SessionEvent[]): DelegationStatus {
-  let state = delegationProjectionDefinition.init(FOLD_IDLE_HEADER, SessionLogOffset(0))
-  for (const event of events) state = delegationProjectionDefinition.apply(state, event)
+function foldDelegationStatus(events: readonly LiveLogEvent[]): DelegationStatus {
+  let state = delegationProjectionDefinition.init(FOLD_IDLE_HEADER, 0 as never)
+  for (const event of events) {
+    state = delegationProjectionDefinition.apply(state, event as never)
+  }
   return viewDelegation(state).status
 }
 
@@ -1173,12 +1187,21 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Read the last assistant text block of an event prefix, when one exists. */
-function lastAssistantTextOf(events: readonly SessionEvent[]): string | undefined {
+function lastAssistantTextOf(events: readonly LiveLogEvent[]): string | undefined {
   for (let i = events.length - 1; i >= 0; i -= 1) {
     const event = events[i]
     if (event?.type !== 'assistant/message') continue
-    const text = event.data.message.content
-      .filter(block => block.type === 'text')
+    const data = event.data
+    if (data === undefined || data === null || typeof data !== 'object' || !('message' in data)) continue
+    const message = data.message
+    if (message === undefined || message === null || typeof message !== 'object' || !('content' in message)) continue
+    const content = message.content
+    if (!Array.isArray(content)) continue
+    const text = content
+      .filter((block): block is { type: 'text'; text: string } =>
+        block !== undefined && block !== null && typeof block === 'object'
+        && 'type' in block && block.type === 'text'
+        && 'text' in block && typeof block.text === 'string')
       .map(block => block.text)
       .join('')
     if (text !== '') return text

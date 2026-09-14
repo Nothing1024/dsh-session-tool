@@ -2,7 +2,8 @@
  * In-process session client: create/prompt/cancel/rename/list go through
  * `ctx.sessionController` on the GUI web-app tree (BR-002 / INV-003). Wait
  * reads `running` from controller.list and the last `turn/end` from
- * `sessions.get(id).snapshotEvents()` or `sessionPersistence.inspect`.
+ * `sessions.get(id).snapshotEvents()` or a cold persistence inspect
+ * (`inspect` on 0.1.2, `open(..., 'read')` on 0.1.5).
  *
  * Do not construct this from the CLI (BR-003): that would write the CLI's
  * own store instead of the GUI process. Task 8's transport selector keeps
@@ -15,6 +16,8 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import { invokeInProcess } from './in-process-wire.ts'
 import type { DurableCreateResult, SessionListRow } from './session-client.ts'
 import { lastTurnEndReason, settleWait } from './wait-settle.ts'
+import { eventsOfLive } from './live-events.ts'
+import { inspectPersistedSession } from './persistence-read.ts'
 
 /** Title field on a list projection block. */
 function listRowTitle(values: unknown): string | undefined {
@@ -66,10 +69,18 @@ export interface InProcessSessionStore {
   get(id: SessionId): { snapshotEvents(): readonly { readonly type: string; readonly data?: unknown }[] } | undefined
 }
 
-/** Persistence used when the session is not live. */
+/** Persistence used when the session is not live (inspect and/or open). */
 export interface InProcessSessionPersistence {
-  inspect(id: SessionId, signal?: AbortSignal): Promise<{
+  inspect?: (id: SessionId, signal?: AbortSignal) => Promise<{
     readonly events: readonly { readonly type: string; readonly data?: unknown }[]
+  }>
+  open?: (id: SessionId, access: 'read' | 'write') => Promise<{
+    readonly header: unknown
+    readonly inheritedEventCount: number
+    read(offset?: number, length?: number): Promise<{
+      readonly events: readonly { readonly type: string; readonly data?: unknown }[]
+    }>
+    close(): Promise<void>
   }>
 }
 
@@ -270,7 +281,7 @@ export class InProcessSessionClient {
   private async readLastTurnEndReason(sessionId: string): Promise<{ kind: string } | undefined> {
     const live = this.sessions.get(SessionId(sessionId))
     const events = live !== undefined
-      ? live.snapshotEvents()
+      ? eventsOfLive(live)
       : await this.inspectEvents(sessionId)
     if (events === undefined) return undefined
     return lastTurnEndReason(events)
@@ -278,12 +289,8 @@ export class InProcessSessionClient {
 
   /** Cold log when the session is not attached; missing id is no turn/end. */
   private async inspectEvents(sessionId: string): Promise<readonly { readonly type: string; readonly data?: unknown }[] | undefined> {
-    try {
-      const inspection = await this.sessionPersistence.inspect(SessionId(sessionId))
-      return inspection.events
-    } catch {
-      return undefined
-    }
+    const inspection = await inspectPersistedSession(this.sessionPersistence, SessionId(sessionId))
+    return inspection?.events
   }
 }
 

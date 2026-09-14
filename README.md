@@ -22,9 +22,6 @@ DSH 自带的 subagent 是单次运行、用完即弃：continuation manager 管
 
 ```
 session-tool/
-├── docs/design.md            # 会话工具设计（含实施记录）
-├── docs/research.md          # Claude Code / Codex 等 7 家 CLI 会话模型
-├── docs/session-delegation/  # 平级化合同：BR/UF + 真实场景 evidence
 ├── packages/
 │   ├── session-marks/        # 插件标记表：$DSH_HOME/session-tool/marks.jsonl
 │   ├── session-tool/         # ctx.sessionTool 契约
@@ -33,6 +30,8 @@ session-tool/
 │   └── session-tool-cli/     # bin：dsh-session
 └── env/                      # 仓内 DSH_HOME（boot.sh，loopback :3081）
 ```
+
+过程文档（design / research / spec / evidence）已归档到 [project-dev-library `project/dsh-session-tool`](https://github.com/Nothing1024/project-dev-library/tree/project/dsh-session-tool/dsh-session-tool)。
 
 ## 安装 / 调试
 
@@ -157,7 +156,7 @@ pnpm run standard:check   # dsh-community-standard v0.15 对齐检查（见 stan
 - **session_collect**：对血缘树或 tags 做声明式完成条件（wait-all/any/n/first-failed + cancel-rest + 超时），不做 DAG/调度。
 - **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid` / `web-unreachable` / `workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`。
 
-合同与真实场景证据：`docs/session-delegation/`。会话工具细节：`docs/design.md`。
+合同与真实场景证据：[session-delegation](https://github.com/Nothing1024/project-dev-library/tree/project/dsh-session-tool/dsh-session-tool/docs/session-delegation)。会话工具细节：[design.md](https://github.com/Nothing1024/project-dev-library/blob/project/dsh-session-tool/dsh-session-tool/docs/design.md)。
 
 ## 注意事项
 

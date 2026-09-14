@@ -15,7 +15,6 @@
     "session-tool-local": [
       "@deepseek-ai/cordis",
       "@deepseek-ai/dsh-session",
-      "@deepseek-ai/dsh-session-persistence",
       "@deepseek-ai/dsh-session-projection",
       "@deepseek-ai/dsh-session-projection/types",
       "@deepseek-ai/dsh-util-values",
@@ -26,6 +25,16 @@
       "@deepseek-ai/dsh-session",
       "@deepseek-ai/dsh-tools",
       "@deepseek-ai/dsh-util-values"
+    ],
+    "ui-session-tool": [
+      "@deepseek-ai/cordis",
+      "@deepseek-ai/dsh-api-session-controller/client",
+      "@deepseek-ai/dsh-client-connection",
+      "@deepseek-ai/dsh-client-connection/client",
+      "@deepseek-ai/dsh-client-ui-layout/client",
+      "@deepseek-ai/dsh-client-ui-renderer/client",
+      "@deepseek-ai/dsh-client-ui-sidebar/client",
+      "@deepseek-ai/dsh-session"
     ]
   }
 }

@@ -32,3 +32,6 @@
 
     - id: tool-session
       name: 'tool-session'
+
+    - id: ui-session-tool
+      name: 'ui-session-tool'

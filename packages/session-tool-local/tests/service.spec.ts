@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { ToolCallId, createAssistantMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -132,6 +132,32 @@ describe('SessionToolLocalService (remote)', () => {
   function callerSession(id: string) {
     return ctx.sessions.create(SessionId(id))
   }
+
+  it('admits authenticated web operators without widening agent or CLI scope policy', async () => {
+    await ctx.fiber.dispose()
+    ctx = await compose(root, { ...TOOL_CONFIG, allowAllScope: 'none', cliAllowAll: false, allowOthersToWrite: 'creator' })
+    workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
+    callerSession('caller')
+    callerSession('foreign')
+    sessionClient().list.mockResolvedValue([listRow('foreign')])
+    const web = { kind: 'web' } as const
+    await expect(ctx.sessionTool.list(web, { scope: 'all' })).resolves.toMatchObject({ sessions: [{ sessionId: 'foreign' }] })
+    await ctx.plugin({
+      inject: ['sessionTool'],
+      async apply(callerCtx: Context) {
+        await expect(callerCtx.sessionTool.list(web, { scope: 'all' })).resolves.toMatchObject({ sessions: [{ sessionId: 'foreign' }] })
+      },
+    })
+    await expect(ctx.sessionTool.list(CLI, { scope: 'all' })).rejects.toBeInstanceOf(SessionScopeDeniedError)
+    await expect(ctx.sessionTool.list(agent('caller'), { scope: 'all' })).rejects.toBeInstanceOf(SessionScopeDeniedError)
+    await expect(ctx.sessionTool.read(web, SessionId('foreign'), {})).resolves.toBeDefined()
+    await expect(ctx.sessionTool.read(agent('caller'), SessionId('foreign'), {})).rejects.toBeInstanceOf(SessionToolUnauthorizedError)
+    await ctx.sessionTool.write(web, SessionId('foreign'), 'human continuation')
+    await ctx.sessionTool.cancel(web, SessionId('foreign'))
+    expect(sessionClient().prompt).toHaveBeenCalledWith('foreign', 'human continuation')
+    expect(sessionClient().cancel).toHaveBeenCalledWith('foreign')
+    await expect(ctx.sessionTool.write(agent('caller'), SessionId('foreign'), 'agent continuation')).rejects.toBeInstanceOf(SessionToolUnauthorizedError)
+  })
 
   describe('create', () => {
     it('delegates to the gateway without tags, then puts marks after success', async () => {
@@ -299,6 +325,20 @@ describe('SessionToolLocalService (remote)', () => {
       expect(clamped.messages.length).toBeLessThanOrEqual(500)
     })
 
+    it('optionally reads the current turn status independently of the message page', async () => {
+      callerSession('caller')
+      const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
+      const read = () => ctx.sessionTool.read(agent('caller'), session.id, { includeDelegationStatus: true, maxBlocks: 1 })
+      expect((await read()).delegationStatus).toBe('idle')
+      session.append('turn/start', { turn: 1 })
+      session.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'continue' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
+      expect((await read()).delegationStatus).toBe('running')
+      session.append('turn/end', { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } })
+      expect((await read()).delegationStatus).toBe('aborted')
+      expect((await ctx.sessionTool.read(agent('caller'), session.id, { sinceSeq: 999, includeDelegationStatus: true })).delegationStatus).toBe('aborted')
+      expect(await ctx.sessionTool.read(agent('caller'), session.id, {})).not.toHaveProperty('delegationStatus')
+    })
+
     it('maps assistant and tool events onto their roles', async () => {
       callerSession('caller')
       const session = ctx.sessions.create(SessionId('session-1'), { meta: { cwd: '/proj', parentSession: SessionId('caller') } })
@@ -309,6 +349,7 @@ describe('SessionToolLocalService (remote)', () => {
       session.append('assistant/message', {
         turn: 1,
         step: 1,
+        stream: [],
         message: createAssistantMessage({
           content: [{ type: 'text', text: 'assistant says' }],
           source: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
@@ -836,6 +877,7 @@ describe('SessionToolLocalService (remote)', () => {
       done.append('assistant/message', {
         turn: 1,
         step: 1,
+        stream: [],
         message: createAssistantMessage({
           content: [{ type: 'text', text: 'finished work' }],
           source: { provider: 'p', model: 'm' },
@@ -1186,9 +1228,14 @@ describe('SessionToolLocalService (remote)', () => {
         const wsClient = wsConstructor.mock.instances.at(-1) as unknown as { listWorkspaces: ReturnType<typeof vi.fn> }
         wsClient.listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
 
-        const result = await projCtx.sessionTool.list(agent('root'), { scope: 'all' })
-        const row = result.sessions.find(r => r.sessionId === 'child')
-        expect(row?.delegationStatus).toBe('completed')
+        await projCtx.plugin({
+          inject: ['sessionTool'],
+          async apply(callerCtx: Context) {
+            const result = await callerCtx.sessionTool.list(agent('root'), { scope: 'all' })
+            const row = result.sessions.find(r => r.sessionId === 'child')
+            expect(row?.delegationStatus).toBe('completed')
+          },
+        })
       } finally {
         await projCtx.fiber.dispose()
         rmSync(projRoot, { recursive: true, force: true })
@@ -1198,27 +1245,52 @@ describe('SessionToolLocalService (remote)', () => {
 
   describe('restart recovery (BR-004 / EVD-008)', () => {
     it('rebuilds delegation statuses from persisted logs after a process restart', async () => {
-      // First "process": create a delegated session with a completed turn and
-      // one that is still running, then dispose the context (process exit).
-      callerSession('root')
-      const completed = ctx.sessions.create(SessionId('restart-completed'), {
-        meta: { cwd: '/proj', parentSession: SessionId('root'), delegationDepth: 1 },
+      // 0.1.5: ctx.sessions.create + flush does not materialize. Seed through
+      // a write handle so the second process can inspect the same root.
+      const persistence = ctx.sessionPersistence
+      const completedId = SessionId('restart-completed')
+      const runningId = SessionId('restart-running')
+      const completedHandle = await persistence.create({
+        version: SESSION_FORMAT_VERSION,
+        id: completedId,
+        createdAt: Date.now(),
+        isSeeded: false,
+        cwd: '/proj',
+        parentSession: SessionId('root'),
+        delegationDepth: 1,
       })
-      completed.append('turn/start', { turn: 1 })
-      completed.append('user/message', createUserMessage({
-        content: [{ type: 'text', text: 'work' }],
-        source: { kind: 'user' },
-      }), { surfaceOp: 'append' })
-      completed.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-      const running = ctx.sessions.create(SessionId('restart-running'), {
-        meta: { cwd: '/proj', parentSession: SessionId('root'), delegationDepth: 1 },
+      await completedHandle.append([
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+        {
+          type: 'user/message',
+          seq: 1,
+          time: 2,
+          data: createUserMessage({
+            content: [{ type: 'text', text: 'work' }],
+            source: { kind: 'user' },
+          }),
+          surfaceOp: 'append',
+        },
+        { type: 'turn/end', seq: 2, time: 3, data: { turn: 1, reason: { kind: 'completed' } } },
+      ] as never)
+      await completedHandle.flush()
+      await completedHandle.close()
+      const runningHandle = await persistence.create({
+        version: SESSION_FORMAT_VERSION,
+        id: runningId,
+        createdAt: Date.now(),
+        isSeeded: false,
+        cwd: '/proj',
+        parentSession: SessionId('root'),
+        delegationDepth: 1,
       })
-      running.append('turn/start', { turn: 1 })
-      await ctx.sessions.flush(completed)
-      await ctx.sessions.flush(running)
+      await runningHandle.append([
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+      ] as never)
+      await runningHandle.flush()
+      await runningHandle.close()
       await ctx.fiber.dispose()
 
-      // Second "process": a fresh context over the SAME persistence root.
       const ctx2 = await compose(root)
       workspaceClient().listWorkspaces.mockResolvedValue({ items: [], archivedSessionIds: [] })
       try {
@@ -1226,15 +1298,12 @@ describe('SessionToolLocalService (remote)', () => {
           listRow('restart-completed', { parentSessionId: 'root', tags: ['delegated'] }),
           listRow('restart-running', { parentSessionId: 'root', tags: ['delegated'] }),
         ])
-        // The header index reads the persisted headers after restart; the
-        // delegation statuses are refolded from the persisted logs. The
-        // crash-orphaned open turn is repaired to `interrupted` on reload,
-        // which the projection maps to `aborted` — the honest log-derived
-        // state, never lost to the restart (BR-004).
         const all = await ctx2.sessionTool.list(CLI, { scope: 'all', status: 'completed' })
         expect(all.sessions.map(row => row.sessionId)).toEqual(['restart-completed'])
-        const interrupted = await ctx2.sessionTool.list(CLI, { scope: 'all', status: 'aborted' })
-        expect(interrupted.sessions.map(row => row.sessionId)).toEqual(['restart-running'])
+        // V3 cold inspect does not synthesize interruptedTurnClosers. An
+        // open turn/start therefore stays `running` until a real turn/end.
+        const open = await ctx2.sessionTool.list(CLI, { scope: 'all', status: 'running' })
+        expect(open.sessions.map(row => row.sessionId)).toEqual(['restart-running'])
       } finally {
         await ctx2.fiber.dispose()
       }

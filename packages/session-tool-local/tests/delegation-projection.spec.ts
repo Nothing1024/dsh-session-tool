@@ -8,7 +8,7 @@ import { delegationProjectionDefinition, viewDelegation } from '../src/delegatio
 import type { DelegationProjection } from '../src/delegation-projection.ts'
 
 const IDLE_HEADER: SessionHeader = {
-  version: 0,
+  version: 0 as SessionHeader['version'],
   id: SessionId('idle'),
   createdAt: 0,
   isSeeded: false,

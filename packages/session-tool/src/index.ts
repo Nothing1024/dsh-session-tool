@@ -20,12 +20,13 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 /**
  * Identity of one service caller. Agent callers carry the exact session id of
  * the calling agent (`Agent.id`) and the delegation depth recorded in that
- * session's header; the CLI calls as `cli` (human identity) and is exempt from
- * the owner fence.
+ * session's header; CLI and authenticated Web operators are human identities
+ * exempt from the owner fence. The Web identity is assigned only by the host.
  */
 export type SessionToolCaller =
   | { readonly kind: 'agent'; readonly sessionId: SessionId; readonly delegationDepth: number }
   | { readonly kind: 'cli' }
+  | { readonly kind: 'web' }
 
 /** Options for {@link SessionToolService.create}. */
 export interface SessionToolCreateOptions {
@@ -87,6 +88,7 @@ export interface SessionToolReadOptions {
   readonly sinceSeq?: number
   /** Row cap, clamped to the provider's configured maximum. */
   readonly maxBlocks?: number
+  readonly includeDelegationStatus?: boolean
 }
 
 /** Result of {@link SessionToolService.read}. */
@@ -95,6 +97,7 @@ export interface SessionToolReadResult {
   readonly sessionId: SessionId
   /** Message rows in log order. */
   readonly messages: readonly SessionToolMessageRow[]
+  readonly delegationStatus?: NonNullable<SessionToolListRow['delegationStatus']>
 }
 
 /** Result of {@link SessionToolService.write}. */

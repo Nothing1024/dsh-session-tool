@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionToolError, SessionWebUnreachableError } from 'session-tool'
 import { SessionHttpClient } from '../src/session-client.ts'
 import { SESSION_WIRE_CODES } from '../src/session-client.ts'
-import { HTTP_WIRE_CODES } from '../src/http-rpc.ts'
+import { flattenRc7Payload, GatewayHttpRpc, HTTP_WIRE_CODES, toDottedEndpoint } from '../src/http-rpc.ts'
 
 const BASE = 'http://127.0.0.1:3180'
 const COOKIE_PAIR = 'dsh-auth-abc=v1.payload.sig'
@@ -138,6 +138,74 @@ describe('HTTP auth + slash-code mapping', () => {
     const url = new URL(seen[0]?.url ?? '')
     expect(url.pathname).toBe('/')
     expect(seen[0]?.redirect).toBe('manual')
+  })
+
+  it('toDottedEndpoint rewrites slash RPC names for rc.7 routes', () => {
+    expect(toDottedEndpoint('session/create')).toBe('session.create')
+    expect(toDottedEndpoint('workspace/create')).toBe('workspace.create')
+    expect(toDottedEndpoint('subagents/prompt')).toBe('subagents.prompt')
+    expect(toDottedEndpoint('session.create')).toBe('session.create')
+  })
+
+  it('flattenRc7Payload unwraps request/_request wrappers', () => {
+    expect(flattenRc7Payload({ request: { sessionId: 's1', title: 't' } })).toEqual({ sessionId: 's1', title: 't' })
+    expect(flattenRc7Payload({ _request: {} })).toEqual({})
+    expect(flattenRc7Payload({ path: '/tmp' })).toEqual({ path: '/tmp' })
+  })
+
+  it('retries slash 404 on the dotted route and caches the style', async () => {
+    const seen: { pathname: string; method: string; payload: unknown }[] = []
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input))
+      const body = JSON.parse(String(init?.body)) as { rpcId: string; method: string; payload: unknown }
+      seen.push({ pathname: url.pathname, method: body.method, payload: body.payload })
+      if (url.pathname === '/api/session/create' || url.pathname === '/api/session/list' || url.pathname === '/api/session/rename') {
+        return new Response('not found', { status: 404 })
+      }
+      if (url.pathname === '/api/session.create') {
+        expect(body.method).toBe('session.create')
+        expect(body.payload).toEqual({ cwd: '/tmp' })
+        return okResponse(body.rpcId, { sessionId: 's-1' })
+      }
+      if (url.pathname === '/api/session.rename') {
+        expect(body.method).toBe('session.rename')
+        expect(body.payload).toEqual({ sessionId: 's-1', title: 'gate' })
+        return okResponse(body.rpcId, { title: 'gate', seq: 1 })
+      }
+      if (url.pathname === '/api/session.list') {
+        expect(body.method).toBe('session.list')
+        expect(body.payload).toEqual({})
+        return okResponse(body.rpcId, { items: [] })
+      }
+      return new Response(`unexpected ${url.pathname}`, { status: 500 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const rpc = new GatewayHttpRpc({ webUrl: BASE })
+    const created = await rpc.call<{ sessionId: string }>('session/create', { request: { cwd: '/tmp' } })
+    expect(created).toEqual({ ok: true, value: { sessionId: 's-1' } })
+    const renamed = await rpc.call<{ title: string; seq: number }>('session/rename', { request: { sessionId: 's-1', title: 'gate' } })
+    expect(renamed).toEqual({ ok: true, value: { title: 'gate', seq: 1 } })
+    const listed = await rpc.call<{ items: unknown[] }>('session/list', { _request: {} })
+    expect(listed).toEqual({ ok: true, value: { items: [] } })
+    expect(seen.map(row => ({ pathname: row.pathname, method: row.method }))).toEqual([
+      { pathname: '/api/session/create', method: 'session/create' },
+      { pathname: '/api/session.create', method: 'session.create' },
+      { pathname: '/api/session.rename', method: 'session.rename' },
+      { pathname: '/api/session.list', method: 'session.list' },
+    ])
+    expect(seen[0]?.payload).toEqual({ args: { request: { cwd: '/tmp' } } })
+    expect(seen[1]?.payload).toEqual({ cwd: '/tmp' })
+    expect(seen[2]?.payload).toEqual({ sessionId: 's-1', title: 'gate' })
+    expect(seen[3]?.payload).toEqual({})
+  })
+
+  it('does not retry slash 401 on the dotted route', async () => {
+    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const rpc = new GatewayHttpRpc({ webUrl: BASE })
+    const failure = await rpc.call('session/create', { request: {} }).catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(SessionWebUnreachableError)
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 
   it('reads DSH_LAUNCH_TOKEN when constructor omits launchToken', async () => {
