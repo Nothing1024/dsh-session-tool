@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown'
 
 /** Pure Node library: no cordis, no platform peers. */
 export default defineConfig({
-  entry: { index: 'src/index.ts' },
+  entry: { index: 'src/index.ts', project: 'src/project.ts' },
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',

@@ -23,6 +23,7 @@ export interface InProcessWorkspaceController {
     readonly title: string
   }): Promise<{ readonly workspace: WorkspaceView }>
   delete(request: { readonly workspaceId: string }): Promise<{ readonly deleted: boolean }>
+  archiveSession(request: { readonly sessionId: string }): Promise<void>
 }
 
 /** One registry entity as projected by `workspaceRegistry.list()`. */
@@ -105,6 +106,35 @@ export class InProcessWorkspaceClient {
       return deleted
     })
   }
+
+  async archiveSession(sessionId: string): Promise<void> {
+    await invokeInProcess(async () => {
+      await this.workspaceController.archiveSession({ sessionId: sessionId as never })
+    })
+  }
+
+  async unarchiveSession(sessionId: string): Promise<void> {
+    const registry = this.workspaceRegistry as InProcessWorkspaceRegistry & {
+      state?: { archivedSessionIds: readonly string[]; [key: string]: unknown }
+      global?: { set(state: unknown): Promise<void> }
+      enqueueOperation?(fn: () => Promise<void>): Promise<void>
+    }
+    const apply = async () => {
+      const state = registry.state
+      const store = registry.global
+      if (state === undefined || store === undefined) {
+        throw new Error('workspaceRegistry cannot unarchive: internal state is not started')
+      }
+      const nextIds = state.archivedSessionIds.filter(id => id !== sessionId)
+      if (nextIds.length === state.archivedSessionIds.length) return
+      const next = { ...state, archivedSessionIds: nextIds }
+      await store.set(next)
+      registry.state = next
+    }
+    if (registry.enqueueOperation === undefined) await apply()
+    else await registry.enqueueOperation(apply)
+  }
+
 }
 
 function workspaceViewOf(workspace: InProcessWorkspaceEntity): WorkspaceView {

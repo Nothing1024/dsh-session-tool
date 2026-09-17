@@ -33,7 +33,7 @@ import {
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { get as getMarks, listAll, listByKind, type SessionMarksRow } from 'session-marks'
+import { get as getMarks, listAll, listByKind, listByMark, listByPrefix, type SessionMarksRow } from 'session-marks'
 import { SessionNotFoundError, SessionToolError } from 'session-tool'
 import type {
   SessionToolCaller,
@@ -42,6 +42,7 @@ import type {
   SessionToolCollectWait,
   SessionToolCreateResult,
   SessionToolListResult,
+  SessionToolMarkResult,
   SessionToolReadResult,
   SessionToolRenameResult,
   SessionToolWorkspaceAddResult,
@@ -331,6 +332,16 @@ function renderRenameText(value: SessionToolRenameResult): string {
   return parts.join('\n')
 }
 
+/** Tool-shaped mark result. */
+function markToolShape(value: SessionToolMarkResult): { session_id: string; tags: string[] } {
+  return { session_id: value.sessionId, tags: [...value.tags] }
+}
+
+/** Render a mark result as text. */
+function renderMarkText(value: SessionToolMarkResult): string {
+  return value.tags.length === 0 ? '(no marks)' : `tags: ${value.tags.join(',')}`
+}
+
 /** Render a workspace add result as text. */
 function renderWorkspaceAddText(value: SessionToolWorkspaceAddResult): string {
   return `workspace ${value.workspaceId} (${value.path})${value.created ? '' : ' (reused)'}`
@@ -574,7 +585,7 @@ export function buildProgram(): Command {
     .option('--tag <tag>', 'rows must carry this tag (repeatable)', collect, [])
     .option('--title <text>', 'case-sensitive substring filter on the durable title')
     .option('--status <live|idle>', 'only live or only idle sessions')
-    .option('--include-hidden', 'include hidden-prefix titles and kind:hidden rows')
+    .option('--include-hidden', 'include hidden-prefix titles and hidden / kind:hidden rows')
     .option('--cursor <cursor>', 'opaque pagination cursor from a previous result')
     .option('--limit <n>', 'row cap (clamped to the configured maximum)', parseNonNegativeInt)
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
@@ -599,9 +610,9 @@ export function buildProgram(): Command {
 
   bootOptions(session
     .command('rename <session_id>')
-    .description('Rename a session and/or replace its tag set.')
+    .description('Rename a session and/or merge incoming marks (free tags replace; structured marks stay).')
     .option('--title <title>', 'explicit title; pins the title and stops automatic generation')
-    .option('--tag <tag>', 'replacement tag (repeatable; last-wins replace)', collect, [])
+    .option('--tag <tag>', 'incoming mark (repeatable; free tags replace, structured marks merge)', collect, [])
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
     .action(verb(async (sessionId, opts) => {
       const ctx = await bootProfile(opts.profile, opts.patch)
@@ -611,6 +622,25 @@ export function buildProgram(): Command {
           ...opts.tag.length > 0 ? { tags: opts.tag } : {},
         })
         printResult(opts.format, () => renderRenameText(result), () => renameToolShape(result),)
+      } finally {
+        await disposeTree()
+      }
+    })))
+
+  bootOptions(session
+    .command('mark <session_id>')
+    .description('Add or remove plugin marks without wiping structured tokens.')
+    .option('--add <tag>', 'mark to add (repeatable)', collect, [])
+    .option('--remove <tag>', 'mark to remove (repeatable)', collect, [])
+    .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
+    .action(verb(async (sessionId, opts) => {
+      const ctx = await bootProfile(opts.profile, opts.patch)
+      try {
+        const result = await ctx.sessionTool.mark(CLI_CALLER, SessionId(sessionId), {
+          ...opts.add.length > 0 ? { add: opts.add } : {},
+          ...opts.remove.length > 0 ? { remove: opts.remove } : {},
+        })
+        printResult(opts.format, () => renderMarkText(result), () => markToolShape(result),)
       } finally {
         await disposeTree()
       }
@@ -660,13 +690,19 @@ export function buildProgram(): Command {
 
   marks
     .command('list')
-    .description('List mark-table rows (all rows, or those carrying --kind).')
-    .option('--kind <kind>', 'exact mark token, e.g. kind:vibee')
+    .description('List mark-table rows (all rows, or those matching --mark / --kind / --prefix).')
+    .option('--kind <kind>', 'exact mark token, e.g. kind:vibee (alias of --mark)')
+    .option('--mark <mark>', 'exact mark token, e.g. app:dsh-bot or child')
+    .option('--prefix <prefix>', 'rows with a token starting with this prefix, e.g. app:')
     .option('--format <text|json>', 'output format (default text)', parseFormat, 'text')
     .action(verb(async (opts) => {
-      const rows = opts.kind === undefined
-        ? await listAll()
-        : await listByKind(opts.kind)
+      const rows = opts.prefix !== undefined
+        ? await listByPrefix(opts.prefix)
+        : opts.mark !== undefined
+          ? await listByMark(opts.mark)
+          : opts.kind === undefined
+            ? await listAll()
+            : await listByKind(opts.kind)
       printResult(
         opts.format,
         () => renderMarksListText(rows),

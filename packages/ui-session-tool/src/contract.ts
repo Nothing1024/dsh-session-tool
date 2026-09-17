@@ -1,5 +1,5 @@
 import type {
-  SessionToolListFilter, SessionToolListResult, SessionToolReadResult, SessionVisibility,
+  SessionToolListFilter, SessionToolListResult, SessionToolMarksView, SessionToolReadResult, SessionVisibility,
 } from 'session-tool'
 
 export interface SidebarApi {
@@ -10,6 +10,10 @@ export interface SidebarApi {
   read: {
     input: { sessionId: string; sinceSeq?: number }
     output: SessionToolReadResult & { visibility: SessionVisibility }
+  }
+  marks: {
+    input: { sessionId: string }
+    output: SessionToolMarksView
   }
   write: { input: { sessionId: string; content: string }; output: unknown }
   cancel: { input: { sessionId: string }; output: unknown }
@@ -22,5 +26,5 @@ export type SidebarCall = <K extends keyof SidebarApi>(
   method: K, input: SidebarApi[K]['input'], signal?: AbortSignal,
 ) => Promise<SidebarApi[K]['output']>
 
-export const endpoints = ['list', 'read', 'write', 'cancel', 'rename', 'hide', 'unhide'] as const
+export const endpoints = ['list', 'read', 'marks', 'write', 'cancel', 'rename', 'hide', 'unhide'] as const
 export const prefix = 'session-tool/'

@@ -235,6 +235,25 @@ describe('WorkspaceHttpClient', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it('archiveSession posts the session id', async () => {
+    const fetchMock = stubFetch((url, body) => {
+      expect(url.pathname).toBe('/api/workspace/archiveSession')
+      expect(body.payload).toEqual({ args: { request: { sessionId: 'session-1' } } })
+      return okResponse(body.rpcId, {})
+    })
+    const client = new WorkspaceHttpClient(BASE)
+    await client.archiveSession('session-1')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('unarchiveSession fails because the gateway has no such method', async () => {
+    const client = new WorkspaceHttpClient(BASE)
+    const failure = await client.unarchiveSession('session-1').catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(SessionToolError)
+    expect((failure as SessionToolError).message).toContain('workspace/unarchiveSession')
+  })
+
+
   it('deleteWorkspace surfaces a workspace-not-found business error', async () => {
     stubFetch((_url, body) => errorResponse(body.rpcId, 'workspace/not-found', 'no such workspace', { workspaceId: 'ws-void' }))
     const client = new WorkspaceHttpClient(BASE)
@@ -263,6 +282,7 @@ describe('InProcessWorkspaceClient (mock controller/registry)', () => {
       create: vi.fn(async ({ path }) => ({ workspace: { ...WS, path }, created: true })),
       rename: vi.fn(async ({ title }) => ({ workspace: { ...WS, title } })),
       delete: vi.fn(async () => ({ deleted: true })),
+      archiveSession: vi.fn(async () => undefined),
       ...overrides,
     }
   }
@@ -288,7 +308,7 @@ describe('InProcessWorkspaceClient (mock controller/registry)', () => {
     expect(IN_PROCESS_WIRE_CODES['workspace/invalid-path']).toBe('workspace-invalid-path')
   })
 
-  it('addWorkspace / rename / delete go through the controller and do not fetch', async () => {
+  it('addWorkspace / rename / delete / archive go through the controller and do not fetch', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     const workspaceController = controller()
@@ -304,7 +324,27 @@ describe('InProcessWorkspaceClient (mock controller/registry)', () => {
     expect(workspaceController.rename).toHaveBeenCalledWith({ workspaceId: 'ws-1', title: 'renamed' })
     await expect(client.deleteWorkspace('ws-1')).resolves.toBe(true)
     expect(workspaceController.delete).toHaveBeenCalledWith({ workspaceId: 'ws-1' })
+    await client.archiveSession('session-1')
+    expect(workspaceController.archiveSession).toHaveBeenCalledWith({ sessionId: 'session-1' })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('unarchiveSession drops the id from registry state', async () => {
+    const state = { archivedSessionIds: ['session-1', 'session-2'] as string[] }
+    const store = {
+      set: vi.fn(async (next: { archivedSessionIds: readonly string[] }) => {
+        state.archivedSessionIds = [...next.archivedSessionIds]
+      }),
+    }
+    const registryState = { ...registry(), state, global: store }
+    const client = new InProcessWorkspaceClient({
+      workspaceController: controller(),
+      workspaceRegistry: registryState,
+    })
+    await client.unarchiveSession('session-1')
+    expect(store.set).toHaveBeenCalledWith({ archivedSessionIds: ['session-2'] })
+    await client.unarchiveSession('session-1')
+    expect(store.set).toHaveBeenCalledTimes(1)
   })
 
   it('listWorkspaces reads registry.list plus archivedSessionIds and does not fetch', async () => {

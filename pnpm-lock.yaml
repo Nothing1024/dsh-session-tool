@@ -383,6 +383,9 @@ importers:
 
   packages/ui-session-tool:
     dependencies:
+      session-marks:
+        specifier: workspace:*
+        version: link:../session-marks
       session-tool:
         specifier: workspace:*
         version: link:../session-tool
@@ -396,6 +399,9 @@ importers:
       '@deepseek-ai/dsh-client-connection':
         specifier: 0.1.5-rc.1
         version: 0.1.5-rc.1(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-rc.1(@deepseek-ai/cordis@4.0.2))
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: 0.1.5-rc.1
+        version: 0.1.5-rc.1(@deepseek-ai/cordis@4.0.2)
       '@deepseek-ai/dsh-client-ui-layout':
         specifier: 0.1.5-rc.1
         version: 0.1.5-rc.1(@deepseek-ai/cordis@4.0.2)

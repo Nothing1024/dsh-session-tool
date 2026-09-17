@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SidebarPanelIconOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -9,6 +10,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { SidebarApi, SidebarCall } from '../contract.ts'
 import { prefix } from '../contract.ts'
 import { SessionPanel } from './panel.tsx'
+import { SessionMarksBadge } from './header-badge.tsx'
 
 export const inject = ['slots', 'connection', 'sessions', 'layout']
 export const panelId = 'session-tool'
@@ -49,4 +51,10 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist', id: panelId, label: '会话协作', order: 50,
   }, PanelIcon))
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions',
+    id: 'session-marks-badge',
+    order: 5,
+    inject: () => ({ call }),
+  }, SessionMarksBadge))
 }

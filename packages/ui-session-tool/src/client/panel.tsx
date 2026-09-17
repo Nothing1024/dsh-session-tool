@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { projectMarks } from '../../../session-marks/src/project.ts'
 import type { SessionToolListRow, SessionToolMessageRow } from 'session-tool'
 import type { SidebarApi, SidebarCall } from '../contract.ts'
-import { styles } from './styles.ts'
+import { MarksChips } from './marks-chips.tsx'
+import { badgeStyles, styles } from './styles.ts'
 
 export interface PanelProps {
   call: SidebarCall
@@ -44,7 +46,7 @@ export function SessionPanel({ call, openSession, onReset }: PanelProps) {
   }, [call, query, revision])
 
   return <section className="st-panel" aria-label="会话协作">
-    <style>{styles}</style>
+    <style>{styles}{badgeStyles}</style>
     <header><div><h1>会话协作</h1><p>浏览持久会话，查看插件标记，继续处理任务。</p></div><button onClick={refresh} disabled={loading}>刷新</button></header>
     <div className="st-filters">
       <input aria-label="搜索会话标题" placeholder="搜索会话标题" value={search} onChange={event => setSearch(event.target.value)} />
@@ -64,7 +66,7 @@ export function SessionPanel({ call, openSession, onReset }: PanelProps) {
         {rows.map(row => <button className="st-row" key={row.sessionId} aria-pressed={selected?.sessionId === row.sessionId} onClick={() => setSelected(row)}>
           <strong>{row.title || '未命名会话'}</strong>
           <span>{row.delegationStatus ? statusLabels[row.delegationStatus] : '执行状态未知'} · {row.status === 'live' ? '已驻留' : '未驻留'}{row.archived ? ' · 已归档' : ''}</span>
-          <span className="st-tags">{row.tags.map(tag => <small key={tag}>{tag}</small>)}</span>
+          <span className="st-tags"><MarksChips projection={projectMarks({ ...row.title === undefined ? {} : { title: row.title }, tags: row.tags })} /></span>
           <code>{row.sessionId}</code>
         </button>)}
         {nextCursor && <button disabled={loading} onClick={() => setQuery(q => ({ ...q, cursor: nextCursor }))}>加载更多会话</button>}
@@ -114,11 +116,11 @@ function SessionDetail({ row, call, openSession, changed, listRevision }: {
       <button disabled={busy || loading} onClick={changed}>刷新消息</button>
       <button disabled={busy || (detail ? detail.delegationStatus : row.delegationStatus) !== 'running'} onClick={() => void act(() => call('cancel', { sessionId: row.sessionId }), '已请求停止当前轮次。', true)}>停止当前轮次</button>
       <button disabled={busy || !detail} onClick={() => void act(async () => {
-        const method = detail?.visibility.hasHiddenMark ? 'unhide' : 'hide'
+        const method = detail?.visibility.isHidden ? 'unhide' : 'hide'
         await call(method, { sessionId: row.sessionId }); setRevision(n => n + 1)
-      }, '已更新插件隐藏标记。', true)}>{detail?.visibility.hasHiddenMark ? '取消插件隐藏' : '插件内隐藏'}</button>
+      }, detail?.visibility.isHidden ? '已取消隐藏，会话会回到官方侧栏。' : '已隐藏会话（官方侧栏不再显示）。', true)}>{detail?.visibility.isHidden ? '取消隐藏' : '隐藏会话'}</button>
     </div>
-    <p className="st-note">插件隐藏仅修改标记。标题隐藏规则与官方归档仍独立生效。</p>
+    <p className="st-note">隐藏会打 hidden 标记，并从官方侧栏归档。取消隐藏会把会话放回侧栏。</p>
     <form className="st-rename" onSubmit={event => { event.preventDefault(); void act(() => call('rename', { sessionId: row.sessionId, title: title.trim() }), '标题已保存。', true) }}>
       <input aria-label="会话标题" value={title} onChange={event => setTitle(event.target.value)} maxLength={4096} />
       <button disabled={busy || !title.trim()}>保存标题</button>

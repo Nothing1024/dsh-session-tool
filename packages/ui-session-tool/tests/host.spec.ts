@@ -28,6 +28,7 @@ describe('official Connection integration', () => {
       list: vi.fn().mockResolvedValue({ sessions: [] }),
       read: vi.fn().mockResolvedValue({ sessionId: 'session-1', messages: [] }),
       getVisibility: vi.fn().mockResolvedValue({ hasHiddenMark: false, archived: false, isHidden: false }),
+      readMarks: vi.fn().mockResolvedValue({ sessionId: 'session-1', tags: ['form:plugin'], hiddenPrefixes: ['~'] }),
       write: vi.fn().mockResolvedValue({ sessionId: 'session-1' }), cancel: vi.fn().mockResolvedValue(undefined),
       rename: vi.fn().mockResolvedValue({ sessionId: 'session-1' }),
       hide: vi.fn().mockResolvedValue(undefined), unhide: vi.fn().mockResolvedValue(undefined),
@@ -75,16 +76,24 @@ describe('official Connection integration', () => {
     }
     expect(service.read).not.toHaveBeenCalled()
   })
-
-  it('bounds message reads and keeps hide independent of official archive', async () => {
+  it('bounds message reads and hides by archiving the official session', async () => {
     const { service, rpc } = await setup()
     await rpc('session-tool/read', { sessionId: 'session-1', sinceSeq: 20 })
     expect(service.read).toHaveBeenCalledWith({ kind: 'web' }, 'session-1', { sinceSeq: 20, maxBlocks: 100, includeDelegationStatus: true })
     for (const method of ['hide', 'unhide'] as const) {
       expect(await (await rpc(`session-tool/${method}`, { sessionId: 'session-1' })).json()).toMatchObject({ result: { ok: true, value: null } })
-      expect(service[method]).toHaveBeenCalledWith({ kind: 'web' }, 'session-1', { syncToArchived: false })
+      expect(service[method]).toHaveBeenCalledWith({ kind: 'web' }, 'session-1')
     }
   })
+
+  it('forwards marks reads for the authenticated web caller', async () => {
+    const { service, rpc } = await setup()
+    expect(await (await rpc('session-tool/marks', { sessionId: 'session-1' })).json()).toMatchObject({
+      result: { ok: true, value: { sessionId: 'session-1', tags: ['form:plugin'], hiddenPrefixes: ['~'] } },
+    })
+    expect(service.readMarks).toHaveBeenCalledWith({ kind: 'web' }, 'session-1')
+  })
+
 
   it('reports rejected writes and unregisters routes on unload', async () => {
     const { service, rpc, fiber } = await setup()

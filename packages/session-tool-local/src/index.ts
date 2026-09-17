@@ -17,7 +17,21 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import { inspectPersistedSession, listPersistedHeaders } from './persistence-read.ts'
 import type { PersistedInspection } from './persistence-read.ts'
-import { get as getMarks, isTitleHidden, normalizeMarks, patch as patchMarks, put as putMarks, TagInvalidError } from 'session-marks'
+import {
+  expandRemoveAliases,
+  expandWriteAliases,
+  get as getMarks,
+  hasChildMark,
+  hasHiddenMark,
+  isTitleHidden,
+  MARK_PREFIXES,
+  mergeRenameMarks,
+  normalizeMarks,
+  parentMark,
+  patch as patchMarks,
+  put as putMarks,
+  TagInvalidError,
+} from 'session-marks'
 import {
   SessionEmptyContentError,
   SessionNotFoundError,
@@ -35,6 +49,9 @@ import type {
   SessionToolMessageRow,
   SessionToolReadOptions,
   SessionToolReadResult,
+  SessionToolMarkOptions,
+  SessionToolMarkResult,
+  SessionToolMarksView,
   SessionToolRenameOptions,
   SessionToolRenameResult,
   SessionToolService,
@@ -113,7 +130,7 @@ export interface Config {
   readonly listMaxRows: number
   /**
    * Title prefixes that drop a session from default lists (dual-hide with
-   * the `kind:hidden` mark; default `~`).
+   * `hidden` / `kind:hidden`; default `~`).
    */
   readonly hiddenPrefixes: string[]
   /**
@@ -144,9 +161,9 @@ export interface Config {
    */
   readonly maxDelegationDepth?: number
   /**
-   * Whether delegated sessions appear in `session_list` results (default
-   * `true`). `false` drops rows whose mark set carries `kind:delegated`
-   * (bare token `delegated` is accepted once for compat).
+   * Whether child sessions appear in `session_list` results (default
+   * `true`). `false` drops rows whose mark set carries `child`
+   * (`kind:delegated` / bare `delegated` accepted as historical aliases).
    */
   readonly showDelegated: boolean
 }
@@ -292,16 +309,25 @@ export class SessionToolLocalService extends Service implements SessionToolServi
         ? caller.sessionId
         : undefined
     // Normalize before any gateway call so invalid tags cannot mint a session
-    // or register a workspace. Agent callers (default parent = caller) and
-    // any explicit parent merge `kind:delegated`. A CLI create with no parent
-    // does not.
-    const delegated = options.parentSessionId !== undefined || caller.kind === 'agent'
+    // or register a workspace. An intended parent (explicit, or agent default
+    // parent = self) dual-writes `child` + `kind:delegated` + `parent:<id>`.
+    // A CLI create with no parent does not.
     const incoming = options.tags
+    // Validate caller-supplied tokens before merging system aliases so an
+    // empty token still fails even when child marks would make the set valid.
+    if (incoming !== undefined && (incoming.length > 0 || parentSessionId === undefined)) {
+      requireMarks(incoming)
+    }
     let normalizedMarks: string[] | undefined
-    if (incoming !== undefined || delegated) {
-      const merged = [...(incoming ?? [])]
-      if (delegated) merged.push('kind:delegated')
-      normalizedMarks = requireMarks(merged)
+    if (parentSessionId !== undefined) {
+      const withoutParent = [...(incoming ?? [])].filter(tag => !tag.startsWith(MARK_PREFIXES.parent))
+      normalizedMarks = requireMarks(expandWriteAliases([
+        ...withoutParent,
+        'child',
+        parentMark(parentSessionId),
+      ]))
+    } else if (incoming !== undefined) {
+      normalizedMarks = requireMarks(expandWriteAliases(incoming))
     }
     // Register the workspace through the web gateway BEFORE creating the
     // session: the remote operation is the most likely failure, and a
@@ -454,7 +480,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (filter.includeHidden !== true) {
       visible = visible.filter(row =>
         !isTitleHidden(row.title, this.config.hiddenPrefixes)
-        && !row.tags.includes('kind:hidden')
+        && !hasHiddenMark(row.tags)
         && row.archived !== true,
       )
     }
@@ -517,7 +543,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       title = accepted.title
     }
     const tags = options.tags !== undefined
-      ? await putMarks(sessionId, options.tags)
+      ? await putMarks(sessionId, requireMarks(mergeRenameMarks(await getMarks(sessionId) ?? [], options.tags)))
       : await getMarks(sessionId)
     return {
       sessionId,
@@ -526,71 +552,79 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     }
   }
 
+  async mark(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolMarkOptions): Promise<SessionToolMarkResult> {
+    const add = options.add ?? []
+    const remove = options.remove ?? []
+    if (add.every(tag => tag.trim() === '') && remove.every(tag => tag.trim() === '')) {
+      throw new SessionEmptyContentError('mark requires at least one of add or remove')
+    }
+    const index = await this.headerIndex()
+    await this.assertAccess(caller, sessionId, index)
+    const expandedAdd = expandWriteAliases(add)
+    const expandedRemove = expandRemoveAliases(remove)
+    if (expandedAdd.length > 0) requireMarks(expandedAdd)
+    const tags = await patchMarks(sessionId, {
+      ...expandedAdd.length > 0 ? { add: expandedAdd } : {},
+      ...expandedRemove.length > 0 ? { remove: expandedRemove } : {},
+    })
+    return { sessionId, tags }
+  }
+
+  async readMarks(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionToolMarksView> {
+    const index = await this.headerIndex()
+    if (!index.has(sessionId)) {
+      throw new SessionNotFoundError(`session "${sessionId}" does not exist`)
+    }
+    await this.assertAccess(caller, sessionId, index)
+    return {
+      sessionId,
+      tags: await this.tagsOf(sessionId),
+      hiddenPrefixes: this.config.hiddenPrefixes,
+    }
+  }
+
   async getVisibility(_caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility> {
-    // Check kind:hidden mark
     const marks = await getMarks(sessionId)
-    const hasHiddenMark = marks?.includes('kind:hidden') ?? false
+    const hidden = hasHiddenMark(marks)
 
     // Check workspace archive status
     const { archivedSessionIds } = await this.workspaceClient.listWorkspaces()
     const archived = archivedSessionIds.includes(sessionId)
 
     return {
-      hasHiddenMark,
+      hasHiddenMark: hidden,
       archived,
-      isHidden: hasHiddenMark || archived,
+      isHidden: hidden || archived,
     }
   }
 
   async hide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility> {
     const index = await this.headerIndex()
     await this.assertContinuationAllowed(caller, sessionId, index)
-
-    // Set kind:hidden mark (idempotent: if already set, normalizeMarks dedupes)
-    await patchMarks(sessionId, { add: ['kind:hidden'] })
-
-    // Best-effort workspace archival
-    const syncToArchived = options?.syncToArchived !== false
-    if (syncToArchived) {
+    await patchMarks(sessionId, { add: expandWriteAliases(['hidden']) })
+    if (options?.syncToArchived !== false) {
       try {
-        const registry = this.ctx.get('workspaceRegistry')
-        if (registry !== undefined && typeof registry.archiveSession === 'function') {
-          await registry.archiveSession(sessionId)
-        }
+        await this.workspaceClient.archiveSession(sessionId)
       } catch (error) {
-        // Log but don't fail; mark is already set
         const msg = error instanceof Error ? error.message : String(error)
         console.warn(`[session-tool] archiveSession failed for ${sessionId}: ${msg}`)
       }
     }
-
     return this.getVisibility(caller, sessionId)
   }
 
   async unhide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility> {
     const index = await this.headerIndex()
     await this.assertContinuationAllowed(caller, sessionId, index)
-
-    // Remove kind:hidden mark (idempotent: if not set, diff handles it)
-    await patchMarks(sessionId, { remove: ['kind:hidden'] })
-
-    // Best-effort workspace unarchival
-    const syncToArchived = options?.syncToArchived !== false
-    if (syncToArchived) {
+    await patchMarks(sessionId, { remove: expandRemoveAliases(['hidden']) })
+    if (options?.syncToArchived !== false) {
       try {
-        const registry = this.ctx.get('workspaceRegistry')
-        if (registry !== undefined && typeof registry.unarchiveSession === 'function') {
-          await registry.unarchiveSession(sessionId)
-        } else if (registry !== undefined) {
-          console.warn(`[session-tool] workspaceRegistry.unarchiveSession is not available; workspace archive state unchanged`)
-        }
+        await this.workspaceClient.unarchiveSession(sessionId)
       } catch (error) {
-        // Log but don't fail; mark removal completed
         const msg = error instanceof Error ? error.message : String(error)
         console.warn(`[session-tool] unarchiveSession failed for ${sessionId}: ${msg}`)
       }
     }
-
     return this.getVisibility(caller, sessionId)
   }
 
@@ -912,6 +946,18 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     return (await getMarks(id)) ?? []
   }
 
+  private async titleOf(sessionId: SessionId): Promise<string | undefined> {
+    const rows = await this.sessionClient.list()
+    return rows.find(row => row.sessionId === sessionId)?.title
+  }
+
+  private stripHiddenPrefix(title: string | undefined): string | undefined {
+    if (title === undefined) return undefined
+    const prefix = this.config.hiddenPrefixes.find(item => item !== '' && title.startsWith(item))
+    return prefix === undefined ? title : title.slice(prefix.length)
+  }
+
+
   /**
    * Read the delegation statuses of the collect member set (the projection
    * fold over live events or persisted log tails).
@@ -977,11 +1023,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   }
 
   /**
-   * Whether a list row is a delegated session: the mark table carries
-   * `kind:delegated` (bare token `delegated` accepted once for compat).
+   * Whether a list row is a child session: `child`, or historical
+   * `kind:delegated` / bare `delegated`.
    */
   private isDelegated(row: SessionToolListRow): boolean {
-    return row.tags.includes('kind:delegated') || row.tags.includes('delegated')
+    return hasChildMark(row.tags)
   }
 
   /** Merge live and persisted headers into one id → header index (live wins). */

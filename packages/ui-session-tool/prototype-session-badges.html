@@ -1,0 +1,1409 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — DSH session content 上的 badge</title>
+<!--
+  PROTOTYPE (throwaway). Three variants via ?variant=A|B|C.
+
+  Question: 打开一条具体会话后，官方 content 怎么同时说出
+  「类别」（插件 / Agent / CLI）和「具体名字」（dsh-bot、小北）？
+  已知标签出 SVG，没有映射的特定标签回退成文字。
+
+  徽章是 marks 投影，不是 raw tags。每条投影至少回答：
+  类别 / 产品 / 名字，再附关系、可见、自由标签。
+
+  A 标题行：有映射 → 图标 + 名字；无映射 → 文字
+  B header 下字段表：分栏，值前可带图标
+  C corner：有映射用图标替圆点；无映射仍用文字
+
+  右上「参数」先看人话五问（类别 / 产品 / 名字 / 关系 / 可见），
+  未投影 token 单独一节；落盘 / 写入收在作者区。
+  chips 与模态共用轴 id：form / app / name / child / hidden / free。
+
+  Next to: DSH conversation.session.header / ui-session-tool 只是投影来源
+-->
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#fff, #151517);
+  --layer: light-dark(#f6f7f8, #1c1c1f);
+  --ink: light-dark(#0f1115, #f9fafb);
+  --muted: light-dark(#61666b, #cfd3d6);
+  --dim: light-dark(#81858c, #adb2b8);
+  --line: light-dark(rgb(0 0 0 / 10%), rgb(255 255 255 / 12%));
+  --hover: light-dark(rgb(15 17 21 / 5%), rgb(255 255 255 / 6%));
+  --select: light-dark(#eef3ff, #243049);
+  --brand: light-dark(#0f1115, #f9fafb);
+  --info: light-dark(#245ac2, #9bbaff);
+  --warn: light-dark(#b54708, #ffb26b);
+  --app-bot: light-dark(#0f766e, #5eead4);
+  --app-vibee: light-dark(#6d28d9, #c4b5fd);
+  --app-none: var(--dim);
+  --composer: light-dark(#f3f4f6, #222226);
+  font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "PingFang SC", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .4; }
+[hidden] { display: none !important; }
+
+.page { min-height: 100%; padding: 16px 16px 96px; }
+.note { max-width: 1280px; margin: 0 auto 10px; color: var(--muted); font-size: 12px; }
+.note strong { color: var(--ink); font-weight: 600; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.dsh {
+  max-width: 1280px; margin: 0 auto; height: min(780px, calc(100vh - 140px));
+  display: grid; grid-template-columns: 280px minmax(0, 1fr);
+  border: .5px solid var(--line); border-radius: 16px; overflow: clip;
+  background: var(--bg); box-shadow: 0 16px 40px rgb(15 17 21 / 8%);
+}
+
+.side {
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--layer); border-right: .5px solid var(--line);
+}
+.slist { flex: 1; min-height: 0; overflow: auto; padding: 0 8px 12px; }
+.brand { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; }
+.brand b { letter-spacing: .04em; }
+.icon {
+  width: 28px; height: 28px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--muted);
+}
+.icon:hover { background: var(--hover); }
+.new {
+  margin: 0 12px 12px; height: 32px; border: .5px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink);
+}
+.ws { padding: 0 10px; color: var(--dim); font-size: 12px; }
+.ws strong { display: block; color: var(--ink); font-size: 13px; font-weight: 600; margin: 4px 0 8px; }
+.srow {
+  display: grid; gap: 2px; width: 100%; text-align: left;
+  padding: 8px 10px; border: 0; border-radius: 10px; background: transparent;
+}
+.srow[aria-pressed=true] { background: var(--select); }
+.srow:hover { background: var(--hover); }
+.srow .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow .m { color: var(--dim); font-size: 11px; }
+
+.main { display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+
+.header {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 52px; padding: 8px 16px 8px 20px;
+  border-bottom: .5px solid var(--line);
+}
+.header-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.title { margin: 0; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { display: flex; gap: 4px; }
+.tab {
+  height: 28px; padding: 0 10px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--muted);
+}
+.tab[aria-pressed=true] { color: var(--ink); background: var(--hover); }
+.utils { display: flex; gap: 4px; margin-left: auto; }
+
+.ico {
+  width: 14px; height: 14px; flex: 0 0 auto; display: block;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 8px; border-radius: 999px;
+  border: .5px solid transparent; font-size: 11px; line-height: 18px; font-weight: 500;
+  white-space: nowrap; background: transparent; color: var(--muted);
+}
+.tag.has-ico { padding-left: 6px; }
+.tag .k { font-size: 10px; font-weight: 500; opacity: .72; }
+.tag .v { font-weight: 650; }
+.tag[data-axis=form][data-app=dsh-bot],
+.tag[data-axis=app][data-app=dsh-bot] { color: var(--app-bot); background: color-mix(in srgb, var(--app-bot) 12%, transparent); }
+.tag[data-axis=form][data-app=vibee],
+.tag[data-axis=app][data-app=vibee] { color: var(--app-vibee); background: color-mix(in srgb, var(--app-vibee) 12%, transparent); }
+.tag[data-axis=form][data-app=""],
+.tag[data-axis=app][data-app=""] { color: var(--dim); border-color: var(--line); }
+.tag[data-axis=name] { color: var(--ink); background: var(--hover); }
+.tag[data-axis=child] { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.tag[data-axis=hidden] { color: var(--dim); border-style: dashed; border-color: color-mix(in srgb, var(--dim) 45%, transparent); }
+.tag[data-axis=free] { color: var(--info); background: color-mix(in srgb, var(--info) 10%, transparent); }
+.tag.is-on { outline: 2px solid var(--info); outline-offset: 1px; }
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(72px, 1fr));
+  gap: 8px 14px;
+  padding: 10px 20px 12px;
+  border-bottom: .5px solid var(--line);
+  background: color-mix(in srgb, var(--info) 5%, var(--bg));
+}
+.strip[data-app=dsh-bot] { background: color-mix(in srgb, var(--app-bot) 7%, var(--bg)); }
+.strip[data-app=vibee] { background: color-mix(in srgb, var(--app-vibee) 7%, var(--bg)); }
+.strip[data-app=""] { background: var(--layer); }
+.field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.field .k { font-size: 10px; letter-spacing: .06em; color: var(--dim); }
+.field .v {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 650; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.field .h { font-size: 10px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field.is-empty .v { color: var(--dim); font-weight: 500; }
+.strip-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+
+.corner {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px; border: .5px solid var(--line); border-radius: 14px;
+  background: var(--layer); color: var(--ink); font-size: 12px;
+}
+.corner .dot { width: 7px; height: 7px; border-radius: 50%; align-self: center; }
+.corner[data-app=dsh-bot] { color: var(--app-bot); }
+.corner[data-app=vibee] { color: var(--app-vibee); }
+.corner[data-app=""] { color: var(--dim); }
+.corner[data-app=dsh-bot] .dot { background: var(--app-bot); }
+.corner[data-app=vibee] .dot { background: var(--app-vibee); }
+.corner[data-app=""] .dot { background: var(--dim); }
+.corner .k { color: var(--dim); font-size: 11px; }
+.corner .v { font-weight: 650; color: var(--ink); }
+.params-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 10px; border: .5px solid var(--line); border-radius: 14px;
+  background: var(--layer); color: var(--ink); font-size: 12px; font-weight: 650;
+}
+.params-btn:hover { background: var(--hover); }
+.params-btn.is-on { outline: 2px solid var(--info); outline-offset: 1px; }
+
+.thread { flex: 1; min-height: 0; overflow: auto; padding: 18px 28px 8px; }
+.sys {
+  display: flex; flex-wrap: wrap; gap: 10px 18px;
+  margin: 0 0 16px; padding: 10px 12px; border-radius: 10px;
+  background: var(--layer);
+}
+.sys .field .k { font-size: 10px; color: var(--dim); }
+.sys .field .v { font-size: 13px; font-weight: 650; color: var(--ink); }
+.sys .field .h { font-size: 10px; color: var(--muted); }
+.msg { max-width: 720px; margin: 0 0 18px; }
+.msg.user { margin-left: auto; }
+.who-line { color: var(--dim); font-size: 12px; margin-bottom: 6px; }
+.bubble {
+  padding: 10px 14px; border-radius: 14px;
+  background: var(--layer); color: var(--ink);
+}
+.msg.user .bubble { background: var(--select); }
+.bubble p { margin: 0; }
+
+.composer { padding: 8px 20px 16px; }
+.box {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; border: .5px solid var(--line); border-radius: 18px;
+  background: var(--composer);
+}
+.box textarea {
+  width: 100%; min-height: 52px; resize: none; border: 0; background: transparent; outline: none;
+}
+.box-row { display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: 12px; }
+.send {
+  height: 28px; padding: 0 12px; border: 0; border-radius: 14px;
+  background: var(--brand); color: var(--bg);
+}
+
+.board {
+  margin-top: 10px; padding-top: 10px; border-top: .5px dashed var(--line);
+  display: grid; grid-template-columns: 64px 1fr; gap: 4px 10px;
+  color: var(--dim); font-size: 11px;
+}
+.board dt { color: var(--dim); }
+.board dd { margin: 0; color: var(--muted); }
+.raw { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.raw s { color: var(--dim); }
+.raw .tag[data-kind=alias] { text-decoration: line-through; opacity: .7; }
+.raw .tag[data-kind=unprojected] {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+.raw .tag[data-kind=axis] { color: var(--ink); }
+.raw .tag[data-kind=free] { color: var(--info); }
+
+.state {
+  position: fixed; left: 16px; right: 16px; bottom: 58px;
+  max-width: 980px; margin: 0 auto; max-height: 84px; overflow: auto;
+  padding: 8px 12px; border-radius: 8px;
+  background: color-mix(in srgb, #111 88%, transparent); color: #d7deea;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+}
+.switcher {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 999px;
+  background: #111; color: #fff; z-index: 20;
+}
+.switcher button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #2a2a2a; color: #fff; }
+.switcher .label { min-width: 260px; text-align: center; font-size: 12px; font-weight: 650; }
+
+.modal-root {
+  position: fixed; inset: 0; z-index: 40;
+  display: grid; place-items: center;
+  padding: 24px 16px 88px;
+}
+.modal-backdrop { position: absolute; inset: 0; background: color-mix(in srgb, #111 48%, transparent); }
+.modal {
+  position: relative; z-index: 1;
+  width: min(600px, 100%);
+  max-height: min(720px, calc(100vh - 120px));
+  overflow: auto;
+  padding: 18px 18px 16px;
+  border: .5px solid var(--line); border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 24px 64px rgb(15 17 21 / 22%);
+}
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.modal-head h2 { margin: 0; font-size: 16px; }
+.modal-head .sub { margin: 4px 0 0; color: var(--dim); font-size: 12px; }
+.modal-head code { font-size: 11px; }
+.modal-close {
+  width: 28px; height: 28px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--muted); font-size: 18px; line-height: 1;
+}
+.modal-close:hover { background: var(--hover); }
+.modal-sec { margin: 0 0 16px; }
+.modal-sec:last-child { margin-bottom: 0; }
+.modal-sec h3 {
+  margin: 0 0 8px; font-size: 11px; letter-spacing: .06em;
+  color: var(--dim); font-weight: 650;
+}
+.sec-note { margin: -2px 0 8px; color: var(--dim); font-size: 11px; }
+.modal-debug {
+  margin: 4px 0 0; padding-top: 10px;
+  border-top: .5px dashed var(--line);
+}
+.modal-debug > summary {
+  cursor: pointer; color: var(--dim); font-size: 11px;
+  letter-spacing: .06em; font-weight: 650; margin-bottom: 10px;
+}
+.modal-debug .modal-sec { margin-bottom: 14px; }
+.drow {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 2px 12px;
+  width: 100%; text-align: left;
+  padding: 8px 10px; border: 0; border-radius: 10px; background: transparent;
+}
+.drow:hover { background: var(--hover); }
+.drow.is-on { background: var(--select); }
+.drow.is-empty .val { color: var(--dim); font-weight: 500; }
+.drow .k { color: var(--dim); font-size: 11px; padding-top: 2px; }
+.drow .val { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; min-width: 0; }
+.drow .token { display: block; color: var(--muted); font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal .chips { margin-top: 4px; }
+.modal .raw { margin-top: 0; }
+.modal .raw .tag { height: auto; padding: 2px 7px; border-radius: 8px; background: var(--hover); color: var(--muted); font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.modal .raw s { text-decoration: line-through; opacity: .7; }
+.write {
+  margin: 0; padding: 10px 12px; border-radius: 10px; overflow: auto;
+  background: var(--layer); color: var(--ink);
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre;
+}
+
+@media (max-width: 820px) {
+  .dsh { grid-template-columns: 1fr; height: auto; }
+  .side { border-right: 0; border-bottom: .5px solid var(--line); }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="note">
+    <strong>PROTOTYPE</strong> — DSH 打开一条会话后的 content。
+    已知标签走 SVG（插件 / Agent / CLI / 脚本、dsh-bot、vibee、人设、运行、群、房间、对端、例行、子会话、隐藏）。
+    没有映射的回退成文字：自由标签、<code>form:notebook</code>、<code>kind:dsh-bot-chat</code>。
+    右上「参数」先看人话五问；未投影单独一节；落盘 / 写入在作者区。
+    左栏换样本；底部切变体。
+  </p>
+  <div id="root"></div>
+</div>
+<pre id="state" class="state" aria-live="polite"></pre>
+<div class="switcher" role="navigation" aria-label="原型变体">
+  <button type="button" id="prev" aria-label="上一变体">←</button>
+  <div class="label" id="switch-label"></div>
+  <button type="button" id="next" aria-label="下一变体">→</button>
+</div>
+<script>
+(() => {
+  const VARIANTS = [
+    { key: 'A', name: '标题行：有映射出图标，无映射出文字' },
+    { key: 'B', name: 'header 下：图标或文字分栏' },
+    { key: 'C', name: 'corner：图标优先，无映射用文字' },
+  ]
+  const HIDDEN = new Set(['hidden', 'kind:hidden'])
+  const CHILD = new Set(['child', 'kind:delegated', 'delegated'])
+  const KIND_APP = { 'kind:vibee': 'vibee', 'kind:dsh-bot': 'dsh-bot' }
+  const INSTANCE = ['bot:', 'vibee:', 'group-room:', 'group:', 'peer:', 'routine:']
+  const FORM_LABEL = { plugin: '插件', agent: 'Agent', cli: 'CLI', script: '脚本' }
+  const PRODUCT_LABEL = { 'dsh-bot': 'dsh-bot', vibee: 'vibee' }
+  const INSTANCE_KIND = {
+    bot: '人设',
+    vibee: '运行',
+    group: '群',
+    'group-room': '房间',
+    peer: '对端',
+    routine: '例行',
+  }
+  const INSTANCE_NAME = {
+    xiaobei: '小北',
+    'run-1842': 'run-1842',
+    'night-shift': '夜班群',
+    lobby: '大厅',
+    morning: '晨间',
+  }
+  const ICON_BY_FORM = { plugin: 'plugin', agent: 'agent', cli: 'cli', script: 'script' }
+  const ICON_BY_PRODUCT = { 'dsh-bot': 'dsh-bot', vibee: 'vibee' }
+  const ICON_BY_INSTANCE = {
+    bot: 'person',
+    vibee: 'run',
+    group: 'group',
+    'group-room': 'room',
+    peer: 'peer',
+    routine: 'routine',
+  }
+  const ICONS = {
+    plugin: {
+      paths: [
+        'M6 2.5v3.5M10 2.5v3.5',
+        'M4.5 6h7v3.2a3.5 3.5 0 0 1-7 0z',
+        'M8 9.2v4.3',
+      ],
+    },
+    agent: {
+      paths: [
+        'M8 2.2l1.15 3.2 3.35 1.1-3.35 1.1L8 10.8 6.85 7.6 3.5 6.5l3.35-1.1z',
+        'M12.6 10.2l.55 1.5 1.55.55-1.55.55-.55 1.5-.55-1.5-1.55-.55 1.55-.55z',
+      ],
+    },
+    cli: {
+      paths: [
+        'M2.5 3.5h11v9h-11z',
+        'M5 6.4l2 1.8-2 1.8',
+        'M8.2 10.4H11',
+      ],
+    },
+    script: {
+      paths: [
+        'M5 2.5h5.2L13 5.3v8.2H5z',
+        'M10.2 2.5v2.8H13',
+        'M6.6 8.4h4',
+        'M6.6 10.6h2.8',
+      ],
+    },
+    'dsh-bot': {
+      paths: [
+        'M8 2.2v1.8',
+        'M4.2 5h7.6v7.2H4.2z',
+        'M6.2 11h3.6',
+      ],
+      circles: [
+        { cx: 6.4, cy: 8.1, r: 0.7, fill: true },
+        { cx: 9.6, cy: 8.1, r: 0.7, fill: true },
+      ],
+    },
+    vibee: {
+      paths: [
+        'M8 2.3l4.6 2.65v5.3L8 13.6 3.4 10.95v-5.3z',
+        'M8 5.8v4.4',
+      ],
+    },
+    person: {
+      paths: [
+        'M8 3.3a2 2 0 1 1 0 4 2 2 0 1 1 0-4z',
+        'M3.6 13.2c.2-2.6 2-4 4.4-4s4.2 1.4 4.4 4',
+      ],
+    },
+    run: {
+      paths: ['M6 3.6l6.4 4.4L6 12.4z'],
+    },
+    group: {
+      paths: [
+        'M6.2 3.4a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 1 1 0-3.4z',
+        'M2.6 12.6c.15-2.1 1.6-3.2 3.6-3.2s3.45 1.1 3.6 3.2',
+        'M10.6 4.2a1.5 1.5 0 1 1 0 2.8',
+        'M11.2 9.4c1.5.2 2.5 1.2 2.6 3.2',
+      ],
+    },
+    room: {
+      paths: ['M3 13V7.2L8 3.4l5 3.8V13H9.6V9.4H6.4V13z'],
+    },
+    peer: {
+      paths: ['M6.4 8h3.2'],
+      circles: [
+        { cx: 4.2, cy: 8, r: 2 },
+        { cx: 11.8, cy: 8, r: 2 },
+      ],
+    },
+    routine: {
+      paths: [
+        'M8 3.2a4.8 4.8 0 1 1-4.2 2.5',
+        'M3.2 3.3v2.6h2.6',
+        'M8 6.2V8.4l1.8 1.2',
+      ],
+    },
+    child: {
+      paths: [
+        'M4.6 3.2v9.6',
+        'M4.6 8.2c3.2 0 3.4-2.4 5.6-2.4',
+      ],
+      circles: [
+        { cx: 4.6, cy: 3.4, r: 1.15, fill: true },
+        { cx: 4.6, cy: 12.6, r: 1.15, fill: true },
+        { cx: 11.4, cy: 5.8, r: 1.15, fill: true },
+      ],
+    },
+    hidden: {
+      paths: [
+        'M2.2 8c2.3-3.6 9.3-3.6 11.6 0-2.3 3.6-9.3 3.6-11.6 0z',
+        'M8 6.4a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 1 1 0-3.2z',
+        'M3.2 12.8 12.8 3.2',
+      ],
+    },
+    info: {
+      paths: [
+        'M8 7.4v4.1',
+        'M8 5.05v.15',
+      ],
+      circles: [
+        { cx: 8, cy: 8, r: 5.35 },
+      ],
+    },
+  }
+
+  const SESSIONS = [
+    {
+      sessionId: 'session-bot-1',
+      title: '~dsh-bot: 小北 · 群聊值班',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'bot:xiaobei', 'hidden', 'kind:hidden'],
+      time: '3 分钟前',
+      messages: [
+        { role: 'user', text: '把今晚值班纪要写进这条会话。' },
+        { role: 'assistant', text: '类别是插件，产品是 dsh-bot，名字是人设小北。hidden 标记和标题 ~ 是两道闸。' },
+      ],
+    },
+    {
+      sessionId: 'session-group',
+      title: '夜班群值班',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'group:night-shift'],
+      time: '8 分钟前',
+      messages: [
+        { role: 'user', text: '这条是群会话，不是人设。' },
+        { role: 'assistant', text: '类别仍是插件 dsh-bot，具体名字换成群：夜班群。' },
+      ],
+    },
+    {
+      sessionId: 'session-room',
+      title: '大厅房间',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'group-room:lobby'],
+      time: '12 分钟前',
+      messages: [
+        { role: 'user', text: 'group-room 不要匹配成 group。' },
+        { role: 'assistant', text: '实例键是房间大厅，图标走 room，不是群。' },
+      ],
+    },
+    {
+      sessionId: 'session-peer',
+      title: '对端 desk-a',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'peer:desk-a'],
+      time: '18 分钟前',
+      messages: [
+        { role: 'user', text: '对端没有友好名映射。' },
+        { role: 'assistant', text: '类别仍是插件。名字回退成 desk-a，但对端图标在。' },
+      ],
+    },
+    {
+      sessionId: 'session-routine',
+      title: '晨间例行',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'routine:morning'],
+      time: '22 分钟前',
+      messages: [
+        { role: 'user', text: '例行会话。' },
+        { role: 'assistant', text: '实例键 routine:morning，名字是晨间。' },
+      ],
+    },
+    {
+      sessionId: 'session-bot-chat',
+      title: '小北 · 闲聊',
+      tags: ['app:dsh-bot', 'kind:dsh-bot', 'form:plugin', 'bot:xiaobei', 'kind:dsh-bot-chat', 'ui:aux'],
+      time: '30 分钟前',
+      messages: [
+        { role: 'user', text: 'kind:dsh-bot-chat 不是 form。' },
+        { role: 'assistant', text: 'content 仍投影插件 / dsh-bot / 小北。那两个结构化 token 进未投影，不当徽章。' },
+      ],
+    },
+    {
+      sessionId: 'session-vibee-1842',
+      title: 'vibee 委派：接口梳理',
+      tags: ['app:vibee', 'kind:vibee', 'form:plugin', 'vibee:run-1842', 'child', 'kind:delegated', 'parent:session-main'],
+      time: '40 分钟前',
+      messages: [
+        { role: 'user', text: '从主会话委派：把 session-tool 的 list 契约对一下。' },
+        { role: 'assistant', text: '插件 vibee 的一次运行，名字是 run-1842，关系是子会话。' },
+      ],
+    },
+    {
+      sessionId: 'session-main',
+      title: '插件改进讨论',
+      tags: ['form:agent'],
+      time: '1 小时前',
+      messages: [
+        { role: 'user', text: '给打开的这条会话加归属提示。' },
+        { role: 'assistant', text: '类别是 Agent。没有产品、没有具体实例名。' },
+      ],
+    },
+    {
+      sessionId: 'session-cli',
+      title: 'CLI 验收会话',
+      tags: ['form:cli', 'plan', 'wip'],
+      time: '昨天',
+      messages: [
+        { role: 'user', text: '跑完 manual-test 把结果留在这。' },
+        { role: 'assistant', text: '类别是 CLI。plan / wip 没有图标映射，所以仍是文字。' },
+      ],
+    },
+    {
+      sessionId: 'session-script',
+      title: '夜间回填脚本',
+      tags: ['form:script'],
+      time: '昨天',
+      messages: [
+        { role: 'user', text: '脚本跑完把日志留这。' },
+        { role: 'assistant', text: '类别是脚本。没有产品、没有实例名。' },
+      ],
+    },
+    {
+      sessionId: 'session-legacy-vibee',
+      title: '过渡期 vibee（只有旧 kind）',
+      tags: ['kind:vibee', 'delegated'],
+      time: '2 天前',
+      messages: [
+        { role: 'user', text: '旧行还没双写 app:，也没有 parent:。' },
+        { role: 'assistant', text: 'kind:vibee 仍投影成插件 / vibee。child 在，但写入形状不会编造 parentSessionId。' },
+      ],
+    },
+    {
+      sessionId: 'session-tilde',
+      title: '~ 草稿（只有标题前缀）',
+      tags: ['form:agent'],
+      time: '3 天前',
+      messages: [
+        { role: 'user', text: '标题有 ~，tags 没有 hidden。' },
+        { role: 'assistant', text: '可见显示「标题~」。这是 hiddenPrefixes，不会写成 hidden 标记。' },
+      ],
+    },
+    {
+      sessionId: 'session-unknown',
+      title: '外部 notebook',
+      tags: ['app:acme', 'form:notebook'],
+      time: '3 天前',
+      messages: [
+        { role: 'user', text: '未知产品和未知形态。' },
+        { role: 'assistant', text: '类别 notebook、产品 acme，都没有图标，按文字回退。不会假装它是插件。' },
+      ],
+    },
+    {
+      sessionId: 'session-bare',
+      title: '无标记旧会话',
+      tags: [],
+      time: '上周',
+      messages: [
+        { role: 'user', text: '这是迁标记之前留下的会话。' },
+        { role: 'assistant', text: '类别 / 产品 / 名字都空着，content 不假装它有归属。' },
+      ],
+    },
+  ]
+
+  function firstPrefix(tags, prefix) {
+    const hit = tags.find((tag) => tag.startsWith(prefix))
+    return hit ? hit.slice(prefix.length) : undefined
+  }
+
+  function isTitleHidden(title) {
+    return Boolean(title) && String(title).startsWith('~')
+  }
+
+  function tokenKind(tag) {
+    if (tag === 'hidden' || tag === 'child') return 'axis'
+    if (HIDDEN.has(tag) || CHILD.has(tag)) return 'alias'
+    if (tag.startsWith('app:') || tag.startsWith('form:') || tag.startsWith('parent:')) return 'axis'
+    if (tag in KIND_APP) return 'alias'
+    if (INSTANCE.some((prefix) => tag.startsWith(prefix))) return 'axis'
+    if (!tag.includes(':')) return 'free'
+    return 'unprojected'
+  }
+
+  function projectMarks(row) {
+    const tags = row.tags || []
+    const hidden = tags.some((tag) => HIDDEN.has(tag))
+    const child = tags.some((tag) => CHILD.has(tag))
+    const titleHidden = isTitleHidden(row.title)
+    const appExplicit = firstPrefix(tags, 'app:')
+    let appAlias = ''
+    let appFromKind = ''
+    for (const tag of tags) {
+      if (KIND_APP[tag]) {
+        appAlias = tag
+        appFromKind = KIND_APP[tag]
+        break
+      }
+    }
+    const app = appExplicit || appFromKind || ''
+    const form = firstPrefix(tags, 'form:') || ''
+    const parent = firstPrefix(tags, 'parent:')
+    let instance
+    for (const prefix of INSTANCE) {
+      const value = firstPrefix(tags, prefix)
+      if (value) {
+        instance = { key: prefix.slice(0, -1), value }
+        break
+      }
+    }
+    const free = []
+    const unprojected = []
+    const suppressed = []
+    for (const tag of tags) {
+      const kind = tokenKind(tag)
+      if (kind === 'free') free.push(tag)
+      else if (kind === 'unprojected') unprojected.push(tag)
+      else if (kind === 'alias') suppressed.push(tag)
+    }
+    const formMapped = Boolean(form && FORM_LABEL[form])
+    const kind = form
+      ? (FORM_LABEL[form] || form)
+      : (app ? '插件' : '')
+    const product = app ? (PRODUCT_LABEL[app] || app) : ''
+    const name = instance ? (INSTANCE_NAME[instance.value] || instance.value) : ''
+    const nameKind = instance ? (INSTANCE_KIND[instance.key] || instance.key) : ''
+    return {
+      app,
+      appExplicit: Boolean(appExplicit),
+      appAlias,
+      form,
+      formMapped,
+      instance,
+      child,
+      hidden,
+      titleHidden,
+      parent,
+      free,
+      unprojected,
+      suppressed,
+      kind,
+      kindInferred: Boolean(!form && app),
+      product,
+      name,
+      nameKind,
+    }
+  }
+
+  function compactName(p) {
+    return p.name || p.product || (p.kind || '无归属')
+  }
+
+  function resolveIcon(axis, value, extra) {
+    if (axis === 'form') {
+      const form = extra && extra.form
+      if (form && ICON_BY_FORM[form]) return ICON_BY_FORM[form]
+      if (!form && value === '插件') return 'plugin'
+      return null
+    }
+    if (axis === 'app') return ICON_BY_PRODUCT[value] || null
+    if (axis === 'name') {
+      const key = extra && extra.instanceKey
+      return (key && ICON_BY_INSTANCE[key]) || null
+    }
+    if (axis === 'child') return 'child'
+    if (axis === 'hidden') return 'hidden'
+    return null
+  }
+
+  function iconKeys(p) {
+    return {
+      form: resolveIcon('form', p.kind, { form: p.form }) || null,
+      app: p.product ? resolveIcon('app', p.product) : null,
+      name: p.instance ? resolveIcon('name', p.instance.value, { instanceKey: p.instance.key }) : null,
+      child: p.child ? 'child' : null,
+      hidden: (p.hidden || p.titleHidden) ? 'hidden' : null,
+      free: p.free.map((item) => ({ tag: item, icon: null })),
+      unprojected: p.unprojected.map((item) => ({ tag: item, icon: null })),
+    }
+  }
+
+  function formHint(p) {
+    if (p.form) {
+      return p.formMapped ? ('form:' + p.form) : ('未知形态 form:' + p.form + '（无图标）')
+    }
+    if (p.app) {
+      return p.appExplicit
+        ? ('无 form:，由 app:' + p.app + ' 推断为插件')
+        : ('无 form:，由 ' + p.appAlias + ' 推断为插件')
+    }
+    return '无类别'
+  }
+
+  function appHint(p) {
+    if (!p.app) return '无产品'
+    if (p.appExplicit) return 'app:' + p.app
+    return '未写 app:，由 ' + p.appAlias + ' 推断'
+  }
+
+  function visibilityValue(p) {
+    if (p.hidden) return '隐藏'
+    if (p.titleHidden) return '标题~'
+    return '可见'
+  }
+
+  function visibilityHint(p) {
+    if (p.hidden && p.titleHidden) return 'hidden 标记 + 标题 hiddenPrefix（正交）'
+    if (p.hidden) return 'hidden ≡ kind:hidden'
+    if (p.titleHidden) return '仅标题 ~，无 hidden 标记'
+    return '官方栏可见'
+  }
+
+  function inspectorRows(p) {
+    const keys = iconKeys(p)
+    return [
+      {
+        axis: 'form',
+        label: '类别',
+        value: p.kind || '—',
+        token: formHint(p),
+        icon: keys.form,
+        empty: !p.kind,
+        raw: p.form || p.kind || '',
+      },
+      {
+        axis: 'app',
+        label: '产品',
+        value: p.product || '—',
+        token: appHint(p),
+        icon: keys.app,
+        empty: !p.app,
+        raw: p.app || '',
+      },
+      {
+        axis: 'name',
+        label: '名字',
+        value: p.name || '—',
+        token: p.instance ? (p.nameKind + ' · ' + p.instance.key + ':' + p.instance.value) : '无实例键',
+        icon: keys.name,
+        empty: !p.instance,
+        raw: p.instance ? p.instance.value : '',
+      },
+      {
+        axis: 'child',
+        label: '关系',
+        value: p.child ? '子会话' : '根会话',
+        token: p.parent ? ('parent:' + p.parent) : (p.child ? '有 child，无 parent:（不完整）' : '无父'),
+        icon: p.child ? 'child' : null,
+        empty: !p.child,
+        raw: '1',
+      },
+      {
+        axis: 'hidden',
+        label: '可见',
+        value: visibilityValue(p),
+        token: visibilityHint(p),
+        icon: (p.hidden || p.titleHidden) ? 'hidden' : null,
+        empty: !p.hidden && !p.titleHidden,
+        raw: p.hidden ? '1' : (p.titleHidden ? 'tilde' : ''),
+      },
+      {
+        axis: 'free',
+        label: '自由',
+        value: p.free.length ? p.free.join(', ') : '—',
+        token: p.free.length ? '无冒号，无图标映射' : '无自由标签',
+        icon: null,
+        empty: p.free.length === 0,
+        raw: p.free[0] || '',
+      },
+    ]
+  }
+
+  function writeShape(row, p) {
+    const add = []
+    if (p.app) {
+      add.push('app:' + p.app)
+      if (p.app === 'dsh-bot' || p.app === 'vibee') add.push('kind:' + p.app)
+    }
+    if (p.form) add.push('form:' + p.form)
+    if (p.instance) add.push(p.instance.key + ':' + p.instance.value)
+    add.push(...p.free)
+    if (add.length === 0 && !p.child && !p.hidden && p.unprojected.length === 0) {
+      return '// 无插件 marks，不必 mark() / create({ tags })'
+    }
+    const lines = ['await sessionTool.create(caller, {']
+    lines.push('  title: ' + JSON.stringify(row.title) + ',')
+    if (p.parent) {
+      lines.push('  parentSessionId: ' + JSON.stringify(p.parent) + ',')
+    } else if (p.child) {
+      lines.push('  // 落盘有 child，但没有 parent:<id>。有意父时应传 parentSessionId，')
+      lines.push('  // 平台会自己写 child + kind:delegated + parent:<id>。不要手写 delegated。')
+    }
+    if (add.length) lines.push('  tags: ' + JSON.stringify(add) + ',')
+    lines.push('})')
+    if (p.hidden) {
+      lines.push('await sessionTool.hide(caller, sessionId, { syncToArchived: false })')
+    } else if (p.titleHidden) {
+      lines.push('// 标题有 ~：这是 hiddenPrefixes，和 hidden 标记正交，不会写出 hidden')
+    }
+    if (p.unprojected.length) {
+      lines.push('// 未投影（可继续当精确 token，不要当成 form）: ' + p.unprojected.join(', '))
+    }
+    return lines.join('\n')
+  }
+
+  const state = { variant: 'A', selected: 'session-bot-1', chip: null, detail: null }
+  let detailWasOpen = false
+
+  function current() {
+    return SESSIONS.find((row) => row.sessionId === state.selected) || SESSIONS[0]
+  }
+
+  function openDetail(axis) {
+    state.detail = { axis: axis || (state.chip && state.chip.axis) || null }
+    render()
+  }
+
+  function closeDetail() {
+    state.detail = null
+    render()
+  }
+
+  function el(name, attrs, ...children) {
+    const node = document.createElement(name)
+    for (const [key, value] of Object.entries(attrs || {})) {
+      if (key === 'dataset') {
+        for (const [dKey, dVal] of Object.entries(value)) {
+          if (dVal != null) node.dataset[dKey] = String(dVal)
+        }
+      } else if (key.startsWith('on') && typeof value === 'function') {
+        node.addEventListener(key.slice(2).toLowerCase(), value)
+      } else if (key === 'className') node.className = value
+      else if (value === false || value == null) continue
+      else if (value === true) node.setAttribute(key, '')
+      else node.setAttribute(key, String(value))
+    }
+    for (const child of children.flat()) {
+      if (child == null || child === false) continue
+      node.append(typeof child === 'string' ? document.createTextNode(child) : child)
+    }
+    return node
+  }
+
+  function svgEl(name, attrs, ...children) {
+    const node = document.createElementNS('http://www.w3.org/2000/svg', name)
+    for (const [key, value] of Object.entries(attrs || {})) {
+      if (value == null || value === false) continue
+      node.setAttribute(key, String(value))
+    }
+    for (const child of children.flat()) {
+      if (child == null || child === false) continue
+      node.append(child)
+    }
+    return node
+  }
+
+  function icon(key) {
+    const spec = ICONS[key]
+    if (!spec) return null
+    const node = svgEl('svg', {
+      class: 'ico',
+      viewBox: '0 0 16 16',
+      width: '14',
+      height: '14',
+      fill: 'none',
+      'aria-hidden': 'true',
+      focusable: 'false',
+    })
+    for (const d of spec.paths || []) {
+      node.append(svgEl('path', {
+        d,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '1.4',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      }))
+    }
+    for (const circle of spec.circles || []) {
+      node.append(svgEl('circle', {
+        cx: String(circle.cx),
+        cy: String(circle.cy),
+        r: String(circle.r),
+        fill: circle.fill ? 'currentColor' : 'none',
+        stroke: circle.fill ? 'none' : 'currentColor',
+        'stroke-width': circle.fill ? '0' : '1.4',
+      }))
+    }
+    return node
+  }
+
+  function labeledTag(axis, value, category, name, extra) {
+    const on = state.chip && state.chip.axis === axis && state.chip.value === value
+    const key = resolveIcon(axis, value, extra)
+    const ico = icon(key)
+    return el('button', {
+      type: 'button',
+      className: 'tag' + (ico ? ' has-ico' : '') + (on ? ' is-on' : ''),
+      dataset: { axis: axis, app: extra && extra.app != null ? extra.app : undefined },
+      title: extra && extra.hint ? extra.hint : (axis + ':' + value),
+      'aria-label': category + ' ' + name,
+      onClick: (event) => {
+        event.stopPropagation()
+        state.chip = on ? null : { axis: axis, value: value, icon: key || null }
+        if (state.detail) state.detail = state.chip ? { axis: axis } : { axis: null }
+        render()
+      },
+    },
+      ico,
+      ico
+        ? el('span', { className: 'v' }, name)
+        : [
+            axis !== 'free' && category && category !== name ? el('span', { className: 'k' }, category) : null,
+            el('span', { className: 'v' }, name),
+          ],
+    )
+  }
+
+  function chips(p) {
+    const nodes = []
+    nodes.push(labeledTag('form', p.kind || 'none', '类别', p.kind || '无', {
+      app: p.app,
+      form: p.form,
+      hint: formHint(p),
+    }))
+    if (p.product) {
+      nodes.push(labeledTag('app', p.product, '产品', p.product, {
+        app: p.app,
+        hint: appHint(p),
+      }))
+    }
+    if (p.name) {
+      nodes.push(labeledTag('name', p.instance.value, p.nameKind || '名字', p.name, {
+        instanceKey: p.instance.key,
+        hint: p.instance.key + ':' + p.instance.value,
+      }))
+    }
+    if (p.child) {
+      nodes.push(labeledTag('child', '1', '关系', '子会话', {
+        hint: p.parent ? ('parent:' + p.parent) : 'child（无 parent:）',
+      }))
+    }
+    if (p.hidden) {
+      nodes.push(labeledTag('hidden', '1', '可见', '隐藏', { hint: visibilityHint(p) }))
+    } else if (p.titleHidden) {
+      nodes.push(labeledTag('hidden', 'tilde', '可见', '标题~', { hint: visibilityHint(p) }))
+    }
+    p.free.forEach((item) => nodes.push(labeledTag('free', item, '标签', item)))
+    return nodes
+  }
+
+  function field(label, value, hint, emptyText, iconKey) {
+    const empty = !value
+    const ico = !empty && iconKey ? icon(iconKey) : null
+    return el('div', { className: 'field' + (empty ? ' is-empty' : '') },
+      el('span', { className: 'k' }, label),
+      el('span', { className: 'v' }, ico, empty ? (emptyText || '—') : value),
+      hint ? el('span', { className: 'h' }, hint) : null,
+    )
+  }
+
+  function catalog(p) {
+    return [
+      field('类别', p.kind, formHint(p), '无', resolveIcon('form', p.kind, { form: p.form })),
+      field('产品', p.product, p.app ? appHint(p) : '', '无产品', resolveIcon('app', p.product)),
+      field(
+        '名字',
+        p.name,
+        p.instance ? (p.instance.key + ':' + p.instance.value) : '',
+        '无具体名字',
+        p.instance ? resolveIcon('name', p.instance.value, { instanceKey: p.instance.key }) : null,
+      ),
+      field('关系', p.child ? '子会话' : '根', p.parent ? ('parent:' + p.parent) : (p.child ? '无 parent:' : ''), '', p.child ? 'child' : null),
+      field('可见', visibilityValue(p), visibilityHint(p), '', (p.hidden || p.titleHidden) ? 'hidden' : null),
+    ]
+  }
+
+  function classifiedTokens(row) {
+    if (row.tags.length === 0) return el('span', {}, '无 marks')
+    const title = {
+      axis: '五轴或实例键',
+      alias: '过渡期别名，content 不单独展示',
+      free: '自由标签',
+      unprojected: '结构化但未投影',
+    }
+    return row.tags.map((item) => {
+      const kind = tokenKind(item)
+      return el('span', {
+        className: 'tag',
+        dataset: { kind: kind },
+        title: title[kind],
+      }, item)
+    })
+  }
+
+  function board(row) {
+    const p = projectMarks(row)
+    const keys = iconKeys(p)
+    return el('div', { className: 'board' },
+      el('dt', {}, '类别'), el('dd', {}, (p.kind || '无') + (p.kindInferred ? ' · 推断' : '') + (keys.form ? ' · svg:' + keys.form : ' · 文字')),
+      el('dt', {}, '产品'), el('dd', {}, (p.product || '无') + (p.appExplicit ? '' : (p.app ? ' · 由旧 kind' : '')) + (keys.app ? ' · svg:' + keys.app : ' · 文字')),
+      el('dt', {}, '名字'), el('dd', {}, p.name ? (p.nameKind + ' · ' + p.name + (keys.name ? ' · svg:' + keys.name : ' · 文字')) : '无'),
+      el('dt', {}, '关系'), el('dd', {}, p.child ? ('子' + (p.parent ? ' · ' + p.parent : ' · 无 parent') + ' · svg:child') : '根'),
+      el('dt', {}, '可见'), el('dd', {}, visibilityValue(p) + ((p.hidden || p.titleHidden) ? ' · svg:hidden' : '')),
+      el('dt', {}, '自由'), el('dd', {}, p.free.length ? p.free.join(', ') + ' · 文字' : '无'),
+      el('dt', {}, '未投影'), el('dd', {}, p.unprojected.length ? p.unprojected.join(', ') : '无'),
+      el('div', { className: 'raw', style: 'grid-column:1/-1' }, classifiedTokens(row)),
+    )
+  }
+
+  function iconBtn(label) {
+    return el('button', { type: 'button', className: 'icon', 'aria-label': label }, '⋯')
+  }
+
+  function paramsBtn() {
+    return el('button', {
+      type: 'button',
+      id: 'params-btn',
+      className: 'params-btn' + (state.detail ? ' is-on' : ''),
+      title: 'conversation.session.header.params',
+      'aria-haspopup': 'dialog',
+      'aria-expanded': state.detail ? 'true' : 'false',
+      'aria-controls': 'session-params',
+      'aria-label': '参数详情',
+      onClick: (event) => {
+        event.stopPropagation()
+        if (state.detail) closeDetail()
+        else openDetail()
+      },
+    }, icon('info'), '参数')
+  }
+
+  function detailRow(spec) {
+    const on = state.detail && state.detail.axis === spec.axis
+    return el('button', {
+      type: 'button',
+      className: 'drow' + (on ? ' is-on' : '') + (spec.empty ? ' is-empty' : ''),
+      dataset: { axis: spec.axis },
+      onClick: () => {
+        state.detail = { axis: spec.axis }
+        state.chip = spec.empty ? null : { axis: spec.axis, value: spec.raw, icon: spec.icon || null }
+        render()
+      },
+    },
+      el('span', { className: 'k' }, spec.label),
+      el('span', {},
+        el('span', { className: 'val' }, spec.icon ? icon(spec.icon) : null, spec.value),
+        el('span', { className: 'token' }, spec.token),
+      ),
+    )
+  }
+
+  function renderDetail() {
+    const row = current()
+    const p = projectMarks(row)
+    return el('div', { className: 'modal-root' },
+      el('div', {
+        className: 'modal-backdrop',
+        onClick: closeDetail,
+      }),
+      el('div', {
+        className: 'modal',
+        id: 'session-params',
+        role: 'dialog',
+        tabindex: '-1',
+        'aria-modal': 'true',
+        'aria-labelledby': 'detail-title',
+        onClick: (event) => event.stopPropagation(),
+      },
+        el('div', { className: 'modal-head' },
+          el('div', {},
+            el('h2', { id: 'detail-title' }, '参数详情'),
+            el('p', { className: 'sub' }, row.title),
+            el('p', { className: 'sub' }, el('code', {}, row.sessionId)),
+          ),
+          el('button', {
+            type: 'button',
+            id: 'detail-close',
+            className: 'modal-close',
+            'aria-label': '关闭',
+            onClick: closeDetail,
+          }, '×'),
+        ),
+        el('section', { className: 'modal-sec' },
+          el('h3', {}, '这条会话'),
+          el('p', { className: 'sec-note' }, '人话五问，和标题行徽章同一套轴。'),
+          ...inspectorRows(p).map(detailRow),
+        ),
+        el('section', { className: 'modal-sec' },
+          el('h3', {}, 'content 投影'),
+          el('div', { className: 'chips' }, chips(p)),
+        ),
+        p.unprojected.length
+          ? el('section', { className: 'modal-sec' },
+              el('h3', {}, '未投影 token'),
+              el('p', { className: 'sec-note' }, '结构化，但不是五轴，也不当 form。content 不画徽章。'),
+              el('div', { className: 'raw' }, p.unprojected.map((item) => el('span', {
+                className: 'tag',
+                dataset: { kind: 'unprojected' },
+              }, item))),
+            )
+          : null,
+        el('details', { className: 'modal-debug', open: true },
+          el('summary', {}, '作者 / 调试'),
+          el('section', { className: 'modal-sec' },
+            el('h3', {}, '落盘 token'),
+            el('p', { className: 'sec-note' }, '轴保留；过渡期别名划掉；未投影单独着色。parent: 是轴，不是别名。'),
+            el('div', { className: 'raw' }, classifiedTokens(row)),
+          ),
+          el('section', { className: 'modal-sec' },
+            el('h3', {}, '写入形状'),
+            el('pre', { className: 'write' }, writeShape(row, p)),
+          ),
+        ),
+      ),
+    )
+  }
+
+  function renderShell() {
+    const row = current()
+    const p = projectMarks(row)
+    const kindIcon = resolveIcon('form', p.kind, { form: p.form })
+    return el('div', { className: 'dsh' },
+      el('aside', { className: 'side', 'aria-label': '官方会话栏' },
+        el('div', { className: 'brand' },
+          el('b', {}, 'DeepSeek'),
+          el('button', { type: 'button', className: 'icon', 'aria-label': '收起' }, '⟨'),
+        ),
+        el('button', { type: 'button', className: 'new' }, '+ 新会话'),
+        el('div', { className: 'ws' },
+          '工作区',
+          el('strong', {}, 'session-tool'),
+        ),
+        el('div', { className: 'slist' },
+          ...SESSIONS.map((item) => el('button', {
+            type: 'button',
+            className: 'srow',
+            'aria-pressed': item.sessionId === state.selected ? 'true' : 'false',
+            onClick: () => { state.selected = item.sessionId; state.chip = null; state.detail = null; render() },
+          },
+            el('span', { className: 't' }, item.title),
+            el('span', { className: 'm' }, item.time + ' · 官方栏仍无 marks'),
+          )),
+        ),
+      ),
+      el('section', { className: 'main', 'aria-label': '会话 content' },
+        el('header', { className: 'header' },
+          el('div', { className: 'header-left' },
+            el('h1', { className: 'title' }, row.title),
+            state.variant === 'A' ? el('div', { className: 'chips' }, chips(p)) : null,
+          ),
+          el('div', { className: 'tabs' },
+            el('button', { type: 'button', className: 'tab', 'aria-pressed': 'true' }, 'Chat'),
+          ),
+          el('div', { className: 'utils' },
+            state.variant === 'C'
+              ? el('button', {
+                  type: 'button',
+                  className: 'corner',
+                  dataset: { app: p.app },
+                  title: 'conversation.session.header.corner',
+                  'aria-label': (p.kind || '无类别') + ' ' + compactName(p),
+                  onClick: () => openDetail('form'),
+                },
+                  icon(kindIcon) || el('span', { className: 'dot' }),
+                  kindIcon ? null : el('span', { className: 'k' }, p.kind || '无类别'),
+                  el('span', { className: 'v' }, compactName(p)),
+                )
+              : null,
+            paramsBtn(),
+            iconBtn('更多'),
+          ),
+        ),
+        state.variant === 'B'
+          ? el('div', { className: 'strip', dataset: { app: p.app } },
+              ...catalog(p),
+              p.free.length
+                ? el('div', { className: 'strip-tags' }, p.free.map((item) => labeledTag('free', item, '标签', item)))
+                : null,
+            )
+          : null,
+        el('div', { className: 'thread' },
+          state.variant === 'C'
+            ? el('div', { className: 'sys' }, catalog(p))
+            : null,
+          ...row.messages.map((msg) => el('article', { className: 'msg ' + msg.role },
+            el('div', { className: 'who-line' }, msg.role === 'user' ? '你' : '助手'),
+            el('div', { className: 'bubble' }, el('p', {}, msg.text)),
+          )),
+          el('details', {},
+            el('summary', { style: 'color:var(--dim);font-size:12px;cursor:pointer' }, '投影核对（不进生产 content）'),
+            board(row),
+          ),
+        ),
+        el('div', { className: 'composer' },
+          el('div', { className: 'box' },
+            el('textarea', { placeholder: '发给这条会话…', disabled: true }),
+            el('div', { className: 'box-row' },
+              el('span', {}, 'composer 只是壳，不发消息'),
+              el('button', { type: 'button', className: 'send', disabled: true }, '发送'),
+            ),
+          ),
+        ),
+      ),
+    )
+  }
+
+  function readVariant() {
+    const raw = new URLSearchParams(location.search).get('variant') || 'A'
+    return VARIANTS.some((item) => item.key === raw) ? raw : 'A'
+  }
+
+  function setVariant(key) {
+    const url = new URL(location.href)
+    url.searchParams.set('variant', key)
+    history.replaceState(null, '', url)
+    state.variant = key
+    if (key !== 'A') state.chip = null
+    render()
+  }
+
+  function cycle(delta) {
+    const i = VARIANTS.findIndex((item) => item.key === state.variant)
+    setVariant(VARIANTS[(i + delta + VARIANTS.length) % VARIANTS.length].key)
+  }
+
+  function focusables(root) {
+    return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter((node) => !node.disabled)
+  }
+
+  function render() {
+    const root = document.getElementById('root')
+    const wasOpen = detailWasOpen
+    const axis = state.detail && state.detail.axis
+    root.replaceChildren(renderShell(), state.detail ? renderDetail() : null)
+    const row = current()
+    const p = projectMarks(row)
+    const currentVariant = VARIANTS.find((item) => item.key === state.variant)
+    document.getElementById('switch-label').textContent = currentVariant.key + ' — ' + currentVariant.name
+    document.getElementById('state').textContent = JSON.stringify({
+      surface: 'dsh conversation.session.header + content',
+      variant: state.variant,
+      selected: state.selected,
+      chip: state.chip,
+      detail: state.detail,
+      check: selfCheck(),
+      icons: iconKeys(p),
+      projected: {
+        kind: p.kind || null,
+        kindInferred: p.kindInferred,
+        product: p.product || null,
+        name: p.name || null,
+        nameKind: p.nameKind || null,
+        app: p.app || null,
+        appExplicit: p.appExplicit,
+        form: p.form || null,
+        instance: p.instance || null,
+        child: p.child,
+        hidden: p.hidden,
+        titleHidden: p.titleHidden,
+        parent: p.parent || null,
+        free: p.free,
+        unprojected: p.unprojected,
+        suppressed: p.suppressed,
+      },
+    }, null, 2)
+    const open = Boolean(state.detail)
+    if (open && !wasOpen) {
+      const close = document.getElementById('detail-close')
+      if (close) close.focus()
+    } else if (open && wasOpen && axis) {
+      const rowBtn = document.querySelector('.drow[data-axis="' + axis + '"]')
+      if (rowBtn) rowBtn.focus()
+    } else if (!open && wasOpen) {
+      const btn = document.getElementById('params-btn')
+      if (btn) btn.focus()
+    }
+    detailWasOpen = open
+  }
+
+  function selfCheck() {
+    const failed = []
+    function ok(cond, name) {
+      if (!cond) failed.push(name)
+    }
+    const inferred = projectMarks({ title: 'x', tags: ['app:dsh-bot'] })
+    ok(inferred.kind === '插件' && inferred.kindInferred, 'app without form → 插件')
+    const unknown = projectMarks({ title: 'x', tags: ['app:acme', 'form:notebook'] })
+    ok(unknown.kind === 'notebook' && unknown.product === 'acme' && !unknown.kindInferred, 'unknown form/app stay text')
+    ok(!resolveIcon('form', 'notebook', { form: 'notebook' }), 'unknown form has no icon')
+    ok(tokenKind('parent:session-main') === 'axis', 'parent: is axis')
+    ok(tokenKind('hidden') === 'axis' && tokenKind('kind:hidden') === 'alias', 'hidden family')
+    ok(tokenKind('child') === 'axis' && tokenKind('delegated') === 'alias', 'child family')
+    ok(tokenKind('kind:dsh-bot-chat') === 'unprojected' && tokenKind('ui:aux') === 'unprojected', 'unprojected')
+    const tilde = projectMarks({ title: '~ 草稿', tags: ['form:agent'] })
+    ok(tilde.titleHidden && !tilde.hidden && tilde.kind === 'Agent', 'title ~ orthogonal')
+    const orphan = projectMarks({ title: 'x', tags: ['kind:vibee', 'delegated'] })
+    const shape = writeShape({ title: 'x', tags: ['kind:vibee', 'delegated'] }, orphan)
+    ok(orphan.app === 'vibee' && !orphan.appExplicit && orphan.child && !orphan.parent, 'legacy kind + orphan child')
+    ok(!shape.includes('parentSessionId:') && shape.includes('没有 parent'), 'writeShape does not invent parent')
+    const room = projectMarks({ title: 'x', tags: ['group-room:lobby', 'group:night-shift'] })
+    ok(room.instance && room.instance.key === 'group-room', 'group-room wins over group')
+    const chat = projectMarks({
+      title: 'x',
+      tags: ['app:dsh-bot', 'form:plugin', 'bot:xiaobei', 'kind:dsh-bot-chat', 'ui:aux'],
+    })
+    ok(chat.unprojected.join(',') === 'kind:dsh-bot-chat,ui:aux' && chat.name === '小北', 'chat tokens unprojected')
+    if (failed.length) console.error('prototype self-check failed', failed)
+    return failed.length ? failed : 'ok'
+  }
+
+  state.variant = readVariant()
+  document.getElementById('prev').onclick = () => cycle(-1)
+  document.getElementById('next').onclick = () => cycle(1)
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.detail) {
+      event.preventDefault()
+      closeDetail()
+      return
+    }
+    if (event.key === 'Tab' && state.detail) {
+      const modal = document.getElementById('session-params')
+      if (!modal) return
+      const list = focusables(modal)
+      if (list.length === 0) return
+      const first = list[0]
+      const last = list[list.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      } else if (!modal.contains(document.activeElement)) {
+        event.preventDefault()
+        first.focus()
+      }
+      return
+    }
+    const tagEl = event.target && event.target.closest('input, textarea, select, [contenteditable=true]')
+    if (tagEl) return
+    if (event.key === 'ArrowLeft') cycle(-1)
+    if (event.key === 'ArrowRight') cycle(1)
+  })
+  render()
+})()
+</script>
+</body>
+</html>

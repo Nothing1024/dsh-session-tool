@@ -2,9 +2,9 @@
  * Model-facing `session_create`, `session_read`, `session_write`,
  * `session_list`, and `session_rename` tools over `ctx.sessionTool`. The
  * bundle patch also mounts the service provider (`session-tool-local`).
- * Tool parameter `tags` are plugin marks (reserved: kind:vibee,
- * kind:delegated, kind:hidden, ui:aux). The official GUI does not show them;
- * later Web uses listByKind.
+ * Tool parameter `tags` are plugin marks (`app:` / `form:` / `parent:`,
+ * `child`, `hidden`; historical kind:* / delegated / ui:aux stay aliases).
+ * Official sidebar still ignores them; the conversation header projects them.
  *
  * Render intent is fixed up front per the tool presentation contract: none of
  * the five touches a terminal or a file, so every call is a `generic` card
@@ -74,7 +74,7 @@ export function apply(ctx: Context): void {
       tags: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional plugin marks (last-wins replace). Reserved: kind:vibee, kind:delegated, kind:hidden, ui:aux. Official GUI does not show them; later Web uses listByKind.',
+        description: 'Optional plugin marks (merged with system child/hidden aliases). Official sidebar ignores them; the conversation header projects them.',
       },
       workspace_path: {
         type: 'string',
@@ -364,9 +364,9 @@ export function apply(ctx: Context): void {
     description:
       'List sessions. Scope "own" (default) lists you and your descendants; scope "tree" lists the subtree rooted '
       + 'at session_id (you must be the root or one of its ancestors); scope "all" lists every materialized session '
-      + 'and is gated by deployment policy. Hidden-prefix titles or kind:hidden marks are excluded unless include_hidden is set. '
+      + 'and is gated by deployment policy. Hidden-prefix titles or hidden / kind:hidden marks are excluded unless include_hidden is set. '
       + 'Filter by plugin-mark intersection, title substring, delegation status (running/completed/failed/aborted), and '
-      + 'origin "delegated"; paginate with cursor/limit. Official GUI does not show marks.',
+      + 'origin "delegated" (matches child / kind:delegated / delegated); paginate with cursor/limit. Official sidebar ignores marks; the conversation header projects them.',
     parameters: {
       scope: { type: 'string', enum: ['own', 'tree', 'all'], description: 'Listing scope; defaults to own.' },
       session_id: { type: 'string', description: 'Tree root for scope "tree".' },
@@ -377,8 +377,8 @@ export function apply(ctx: Context): void {
         enum: ['live', 'idle', 'running', 'completed', 'failed', 'aborted'],
         description: 'live/idle filter store presence; running/completed/failed/aborted filter the log-derived delegation status.',
       },
-      origin: { type: 'string', enum: ['delegated'], description: 'Only sessions marked kind:delegated (bare token delegated accepted once for compat).' },
-      include_hidden: { type: 'boolean', description: 'Include hidden-prefix titles and kind:hidden rows (default false).' },
+      origin: { type: 'string', enum: ['delegated'], description: 'Only child sessions (child / kind:delegated / delegated).' },
+      include_hidden: { type: 'boolean', description: 'Include hidden-prefix titles and hidden / kind:hidden rows (default false).' },
       cursor: { type: 'string', description: 'Opaque pagination cursor from a previous result.' },
       limit: { type: 'number', description: 'Row cap; clamped to the configured maximum.' },
     },
@@ -448,13 +448,13 @@ export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'session_rename',
     description:
-      'Rename a session and/or replace its plugin marks (yours or a descendant\'s). An explicit title pins the session '
-      + 'title — automatic generation stops. Marks are last-wins replace (kind:vibee, kind:delegated, kind:hidden, ui:aux). '
-      + 'Hidden-prefix titles or kind:hidden drop the session from default lists. Official GUI does not show marks.',
+      'Rename a session and/or merge incoming plugin marks (yours or a descendant\'s). An explicit title pins the session '
+      + 'title — automatic generation stops. Free tags replace; structured marks (app:/form:/parent:, child, hidden, kind:*) stay unless that axis is replaced. '
+      + 'Hidden-prefix titles or hidden / kind:hidden drop the session from default lists. Official sidebar ignores marks; the conversation header projects them.',
     parameters: {
       session_id: SESSION_ID_SCHEMA,
       title: { type: 'string', description: 'Explicit title; pins the title and stops automatic generation.' },
-      tags: { type: 'array', items: { type: 'string' }, description: 'Replacement plugin mark set. Official GUI does not show these; later Web uses listByKind.' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Incoming plugin marks (free tags replace; structured marks merge). Official sidebar ignores these; the conversation header projects them.' },
     },
     output: {
       schema: {

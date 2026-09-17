@@ -60,6 +60,9 @@ export function createHandler(service: SessionToolService): ConnectionRpcHandler
             }
             break
           }
+          case 'marks':
+            execute = () => service.readMarks(caller, id)
+            break
           case 'write': {
             const content = string(p.content, 100_000)
             execute = () => service.write(caller, id, content)
@@ -71,8 +74,8 @@ export function createHandler(service: SessionToolService): ConnectionRpcHandler
             break
           }
           case 'cancel': execute = () => service.cancel(caller, id); break
-          case 'hide': execute = () => service.hide(caller, id, { syncToArchived: false }); break
-          case 'unhide': execute = () => service.unhide(caller, id, { syncToArchived: false }); break
+          case 'hide': execute = () => service.hide(caller, id); break
+          case 'unhide': execute = () => service.unhide(caller, id); break
           default: throw new Error('Unknown method')
         }
       }

@@ -54,15 +54,14 @@ try {
   await page.getByRole('textbox', { name: '会话标题', exact: true }).fill(renamed)
   await page.getByRole('button', { name: '保存标题', exact: true }).click()
   await page.getByRole('heading', { name: renamed, exact: true }).waitFor()
-  await page.getByRole('button', { name: '插件内隐藏', exact: true }).click()
-  await page.getByRole('button', { name: '取消插件隐藏', exact: true }).waitFor()
+  await page.getByRole('button', { name: '隐藏会话', exact: true }).click()
+  await page.getByRole('button', { name: '取消隐藏', exact: true }).waitFor()
   await page.getByRole('checkbox', { name: '包含隐藏', exact: true }).check()
   await page.locator('.st-row').filter({ hasText: renamed }).waitFor()
-  const hidden = await rpc('session-tool/read', { sessionId }) as { visibility: { hasHiddenMark: boolean; archived: boolean } }
+  const hidden = await rpc('session-tool/read', { sessionId }) as { visibility: { hasHiddenMark: boolean } }
   assert.equal(hidden.visibility.hasHiddenMark, true)
-  assert.equal(hidden.visibility.archived, false)
-  await page.getByRole('button', { name: '取消插件隐藏', exact: true }).click()
-  await page.getByRole('button', { name: '插件内隐藏', exact: true }).waitFor()
+  await page.getByRole('button', { name: '取消隐藏', exact: true }).click()
+  await page.getByRole('button', { name: '隐藏会话', exact: true }).waitFor()
   const screenshot = process.env.DSH_E2E_SCREENSHOT
   if (screenshot) { mkdirSync(resolve(screenshot, '..'), { recursive: true }); await page.screenshot({ path: screenshot, fullPage: true }) }
   await page.getByRole('button', { name: '在对话中打开', exact: true }).click()

@@ -36,7 +36,7 @@ session-tool/
 ## 安装 / 调试
 
 仓内 `env/` 就是这份仓库自己的 `DSH_HOME`，细节见 `env/README.md`。
-模型 key 写在 `env/.env` / `env/.credentials.yaml`（git 忽略）。两者都不存在时，`sh env/setup.sh` 会从本机 DSH 默认目录 `~/.dsh/.env` 拷一份。
+模型 key 与共享路由来自 `~/workspace/dsh/plugin/.shared/`（git 忽略）。`sh env/setup.sh` 会 apply 到本仓 `env/`。
 
 ```sh
 pnpm install && pnpm run build
@@ -55,7 +55,7 @@ bash scripts/manual-test.sh --no-write      # 只建会话、不打对话
 ```
 
 `--profile st` 是正在跑的 web（:3081），不要再 boot。CLI 一律 `--profile headless --patch env/cli.patch.yml`（webUrl 也是 :3081）。矩阵会先核网关 `DSH_HOME` 是本仓 `env/`。
-起来之后 agent 可用 `session_*` 工具。`hiddenPrefixes` 默认 `~`；`kind:hidden` 是第二道隐藏闸。
+起来之后 agent 可用 `session_*` 工具。`hiddenPrefixes` 默认 `~`；`hidden` / `kind:hidden` 是第二道隐藏闸。
 官方侧栏应能看到【可见】；`~【标题隐藏】` 官方栏不出现；【标记隐藏】官方栏仍可能看见（不读插件标记）。
 
 ### 调试（网关内部状态）
@@ -98,7 +98,8 @@ node packages/session-tool-cli/lib/bin.js session read <session_id> [--since-seq
 node packages/session-tool-cli/lib/bin.js session write <session_id> <text...>
 node packages/session-tool-cli/lib/bin.js session list [--scope own|tree|all] [--root ID] [--tag T] [--title T] [--status live|idle] [--include-hidden] [--cursor C] [--limit N]
 node packages/session-tool-cli/lib/bin.js session rename <session_id> [--title T] [--tag T]
-node packages/session-tool-cli/lib/bin.js marks list [--kind K]
+node packages/session-tool-cli/lib/bin.js session mark <session_id> [--add T] [--remove T]
+node packages/session-tool-cli/lib/bin.js marks list [--kind K] [--mark M] [--prefix P]
 node packages/session-tool-cli/lib/bin.js marks get --id ID
 node packages/session-tool-cli/lib/bin.js workspace add <path> [--title T] [--profile <name>] [--token TOKEN]
 node packages/session-tool-cli/lib/bin.js workspace list [--profile <name>] [--token TOKEN]
@@ -111,17 +112,21 @@ node packages/session-tool-cli/lib/bin.js workspace delete <workspace_id> [--pro
 - 默认 boot `headless` profile（自动初始化），`--profile` 可覆盖；安装锚点可用 `DSH_SESSION_ANCHOR` 覆盖；打已运行 GUI 时设 `DSH_LAUNCH_TOKEN` 或 `--token`（boot stdout `dsh web:` URL 的 `token=`）；
 - 默认人类可读输出；`--format json` 输出与工具 output 同构的 JSON（workspace 子命令为 CLI 自有 JSON 投影）；
 - CLI 是人工身份（`kind: cli`），豁免 owner fence；`own` scope 仅 agent 可用。
-- `marks` 子命令只读 `$DSH_HOME/session-tool/marks.jsonl`，不 boot profile。后期 Web 只许吃 `listByKind` / `get`，不要改官方会话栏。
+- `marks` 子命令只读 `$DSH_HOME/session-tool/marks.jsonl`，不 boot profile。会话打开后 header 投影走 `session-tool/marks` RPC，不要改官方会话栏。
 
 ## 插件标记（tags）
 
-工具 / CLI 参数名仍是 `tags`。真数据在 `$DSH_HOME/session-tool/marks.jsonl`（last-wins），**不**写入官方会话日志。委派会话会自动带 `kind:delegated`；这是分类，不是运行时锁。
+工具 / CLI 参数名仍是 `tags`。真数据在 `$DSH_HOME/session-tool/marks.jsonl`（last-wins），**不**写入官方会话日志。
 
-保留名（普通合法 token）：`kind:vibee`、`kind:delegated`、`kind:hidden`、`ui:aux`。
+五问五短 token：`app:<name>`（谁的库存）、`form:plugin|agent|cli|script`（形态）、产品键（`bot:` / `vibee:` / …）、`child` + `parent:<id>`（有没有父）、`hidden`（辅会话）。有意父（显式 `--parent`，或 agent 默认父=自己）会双写 `child` + `kind:delegated` + `parent:<id>`。这是分类，不是运行时锁。
 
-- 官方 GUI 会话栏不显示这些标记。
-- 默认 `session list` 丢掉标题匹配 `hiddenPrefixes`（默认 `~`）**或**带 `kind:hidden` 的行。
-- 后期 Web 用 `session-marks` 的 `listByKind`（CLI：`node packages/session-tool-cli/lib/bin.js marks list --kind kind:vibee`）。
+历史别名仍可读：`kind:dsh-bot` / `kind:vibee`、`kind:hidden` ≡ `hidden`、`kind:delegated` / `delegated` ≡ `child`。平台认前缀 `app:` / `form:` / `parent:` 和精确词 `child` / `hidden`。`rename --tag` 不再整行覆盖：自由标签替换，带 `:` 的结构化标记以及 `child` / `hidden` / `delegated` 会留下；`session mark --add/--remove` 是合并 API。
+
+
+- 官方 GUI 会话栏（侧栏列表）不显示这些标记。打开一条会话后，`ui-session-tool` 把 marks 投影到 `conversation.session.header.actions`（类别 / 产品 / 名字 chips；点开看五问和未投影 token）。
+- 默认 `session list` 丢掉标题匹配 `hiddenPrefixes`（默认 `~`）**或**带 `hidden` / `kind:hidden` 的行。
+- 查询仍用 `session-marks` 的 `listByMark` / `listByPrefix`（CLI：`node packages/session-tool-cli/lib/bin.js marks list --kind kind:vibee` 仍可用）。
+- 接入方迁移步骤：[docs/marks-handoff.md](docs/marks-handoff.md)。
 
 ## Workspace（围绕 web 进程）
 
@@ -152,7 +157,7 @@ pnpm run standard:check   # dsh-community-standard v0.15 对齐检查（见 stan
 - **session_write 是对话**：经网关 `session/prompt`（同进程则 `sessionController.prompt`）投递并拿模型回复；冷会话可 resume。`session_read` 读本地持久日志，不 acquire agent。
 - **完成态从日志推导**：delegation 投影（idle/running/completed/failed/aborted/max-tokens）纯函数折叠，进程重启不丢。
 - **续写授权在插件工具层**：默认 `workspace`；`creator` / `anyone` 只约束 `session_write` / `session_collect`，不改官方 GUI 既有会话。
-- **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根）、`all`（Config：`allowAllScope` + `cliAllowAll`）；默认双闸隐藏（`~` 标题或 `kind:hidden`）。
+- **list 三作用域**：`own`（调用者 + 后代，agent 专用）、`tree`（指定根）、`all`（Config：`allowAllScope` + `cliAllowAll`）；默认双闸隐藏（`~` 标题或 `hidden` / `kind:hidden`）。
 - **session_collect**：对血缘树或 tags 做声明式完成条件（wait-all/any/n/first-failed + cancel-rest + 超时），不做 DAG/调度。
 - **错误码**：`session-not-found` / `unauthorized` / `scope-denied` / `empty-content` / `limit-exceeded` / `title-invalid` / `tag-invalid` / `web-unreachable` / `workspace-not-found` / `workspace-name-conflict` / `workspace-invalid-path`。
 

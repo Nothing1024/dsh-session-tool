@@ -8,6 +8,7 @@ env/profiles/*/pnpm-lock.yaml
 env/sessions/
 env/storages/
 env/settings.yaml
+env/AGENTS.md
 env/.env
 env/.credentials.yaml
 env/.anonymous-user-id
@@ -19,7 +20,7 @@ env/profiles/headless/
 env/lan-uuid
 
 # tsdown/tsc emit belongs in lib/; keep src/ as TypeScript only
-packages/*/src/*.js
-packages/*/src/*.d.ts
-packages/*/src/*.js.map
-packages/*/src/*.d.ts.map
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts.map

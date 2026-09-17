@@ -223,6 +223,7 @@ describe('SessionToolLocalService transport binding', () => {
       })),
       rename: vi.fn(),
       delete: vi.fn(),
+      archiveSession: vi.fn(),
     }
     await next.plugin(SessionStore)
     await next.plugin(SessionPersistenceJsonl, { root: join(root, 'sessions') })

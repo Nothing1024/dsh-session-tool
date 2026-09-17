@@ -105,6 +105,21 @@ export class WorkspaceHttpClient {
     })
   }
 
+  /** Archive a session out of the official sidebar (workspace archive set). */
+  async archiveSession(sessionId: string): Promise<void> {
+    await this.invoke('workspace/archiveSession', async () => {
+      await this.call('workspace/archiveSession', { request: { sessionId } })
+    })
+  }
+
+  async unarchiveSession(sessionId: string): Promise<void> {
+    throw new SessionToolError(
+      `web gateway has no workspace/unarchiveSession; cannot restore "${sessionId}" from the official archive set`,
+      'web-unreachable',
+    )
+  }
+
+
   private async call<V>(endpoint: string, args: Readonly<Record<string, unknown>>): Promise<V> {
     const result = await this.rpc.call<V>(endpoint, args)
     if (result.ok) return result.value

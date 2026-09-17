@@ -388,12 +388,12 @@ sess "创建将改隐" session create --title "$T_AB" --workspace "$WS_DIR" --ta
 UF004=$(json 'process.stdout.write(j.session_id||"")')
 sess "整组替换为 kind:hidden" session rename "$UF004" --tag kind:hidden
 check 改隐-退出码 eq "$LAST_EXIT" 0
-check 改隐-新标记 eq "$(json 'process.stdout.write((j.tags||[]).join(","))')" 'kind:hidden'
+check 改隐-新标记 eq "$(json 'process.stdout.write((j.tags||[]).join(","))')" 'hidden,kind:hidden'
 sess "默认列表应丢掉将改隐" session list --title "$T_AB"
 check 改隐-默认不可见 eq "$(json 'process.stdout.write(String((j.sessions||[]).length))')" 0
 sess "含隐藏应仍是原标题" session list --title "$T_AB" --include-hidden
 check 改隐-标题未改 eq "$(json 'process.stdout.write((j.sessions[0]&&j.sessions[0].title)||"")')" "$T_AB"
-check 改隐-只剩hidden eq "$(json 'process.stdout.write(((j.sessions[0]&&j.sessions[0].tags)||[]).join(","))')" 'kind:hidden'
+check 改隐-只剩hidden eq "$(json 'process.stdout.write(((j.sessions[0]&&j.sessions[0].tags)||[]).join(","))')" 'hidden,kind:hidden'
 marks_excerpt "$UF004"
 
 say '=== UF-004 空 rename ==='
@@ -401,14 +401,14 @@ sess "不带 title/tags 的 rename" session rename "$UF004"
 check 空rename-非0 nonzero "$LAST_EXIT"
 check 空rename-错误码 stderr_has 'empty-content'
 
-say '=== UF-005 --parent 自动 kind:delegated；普通创建不加 ==='
+say '=== UF-005 --parent 自动 child + kind:delegated + parent:<id>；普通创建不加 ==='
 sess "创建可见委派父" session create --title "$T_PARENT" --workspace "$WS_DIR" --tag "$RUN_TAG"
 UF005P=$(json 'process.stdout.write(j.session_id||"")')
 sess "创建可见委派子" session create --title "$T_CHILD" --workspace "$WS_DIR" --parent "$UF005P"
 UF005C=$(json 'process.stdout.write(j.session_id||"")')
 marks "读委派子标记" marks get --id "$UF005C"
 check 委派子-退出码 eq "$LAST_EXIT" 0
-check 委派子-自动标记 eq "$(json 'process.stdout.write((j.tags||[]).join(","))')" 'kind:delegated'
+check 委派子-自动标记 eq "$(json "process.stdout.write((j.tags||[]).join(","))")" "child,kind:delegated,parent:$UF005P"
 sess "按 kind:delegated 列委派子" session list --tag kind:delegated --title "$T_CHILD"
 check 委派子-在列表 eq "$(json 'process.stdout.write((j.sessions[0]&&j.sessions[0].session_id)||"")')" "$UF005C"
 
@@ -496,7 +496,7 @@ say "  $T_SECRET  $UF002_SECRET"
 say ''
 say "隐性-标记（插件默认 list 丢掉；官方栏不读 tags，标题仍可能看见）："
 say "  $T_KIND  $UF002_HIDDEN"
-say "  $T_AB    $UF004   （rename 后只剩 kind:hidden，标题未改）"
+say "  $T_AB    $UF004   （rename 后剩 hidden,kind:hidden，标题未改）"
 say ''
 say "核对 $PASS 通过 / $FAIL 失败"
 say "完整记录：$OUT"

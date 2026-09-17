@@ -7,9 +7,11 @@
  * addressable sessions, append-only transcripts, fork lineage, and list-based
  * resume — all built on DSH's existing session stack (event-sourced
  * `Session` logs, session persistence, official title service). Tool parameter
- * `tags` are plugin marks (`session-marks` jsonl). Reserved names:
- * `kind:vibee`, `kind:delegated`, `kind:hidden`, `ui:aux`. The official GUI
- * does not show them; later Web uses `listByKind`.
+ * `tags` are plugin marks (`session-marks` jsonl). The platform recognizes
+ * prefixes `app:` / `form:` / `parent:` and exact tokens `child` / `hidden`.
+ * Historical `kind:*` / `delegated` / `ui:aux` names stay readable aliases.
+ * Official sidebar still ignores them; the conversation header projects them
+ * through `sessionTool.readMarks` + `session-marks` `projectMarks`.
  * @module session-tool
  */
 
@@ -37,7 +39,10 @@ export interface SessionToolCreateOptions {
    * parent must be the caller itself or one of its ancestors.
    */
   readonly parentSessionId?: SessionId
-  /** Plugin mark set written after creation (last-wins replace; not official GUI). */
+  /**
+   * Plugin marks written after creation (merged with system child/hidden
+   * aliases when applicable; not official GUI).
+   */
   readonly tags?: readonly string[]
   /**
    * Register (or reuse) the workspace at this directory through the web
@@ -133,7 +138,7 @@ export interface SessionToolWaitResult {
 
 /** Visibility state of a session combining marks and workspace archive status. */
 export interface SessionVisibility {
-  /** Whether the session has the kind:hidden mark set. */
+  /** Whether the session has a hidden-visibility mark (`hidden` or `kind:hidden`). */
   readonly hasHiddenMark: boolean
   /** Whether the session is archived in the workspace registry. */
   readonly archived: boolean
@@ -222,8 +227,8 @@ export interface SessionToolListFilter {
    */
   readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted'
   /**
-   * Only delegated sessions: those whose plugin marks include `kind:delegated`
-   * (bare token `delegated` accepted once for compat).
+   * Only child sessions: those whose plugin marks include `child`
+   * (`kind:delegated` / bare `delegated` accepted as historical aliases).
    */
   readonly origin?: 'delegated'
   /** Exemption from the hidden-prefix filter (default `false`: hidden rows are excluded). */
@@ -240,7 +245,7 @@ export interface SessionToolListRow {
   readonly sessionId: SessionId
   /** Durable title, when one has been accepted. */
   readonly title?: string
-  /** Plugin mark set (empty before any accepted set). Official GUI does not show these. */
+  /** Plugin mark set (empty before any accepted set). */
   readonly tags: readonly string[]
   /** `live` while the session is in this process's store, `idle` otherwise. */
   readonly status: 'live' | 'idle'
@@ -268,8 +273,43 @@ export interface SessionToolListResult {
 export interface SessionToolRenameOptions {
   /** Explicit title; pins the title and stops automatic generation. */
   readonly title?: string
-  /** Plugin mark set (last-wins replace of the mark-table row). */
+  /**
+   * Incoming marks: free tags replace; structured marks (`app:`, `form:`,
+   * `parent:`, `child`, `hidden`, `kind:*`, product keys) are kept unless
+   * that axis is replaced.
+   */
   readonly tags?: readonly string[]
+}
+
+/** Options for {@link SessionToolService.mark}. */
+export interface SessionToolMarkOptions {
+  /** Tokens to add (union; hidden/child aliases are dual-written). */
+  readonly add?: readonly string[]
+  /** Tokens to remove (diff; hidden/child aliases drop the whole family). */
+  readonly remove?: readonly string[]
+}
+
+/** Result of {@link SessionToolService.mark}. */
+export interface SessionToolMarkResult {
+  /** The updated session id. */
+  readonly sessionId: SessionId
+  /** The mark set after the patch (empty when the row was cleared). */
+  readonly tags: readonly string[]
+}
+
+
+/** Result of {@link SessionToolService.readMarks}. */
+export interface SessionToolMarksView {
+  /** The session id. */
+  readonly sessionId: SessionId
+  /** Current plugin mark set (empty when the session has no row). */
+  readonly tags: readonly string[]
+  /**
+   * Title prefixes that count as hidden for projection (`~` by default).
+   * The client applies these to the official display title; this method
+   * does not fetch the title.
+   */
+  readonly hiddenPrefixes: readonly string[]
 }
 
 /** Result of {@link SessionToolService.rename}. */
@@ -443,7 +483,7 @@ export interface SessionToolService {
   cancel(caller: SessionToolCaller, sessionId: SessionId): Promise<void>
 
   /**
-   * Rename a session and/or replace its plugin mark set.
+   * Rename a session and/or merge incoming plugin marks.
    * @param caller - the calling agent or the CLI.
    * @param sessionId - target session; the caller must be the session itself
    *   or one of its ancestors.
@@ -451,6 +491,26 @@ export interface SessionToolService {
    * @returns the accepted title and/or tags.
    */
   rename(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolRenameOptions): Promise<SessionToolRenameResult>
+
+  /**
+   * Add or remove plugin marks without wiping structured tokens.
+   * @param caller - the calling agent or the CLI.
+   * @param sessionId - target session; the caller must be the session itself
+   *   or one of its ancestors.
+   * @param options - at least one of add or remove.
+   * @returns the mark set after the patch.
+   */
+  mark(caller: SessionToolCaller, sessionId: SessionId, options: SessionToolMarkOptions): Promise<SessionToolMarkResult>
+
+  /**
+   * Read the plugin mark set for header / panel projection.
+   * Does not fetch the official title; the client supplies that to
+   * {@link projectMarks} together with {@link SessionToolMarksView.hiddenPrefixes}.
+   * @param caller - the calling agent, CLI, or web operator.
+   * @param sessionId - target session.
+   * @returns the mark set and the deployment's hidden-title prefixes.
+   */
+  readMarks(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionToolMarksView>
 
   /**
    * Read the visibility state of a session (hidden marks + archived status).
@@ -461,7 +521,7 @@ export interface SessionToolService {
   getVisibility(caller: SessionToolCaller, sessionId: SessionId): Promise<SessionVisibility>
 
   /**
-   * Hide a session by setting the kind:hidden mark and optionally archiving.
+   * Hide a session by setting `hidden` + `kind:hidden` and optionally archiving.
    * The mark operation always completes; archival is best-effort when workspace
    * registry is available.
    * @param caller - the calling agent or the CLI.
@@ -474,7 +534,7 @@ export interface SessionToolService {
   hide(caller: SessionToolCaller, sessionId: SessionId, options?: { readonly syncToArchived?: boolean }): Promise<SessionVisibility>
 
   /**
-   * Unhide a session by removing the kind:hidden mark and optionally unarchiving.
+   * Unhide a session by removing hidden-visibility marks and optionally unarchiving.
    * The mark operation always completes; workspace state updates are best-effort.
    * @param caller - the calling agent or the CLI.
    * @param sessionId - target session; the caller must be the session itself

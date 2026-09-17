@@ -2,7 +2,7 @@
 
 本目录是一份独立的 `DSH_HOME`（loopback）。不要 `--lan`。口固定 **3081**，不要打别人的 3080。
 
-官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.5-rc.1**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.5-rc.1 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：保留名 `kind:vibee` / `kind:delegated` / `kind:hidden` / `ui:aux`；官方 GUI 不显示；后期 Web 用 `listByKind`。
+官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.5-rc.1**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.5-rc.1 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：平台认 `app:` / `form:` / `parent:` / `child` / `hidden`，历史 `kind:*` 仍可读；官方 GUI 不显示；后期 Web 用 `listByMark` / `listByKind`。
 
 ```text
 env/
@@ -13,7 +13,7 @@ env/
 └── profiles/st/          bundles + 仓内 link；overlay 把 webUrl 指到 :3081
 ```
 
-模型 key：`$DSH_HOME/.credentials.yaml` 优先于 `$DSH_HOME/.env`（官方 Models 页写前者）。都 git 忽略。`setup.sh` 若本地没有 `.env`，会从 `~/.dsh/.env` 拷一份并生成凭据文件。
+模型 key 与 `llm-pi-ai` / `agent-default-model` 来自 `~/workspace/dsh/plugin/.shared/`。`setup.sh` 会跑 `apply.sh --home "$PWD"`。不要手改本目录 `settings.yaml` 的共享段。
 
 ```sh
 pnpm install && pnpm run build && sh env/setup.sh

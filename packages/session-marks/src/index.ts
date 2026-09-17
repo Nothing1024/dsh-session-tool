@@ -1,8 +1,9 @@
 /**
  * Plugin-owned session mark table stored at `$DSH_HOME/session-tool/marks.jsonl`.
- * Last-wins per session id; put rewrites the table with tmp+rename. Reserved
- * names (`kind:vibee`, `kind:delegated`, `kind:hidden`, `ui:aux`) are ordinary
- * tokens. Never writes official `session/tags` events.
+ * Last-wins per session id; put rewrites the table with tmp+rename. The
+ * platform recognizes prefixes (`app:`, `form:`, `parent:`) and exact tokens
+ * (`hidden`, `child`); historical `kind:*` / `delegated` / `ui:aux` names
+ * stay legal aliases. Never writes official `session/tags` events.
  * @module session-marks
  */
 
@@ -10,13 +11,58 @@ import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-/** Default cap on a mark set (historical maxTags). */
-export const DEFAULT_MAX_TAGS = 20
-/** Default cap on one mark's UTF-8 byte length. */
-export const DEFAULT_MAX_TAG_BYTES = 128
+export {
+  CHILD_MARKS,
+  DEFAULT_MAX_TAG_BYTES,
+  DEFAULT_MAX_TAGS,
+  HIDDEN_MARKS,
+  MARK_PREFIXES,
+  RESERVED_MARKS,
+  TagInvalidError,
+  hasChildMark,
+  hasHiddenMark,
+  isChildToken,
+  isHiddenToken,
+  isStructuredMark,
+  isTitleHidden,
+  parentMark,
+  parseParentMark,
+} from './tokens.ts'
+export {
+  MARK_ICONS,
+  appHint,
+  badgeChips,
+  compactName,
+  formHint,
+  hasProjectedBadge,
+  inspectorRows,
+  projectMarks,
+  resolveIcon,
+  tokenKind,
+  visibilityHint,
+  visibilityValue,
+} from './project.ts'
+export type {
+  MarkIconKey,
+  MarkIconSpec,
+  MarkTokenKind,
+  MarksInstance,
+  MarksInspectorRow,
+  MarksProjection,
+  ProjectMarksInput,
+  ProjectMarksOptions,
+} from './project.ts'
 
-/** Reserved mark names. They normalize as ordinary legal tokens. */
-export const RESERVED_MARKS = ['kind:vibee', 'kind:delegated', 'kind:hidden', 'ui:aux'] as const
+import {
+  DEFAULT_MAX_TAG_BYTES,
+  DEFAULT_MAX_TAGS,
+  MARK_PREFIXES,
+  TagInvalidError,
+  isChildToken,
+  isHiddenToken,
+  isStructuredMark,
+} from './tokens.ts'
+
 
 /** One last-wins row in the mark table. */
 export interface SessionMarksRow {
@@ -43,15 +89,6 @@ export interface PatchMarksRequest {
   readonly remove?: readonly string[]
 }
 
-/** Rejection of an empty, overlong, or over-count mark set. */
-export class TagInvalidError extends Error {
-  override readonly name = 'TagInvalidError'
-  readonly code = 'tag-invalid' as const
-
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options)
-  }
-}
 
 /** In-process write queue so concurrent put/gc on one path cannot drop rows. */
 const writeLocks = new Map<string, Promise<void>>()
@@ -98,13 +135,76 @@ export function normalizeMarks(
   return cleaned
 }
 
+
+
 /**
- * Whether a durable title starts with any configured hidden prefix.
- * Empty or undefined titles are not hidden.
+ * Dual-write aliases for new writes: `hidden` ↔ `kind:hidden`,
+ * `child` ↔ `kind:delegated`. Does not mint the historical bare `delegated`.
  */
-export function isTitleHidden(title: string | undefined, prefixes: readonly string[]): boolean {
-  if (title === undefined || title === '') return false
-  return prefixes.some(prefix => prefix !== '' && title.startsWith(prefix))
+export function expandWriteAliases(tags: readonly string[]): string[] {
+  const set = new Set<string>()
+  for (const raw of tags) {
+    const tag = raw.trim()
+    if (tag !== '') set.add(tag)
+  }
+  if ([...set].some(isHiddenToken)) {
+    set.add('hidden')
+    set.add('kind:hidden')
+  }
+  if ([...set].some(isChildToken)) {
+    set.add('child')
+    set.add('kind:delegated')
+  }
+  return [...set]
+}
+
+/**
+ * Dual-remove aliases: dropping any hidden/child spelling drops the whole
+ * family, including historical bare `delegated`.
+ */
+export function expandRemoveAliases(tags: readonly string[]): string[] {
+  const set = new Set<string>()
+  for (const raw of tags) {
+    const tag = raw.trim()
+    if (tag !== '') set.add(tag)
+  }
+  if ([...set].some(isHiddenToken)) {
+    set.add('hidden')
+    set.add('kind:hidden')
+  }
+  if ([...set].some(isChildToken)) {
+    set.add('child')
+    set.add('kind:delegated')
+    set.add('delegated')
+  }
+  return [...set]
+}
+
+function singleAxisPrefix(tag: string): string | undefined {
+  for (const prefix of [MARK_PREFIXES.app, MARK_PREFIXES.form, MARK_PREFIXES.parent]) {
+    if (tag.startsWith(prefix)) return prefix
+  }
+  return undefined
+}
+
+/**
+ * Rename merge: keep existing structured marks, replace free tags with the
+ * incoming free tags, and let incoming `app:` / `form:` / `parent:` replace
+ * that axis. Hidden/child aliases are expanded on the result.
+ */
+export function mergeRenameMarks(existing: readonly string[], incoming: readonly string[]): string[] {
+  const incomingExpanded = expandWriteAliases(incoming)
+  const incomingStructured = incomingExpanded.filter(isStructuredMark)
+  const incomingFree = incomingExpanded.filter(tag => !isStructuredMark(tag))
+  const replacedAxes = new Set(
+    incomingStructured.map(singleAxisPrefix).filter((prefix): prefix is string => prefix !== undefined),
+  )
+  const kept = existing.filter(tag => {
+    if (!isStructuredMark(tag)) return false
+    const axis = singleAxisPrefix(tag)
+    return axis === undefined || !replacedAxes.has(axis)
+  })
+  return expandWriteAliases([...kept, ...incomingStructured, ...incomingFree])
 }
 
 /**
@@ -205,18 +305,44 @@ export async function listAll(options?: MarksOptions): Promise<SessionMarksRow[]
 }
 
 /**
- * List rows whose current set contains `kind`.
+ * List rows whose current set contains an exact token.
+ * @param mark - exact token, e.g. `app:dsh-bot` or `kind:vibee`.
+ */
+export async function listByMark(
+  mark: string,
+  options?: MarksOptions,
+): Promise<SessionMarksRow[]> {
+  const token = mark.trim()
+  if (token === '') {
+    throw new TagInvalidError('tag-invalid: empty mark')
+  }
+  return (await listAll(options)).filter(row => row.tags.includes(token))
+}
+
+/**
+ * Historical name for {@link listByMark}. Exact token, not a kind axis.
  * @param kind - exact token, e.g. `kind:vibee`.
  */
 export async function listByKind(
   kind: string,
   options?: MarksOptions,
 ): Promise<SessionMarksRow[]> {
-  const token = kind.trim()
+  return listByMark(kind, options)
+}
+
+/**
+ * List rows whose current set has a token starting with `prefix`.
+ * @param prefix - e.g. `app:` or `parent:`.
+ */
+export async function listByPrefix(
+  prefix: string,
+  options?: MarksOptions,
+): Promise<SessionMarksRow[]> {
+  const token = prefix.trim()
   if (token === '') {
-    throw new TagInvalidError('tag-invalid: empty kind')
+    throw new TagInvalidError('tag-invalid: empty prefix')
   }
-  return (await listAll(options)).filter(row => row.tags.includes(token))
+  return (await listAll(options)).filter(row => row.tags.some(tag => tag.startsWith(token)))
 }
 
 /**

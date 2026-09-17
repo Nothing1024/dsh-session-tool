@@ -4,13 +4,22 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   TagInvalidError,
+  expandRemoveAliases,
+  expandWriteAliases,
   gc,
   get,
+  hasChildMark,
+  hasHiddenMark,
   isTitleHidden,
   listAll,
   listByKind,
+  listByMark,
+  listByPrefix,
   marksPath,
+  mergeRenameMarks,
   normalizeMarks,
+  parentMark,
+  parseParentMark,
   patch,
   put,
 } from '../src/index.ts'
@@ -222,5 +231,59 @@ describe('patch', () => {
       patch('s1', { add: ['b'] }, opts),
     ])
     expect(await get('s1', opts)).toEqual(['a', 'b', 'base'])
+  })
+})
+
+describe('mark contract helpers', () => {
+  it('dual-writes hidden/child aliases and does not mint bare delegated', () => {
+    expect(expandWriteAliases(['hidden']).sort()).toEqual(['hidden', 'kind:hidden'])
+    expect(expandWriteAliases(['kind:delegated']).sort()).toEqual(['child', 'kind:delegated'])
+    expect(expandWriteAliases(['child']).sort()).toEqual(['child', 'kind:delegated'])
+    expect(expandWriteAliases(['child'])).not.toContain('delegated')
+    expect(expandRemoveAliases(['hidden']).sort()).toEqual(['hidden', 'kind:hidden'])
+    expect(expandRemoveAliases(['child']).sort()).toEqual(['child', 'delegated', 'kind:delegated'])
+  })
+
+  it('predicates read new and historical spellings', () => {
+    expect(hasHiddenMark(['kind:hidden'])).toBe(true)
+    expect(hasHiddenMark(['hidden'])).toBe(true)
+    expect(hasHiddenMark(['plan'])).toBe(false)
+    expect(hasChildMark(['child'])).toBe(true)
+    expect(hasChildMark(['kind:delegated'])).toBe(true)
+    expect(hasChildMark(['delegated'])).toBe(true)
+    expect(hasChildMark(['plan'])).toBe(false)
+    expect(parentMark('abc')).toBe('parent:abc')
+    expect(parseParentMark(['child', 'parent:abc'])).toBe('abc')
+    expect(parseParentMark(['plan'])).toBeUndefined()
+  })
+
+  it('mergeRenameMarks keeps structured tokens and replaces free tags / axes', () => {
+    expect(mergeRenameMarks(['kind:vibee', 'plan'], ['kind:hidden', 'wip']).sort()).toEqual([
+      'hidden',
+      'kind:hidden',
+      'kind:vibee',
+      'wip',
+    ])
+    expect(mergeRenameMarks(['app:old', 'form:plugin', 'bot:x'], ['app:new']).sort()).toEqual([
+      'app:new',
+      'bot:x',
+      'form:plugin',
+    ])
+    expect(mergeRenameMarks(['a', 'b'], ['kind:hidden']).sort()).toEqual(['hidden', 'kind:hidden'])
+  })
+
+  it('listByMark is exact and listByPrefix is startswith', async () => {
+    const home = tmpHome()
+    const opts = { dshHome: home }
+    await put('s1', ['app:dsh-bot', 'bot:xiaobei'], opts)
+    await put('s2', ['app:vibee', 'vibee:run-1'], opts)
+    await put('s3', ['kind:vibee'], opts)
+    const exact = await listByMark('app:dsh-bot', opts)
+    expect(exact.map(row => row.id)).toEqual(['s1'])
+    expect(await listByKind('kind:vibee', opts)).toEqual(await listByMark('kind:vibee', opts))
+    const prefixed = await listByPrefix('app:', opts)
+    expect(prefixed.map(row => row.id).sort()).toEqual(['s1', 's2'])
+    await expect(listByMark('', opts)).rejects.toBeInstanceOf(TagInvalidError)
+    await expect(listByPrefix('', opts)).rejects.toBeInstanceOf(TagInvalidError)
   })
 })
