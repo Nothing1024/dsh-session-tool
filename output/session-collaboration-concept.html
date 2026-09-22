@@ -1,0 +1,150 @@
+<style>
+#session-collab-concept { --sc-bg:light-dark(#ffffff,#191b20); --sc-side:light-dark(#f5f6f8,#202329); --sc-ink:light-dark(#20242b,#edf0f5); --sc-muted:light-dark(#626a78,#afb8c7); --sc-line:light-dark(#dde2e9,#383e49); --sc-accent:light-dark(#245ac2,#9bbaff); --sc-select:light-dark(#edf3ff,#253650); --sc-good:light-dark(#236642,#94d1ae); --sc-bad:light-dark(#a53636,#ffa6a6); color:var(--sc-ink); background:var(--sc-bg); font-family:system-ui,sans-serif; font-size:14px; line-height:1.5; border:1px solid var(--sc-line); border-radius:12px; overflow:clip; }
+#session-collab-concept * { box-sizing:border-box; }
+#session-collab-concept button, #session-collab-concept textarea { font:inherit; }
+#session-collab-concept button { cursor:pointer; color:inherit; }
+#session-collab-concept button:disabled { cursor:default; opacity:.6; }
+#session-collab-concept .sc-top { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:14px 18px; border-bottom:1px solid var(--sc-line); flex-wrap:wrap; }
+#session-collab-concept .sc-small { font-size:12px; color:var(--sc-muted); }
+#session-collab-concept .sc-body { display:grid; grid-template-columns:146px minmax(0,1fr) minmax(310px,1.05fr); }
+#session-collab-concept .sc-nav { padding:18px 12px; background:var(--sc-side); border-right:1px solid var(--sc-line); }
+#session-collab-concept .sc-nav p { margin:0 0 12px; }
+#session-collab-concept .sc-nav-current { background:var(--sc-select); color:var(--sc-accent); border-radius:7px; padding:9px; margin:18px -4px; }
+#session-collab-concept .sc-chat { padding:22px 20px; border-right:1px solid var(--sc-line); min-width:0; }
+#session-collab-concept h2 { margin:0 0 18px; font-size:18px; font-weight:500; }
+#session-collab-concept h3 { margin:0; font-size:15px; font-weight:500; }
+#session-collab-concept .sc-message { padding:13px 0; border-bottom:1px solid var(--sc-line); }
+#session-collab-concept .sc-message p { margin:6px 0; }
+#session-collab-concept .sc-panel { min-width:0; padding:18px; }
+#session-collab-concept .sc-panel-head { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:12px; }
+#session-collab-concept .sc-tabs { display:flex; gap:18px; border-bottom:1px solid var(--sc-line); margin-bottom:10px; }
+#session-collab-concept .sc-tab { border:0; border-bottom:2px solid transparent; background:transparent; padding:8px 0; }
+#session-collab-concept .sc-tab[aria-pressed=true] { color:var(--sc-accent); border-bottom-color:var(--sc-accent); }
+#session-collab-concept .sc-list { display:grid; gap:6px; margin-bottom:18px; }
+#session-collab-concept .sc-row { text-align:left; display:grid; gap:4px; padding:10px; border:1px solid transparent; border-radius:7px; background:transparent; width:100%; }
+#session-collab-concept .sc-row[aria-pressed=true] { background:var(--sc-select); border-color:var(--sc-line); }
+#session-collab-concept .sc-row-head { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+#session-collab-concept .sc-status { color:var(--sc-accent); font-size:12px; white-space:nowrap; }
+#session-collab-concept .sc-status[data-state=completed] { color:var(--sc-good); }
+#session-collab-concept .sc-status[data-state=failed] { color:var(--sc-bad); }
+#session-collab-concept .sc-detail { border-top:1px solid var(--sc-line); padding-top:16px; min-width:0; }
+#session-collab-concept .sc-detail p { margin:8px 0 14px; }
+#session-collab-concept .sc-actions { display:flex; gap:7px; flex-wrap:wrap; margin:14px 0; }
+#session-collab-concept .sc-button { border:1px solid var(--sc-line); border-radius:6px; background:var(--sc-bg); padding:6px 10px; }
+#session-collab-concept .sc-primary { color:var(--sc-accent); background:var(--sc-select); }
+#session-collab-concept textarea { width:100%; resize:vertical; min-height:68px; padding:9px; background:var(--sc-bg); color:var(--sc-ink); border:1px solid var(--sc-line); border-radius:7px; }
+#session-collab-concept .sc-editor-label { display:block; margin-bottom:6px; }
+#session-collab-concept .sc-note { padding:9px 0; font-size:12px; color:var(--sc-muted); }
+#session-collab-concept .sc-confirm { padding:12px; border:1px solid var(--sc-line); border-radius:8px; background:var(--sc-side); }
+#session-collab-concept .sc-events { margin:0; padding-left:18px; }
+#session-collab-concept .sc-events li { padding:4px 0; }
+#session-collab-concept [hidden] { display:none !important; }
+#session-collab-concept[data-placement=workspace] .sc-body { grid-template-columns:146px minmax(0,1fr); }
+#session-collab-concept[data-placement=workspace] .sc-chat { display:none; }
+#session-collab-concept[data-placement=workspace] .sc-panel-content { display:grid; grid-template-columns:minmax(220px,.85fr) minmax(0,1fr); gap:24px; }
+#session-collab-concept[data-placement=workspace] .sc-detail { padding-top:0; border-top:0; }
+#session-collab-concept[data-density=compact] .sc-row { padding:6px 10px; }
+@media(max-width:780px) { #session-collab-concept .sc-body { grid-template-columns:125px minmax(0,1fr); } #session-collab-concept .sc-chat { grid-column:2; border-right:0; border-bottom:1px solid var(--sc-line); } #session-collab-concept .sc-nav { grid-row:1 / 3; } #session-collab-concept .sc-panel { grid-column:2; } }
+@media(max-width:520px) { #session-collab-concept .sc-body, #session-collab-concept[data-placement=workspace] .sc-body { display:block; } #session-collab-concept .sc-nav { display:flex; gap:12px; align-items:center; padding:10px 14px; border-right:0; border-bottom:1px solid var(--sc-line); flex-wrap:wrap; } #session-collab-concept .sc-nav p { margin:0; } #session-collab-concept .sc-nav-current { margin:0; } #session-collab-concept .sc-nav-history { display:none; } #session-collab-concept[data-placement=workspace] .sc-panel-content { display:block; } #session-collab-concept[data-placement=workspace] .sc-detail { border-top:1px solid var(--sc-line); padding-top:16px; } #session-collab-concept .sc-chat, #session-collab-concept .sc-panel { padding:16px; } }
+@media(pointer:coarse) { #session-collab-concept button { min-height:44px; } #session-collab-concept textarea { font-size:16px; } }
+</style>
+<div id="session-collab-concept" data-placement="panel" data-density="comfortable" aria-label="会话协作界面方案">
+  <div class="sc-top"><span>DSH / session-tool</span><span class="sc-small">交互方案 · 示例数据</span></div>
+  <div class="sc-body">
+    <nav class="sc-nav" aria-label="工作区导航">
+      <p class="sc-small">当前工作区</p><p>session-tool</p>
+      <div class="sc-nav-current">会话协作</div>
+      <div class="sc-nav-history"><p class="sc-small">近期会话</p><p>插件改进讨论</p><p class="sc-small">持久化兼容性</p></div>
+    </nav>
+    <section class="sc-chat" aria-label="对话摘要">
+      <div class="sc-small">当前打开的会话</div><h2 id="sc-chat-title">插件改进讨论</h2>
+      <div id="sc-chat-messages">
+        <div class="sc-message"><span class="sc-small">你</span><p>梳理可视化方案，同时检查现有接口和存储兼容性。</p></div>
+        <div class="sc-message"><span class="sc-small">主会话</span><p>三个任务已分别委派。接口梳理已有结果，交互设计仍在进行，存储检查遇到错误。</p></div>
+      </div>
+      <div class="sc-note">右侧选择任务，可查看结果或打开对应会话</div>
+      <button type="button" class="sc-button" id="sc-back" hidden>返回主会话</button>
+    </section>
+    <section class="sc-panel" aria-label="协作面板">
+      <div class="sc-panel-head"><h3 id="sc-panel-title">协作面板</h3><span class="sc-small">来源：插件改进讨论</span></div>
+      <div class="sc-tabs" aria-label="关系视图">
+        <button type="button" class="sc-tab" id="sc-task-tab" aria-pressed="true">委派任务 · 3</button>
+        <button type="button" class="sc-tab" id="sc-branch-tab" aria-pressed="false">历史分支 · 1</button>
+      </div>
+      <div class="sc-panel-content">
+        <div><div class="sc-note" id="sc-view-note">当前主会话直接委派的任务</div><div class="sc-list" id="sc-list"></div></div>
+        <div class="sc-detail" id="sc-detail" aria-live="polite">
+          <div class="sc-row-head"><h3 id="sc-detail-title"></h3><span class="sc-status" id="sc-detail-state"></span></div>
+          <div class="sc-small" id="sc-detail-meta"></div>
+          <p id="sc-detail-summary"></p>
+          <details><summary>执行记录</summary><ol class="sc-events" id="sc-events"></ol></details>
+          <div class="sc-actions"><button type="button" class="sc-button sc-primary" id="sc-open">打开会话</button><button type="button" class="sc-button" id="sc-stop">停止本轮</button></div>
+          <div class="sc-confirm" id="sc-confirm" role="group" aria-label="停止请求确认" hidden><span id="sc-confirm-title"></span><div class="sc-note">仅停止这个任务的当前轮次；保留历史，排队消息另行处理。</div><div class="sc-actions"><button type="button" class="sc-button" id="sc-confirm-stop">发送停止请求</button><button type="button" class="sc-button" id="sc-dismiss">返回</button></div></div>
+          <label class="sc-editor-label" for="sc-prompt">向所选会话补充要求</label>
+          <textarea id="sc-prompt" placeholder="例如：优先考虑在现有 DSH 中接入"></textarea>
+          <div class="sc-actions"><button type="button" class="sc-button sc-primary" id="sc-send">排队续写</button></div>
+          <div class="sc-note" id="sc-receipt" role="status">续写内容只发给当前选中的会话</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('session-collab-concept');
+  const byId = id => root.querySelector('#' + id);
+  const design = { placement:'panel', density:'comfortable' };
+  const labels = { running:'运行中', completed:'本轮完成', failed:'本轮失败', idle:'未执行新任务', stopping:'停止确认中' };
+  const sessions = [
+    { id:'interaction', kind:'task', title:'交互设计', state:'running', meta:'执行 #1 · 最近更新 20 秒前', summary:'正在梳理任务列表、会话详情和人工介入操作。', events:['14:20 接收任务','14:21 开始本轮执行','14:23 正在整理操作状态'] },
+    { id:'contract', kind:'task', title:'接口梳理', state:'completed', meta:'执行 #1 · 完成于 14:22', summary:'已整理 7 个现有工具，以及取消、可见性管理的服务接口。', events:['14:20 接收任务','14:21 阅读服务契约','14:22 本轮完成'] },
+    { id:'storage', kind:'task', title:'存储兼容性', state:'failed', meta:'执行 #1 · 失败于 14:21', summary:'连接检查失败；需要确认目标网关地址后再继续。', events:['14:20 接收任务','14:21 网关连接失败','14:21 本轮失败'] },
+    { id:'alternative', kind:'branch', title:'独立管理页方案', state:'idle', meta:'源自：插件改进讨论 / 第 4 轮', summary:'继承第 4 轮之前的讨论，用于探索独立页面方案；尚未执行新任务。', events:['14:24 从已闭合轮次派生','14:24 历史上下文已继承'] }
+  ];
+  let view='task';
+  let selected='interaction';
+  const current = () => sessions.find(item => item.id === selected);
+  function showChat(item) {
+    byId('sc-chat-title').textContent=item.title;
+    byId('sc-chat-messages').replaceChildren();
+    const message=document.createElement('div'); message.className='sc-message';
+    const label=document.createElement('span'); label.className='sc-small'; label.textContent='所选会话 · 对话摘要';
+    const text=document.createElement('p'); text.textContent=item.summary;
+    message.append(label,text); byId('sc-chat-messages').append(message); byId('sc-back').hidden=false;
+    if(design.placement==='workspace') { design.placement='panel'; renderDesign(); }
+  }
+  function renderList() {
+    byId('sc-list').replaceChildren();
+    sessions.filter(item=>item.kind===view).forEach(item=>{
+      const button=document.createElement('button'); button.type='button'; button.className='sc-row'; button.dataset.session=item.id; button.setAttribute('aria-pressed',String(item.id===selected));
+      const head=document.createElement('span'); head.className='sc-row-head';
+      const title=document.createElement('span'); title.textContent=item.title;
+      const state=document.createElement('span'); state.className='sc-status'; state.dataset.state=item.state; state.textContent=labels[item.state];
+      const meta=document.createElement('span'); meta.className='sc-small'; meta.textContent=item.meta;
+      head.append(title,state); button.append(head,meta); button.addEventListener('click',()=>{ selected=item.id; byId('sc-prompt').value=''; render(); }); byId('sc-list').append(button);
+    });
+  }
+  function render() {
+    const item=current(); renderList();
+    byId('sc-task-tab').setAttribute('aria-pressed',String(view==='task'));
+    byId('sc-branch-tab').setAttribute('aria-pressed',String(view==='branch'));
+    byId('sc-view-note').textContent=view==='task'?'当前主会话直接委派的任务':'历史分支不自动纳入委派任务汇总';
+    byId('sc-detail-title').textContent=item.title; byId('sc-detail-state').textContent=labels[item.state]; byId('sc-detail-state').dataset.state=item.state;
+    byId('sc-detail-meta').textContent=item.meta; byId('sc-detail-summary').textContent=item.summary;
+    byId('sc-events').replaceChildren(); item.events.forEach(value=>{ const li=document.createElement('li'); li.textContent=value; byId('sc-events').append(li); });
+    byId('sc-stop').hidden=item.state!=='running'&&item.state!=='stopping'; byId('sc-stop').disabled=item.state==='stopping';
+    byId('sc-confirm').hidden=true; byId('sc-receipt').textContent='续写内容只发给当前选中的会话';
+  }
+  function renderDesign() { root.dataset.placement=design.placement; root.dataset.density=design.density; byId('sc-panel-title').textContent=design.placement==='panel'?'协作面板':'工作区会话协作'; }
+  byId('sc-task-tab').addEventListener('click',()=>{ view='task'; selected='interaction'; render(); });
+  byId('sc-branch-tab').addEventListener('click',()=>{ view='branch'; selected='alternative'; render(); });
+  byId('sc-open').addEventListener('click',()=>showChat(current()));
+  byId('sc-back').addEventListener('click',()=>{ showChat({title:'插件改进讨论',summary:'三个委派任务分别处理交互、接口与兼容性；历史分支用于探索另一种方案。'}); byId('sc-back').hidden=true; });
+  byId('sc-stop').addEventListener('click',()=>{ byId('sc-confirm-title').textContent='停止「'+current().title+'」的当前轮次？'; byId('sc-confirm').hidden=false; });
+  byId('sc-dismiss').addEventListener('click',()=>{ byId('sc-confirm').hidden=true; });
+  byId('sc-confirm-stop').addEventListener('click',()=>{ const item=current(); item.state='stopping'; item.events.push('示例：停止请求已接收，等待执行状态确认'); render(); byId('sc-receipt').textContent='停止请求已接收；本轮尚未确认结束'; });
+  byId('sc-send').addEventListener('click',()=>{ const prompt=byId('sc-prompt').value.trim(); if(!prompt) { byId('sc-receipt').textContent='请先输入补充要求'; return; } const item=current(); item.events.push('示例：补充要求已排队'); render(); byId('sc-prompt').value=''; byId('sc-receipt').textContent='已排队到「'+item.title+'」；尚未开始新一轮执行'; });
+  render(); renderDesign();
+  if(globalThis.Tweak) { const tweak=new globalThis.Tweak({container:root,onChange:renderDesign}); tweak.addSelect(design,'placement',{label:'入口布局',options:[{label:'现有会话内的协作面板',value:'panel'},{label:'工作区独立管理页',value:'workspace'}]}); tweak.addSelect(design,'density',{label:'任务行间距',options:[{label:'舒适',value:'comfortable'},{label:'紧凑',value:'compact'}]}); }
+})();
+</script>

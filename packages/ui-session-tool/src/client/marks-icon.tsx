@@ -1,4 +1,4 @@
-import { MARK_ICONS, type MarkIconKey } from '../../../session-marks/src/project.ts'
+import { MARK_ICONS, type MarkIconKey } from 'session-marks/project'
 
 export function MarkIcon({ name }: { name: MarkIconKey }) {
   const spec = MARK_ICONS[name]

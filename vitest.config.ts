@@ -15,7 +15,6 @@ export default defineConfig({
     alias: [
       { find: /^session-marks$/, replacement: fileURLToPath(new URL('./packages/session-marks/src/index.ts', import.meta.url)) },
       { find: /^session-marks\/project$/, replacement: fileURLToPath(new URL('./packages/session-marks/src/project.ts', import.meta.url)) },
-      { find: /^session-marks\/src\//, replacement: fileURLToPath(new URL('./packages/session-marks/src/', import.meta.url)) },
       { find: /^session-tool$/, replacement: fileURLToPath(new URL('./packages/session-tool/src/index.ts', import.meta.url)) },
       { find: /^session-tool-local$/, replacement: fileURLToPath(new URL('./packages/session-tool-local/src/index.ts', import.meta.url)) },
       { find: /^tool-session$/, replacement: fileURLToPath(new URL('./packages/tool-session/src/index.ts', import.meta.url)) },

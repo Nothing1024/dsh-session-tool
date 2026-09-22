@@ -12,8 +12,13 @@ import { prefix } from '../contract.ts'
 import { SessionPanel } from './panel.tsx'
 import { SessionMarksBadge } from './header-badge.tsx'
 
-export const inject = ['slots', 'connection', 'sessions', 'layout']
+export const inject = ['slots', 'connection', 'sessions', 'layout', 'uiWorkspace']
 export const panelId = 'session-tool'
+
+/** Main-view navigation. `sessions.open` was removed in 0.1.6-alpha.2. */
+interface MainViewNavigation {
+  openSession(target: SessionId): void
+}
 
 function PanelIcon({ size }: SidebarPanelIconOwnerProps) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
@@ -43,8 +48,8 @@ export function apply(ctx: Context): void {
         const navigation = ctx.layout.beginNavigation()
         await sessions.refresh()
         if (navigation.aborted) return
-        sessions.open(id as SessionId)
-        ctx.layout.selectPanel(null)
+        const uiWorkspace = ctx.get('uiWorkspace') as MainViewNavigation
+        uiWorkspace.openSession(id as SessionId)
       },
     }),
   }, SessionPanel))

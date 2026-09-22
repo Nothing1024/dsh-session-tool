@@ -12,6 +12,7 @@ export default defineConfig([
     outDir: 'lib', format: 'cjs', platform: 'browser', target: 'es2022',
     dts: false, clean: false,
     external: ['react', 'react/jsx-runtime', /^@deepseek-ai\//],
+    noExternal: [/^session-marks(\/|$)/],
     outputOptions: {
       entryFileNames: 'client.js', inlineDynamicImports: true,
       banner: 'window.__ModuleLoader__.load({ id: "ui-session-tool", factory: (require) => {',

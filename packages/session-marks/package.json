@@ -15,7 +15,6 @@
       "types": "./lib/project.d.ts",
       "default": "./lib/project.js"
     },
-    "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [

@@ -53,4 +53,4 @@ if gateway_refuse_foreign; then
   echo "env/boot: already up pid=$GW_PID http://127.0.0.1:${GW_PORT}"
   exit 0
 fi
-exec npx --yes @deepseek-ai/dsh@0.1.5-rc.1 --profile st --port "$GW_PORT" --no-open "$@"
+exec npx --yes @deepseek-ai/dsh@0.1.6-alpha.2 --profile st --port "$GW_PORT" --no-open "$@"

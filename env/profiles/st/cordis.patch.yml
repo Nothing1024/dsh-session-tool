@@ -20,4 +20,10 @@
 - id: agent-default-model
   config:
     provider: anthropic
-    model: grok-4.6
+    model: deepseek-flash
+
+# Official DeepSeek chat + search are disabled so they cannot bypass deepseek-flash.
+- id: llm-deepseek
+  disabled: true
+- id: web-search-deepseek
+  disabled: true

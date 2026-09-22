@@ -2,7 +2,7 @@
 
 本目录是一份独立的 `DSH_HOME`（loopback）。不要 `--lan`。口固定 **3081**，不要打别人的 3080。
 
-官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.5-rc.1**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.5-rc.1 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：平台认 `app:` / `form:` / `parent:` / `child` / `hidden`，历史 `kind:*` 仍可读；官方 GUI 不显示；后期 Web 用 `listByMark` / `listByKind`。
+官方 pin：`@deepseek-ai/dsh` / `@deepseek-ai/dsh-base` / `@deepseek-ai/dsh-web-app` 以及仓内每个 `@deepseek-ai/dsh-*` 均为 **0.1.6-alpha.2**（`boot.sh` 用 `npx @deepseek-ai/dsh@0.1.6-alpha.2 --no-open`）。会话 tags 是插件标记（`$DSH_HOME/session-tool/marks.jsonl`）：平台认 `app:` / `form:` / `parent:` / `child` / `hidden`，历史 `kind:*` 仍可读；官方 GUI 不显示；后期 Web 用 `listByMark` / `listByKind`。
 
 ```text
 env/

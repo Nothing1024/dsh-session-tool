@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { projectMarks } from '../../../session-marks/src/project.ts'
+import { projectMarks } from 'session-marks/project'
 import type { SessionToolListRow, SessionToolMessageRow } from 'session-tool'
 import type { SidebarApi, SidebarCall } from '../contract.ts'
 import { MarksChips } from './marks-chips.tsx'

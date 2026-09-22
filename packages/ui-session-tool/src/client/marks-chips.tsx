@@ -1,4 +1,4 @@
-import { badgeChips, type MarksProjection } from '../../../session-marks/src/project.ts'
+import { badgeChips, type MarksProjection } from 'session-marks/project'
 import { MarkIcon } from './marks-icon.tsx'
 
 export function MarksChips({ projection }: { projection: MarksProjection }) {

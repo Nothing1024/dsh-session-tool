@@ -6,7 +6,7 @@ import {
   inspectorRows,
   projectMarks,
   type MarksProjection,
-} from '../../../session-marks/src/project.ts'
+} from 'session-marks/project'
 import type { SidebarCall } from '../contract.ts'
 import { MarkIcon } from './marks-icon.tsx'
 import { MarksChips } from './marks-chips.tsx'
