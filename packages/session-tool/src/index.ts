@@ -112,7 +112,7 @@ export interface SessionToolWriteResult {
 }
 
 /** Terminal delegation statuses reported by {@link SessionToolService.wait}. */
-export type SessionToolWaitStatus = 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
+export type SessionToolWaitStatus = 'idle' | 'completed' | 'failed' | 'aborted' | 'forked' | 'timeout'
 
 /** Options for {@link SessionToolService.wait}. */
 export interface SessionToolWaitOptions {
@@ -173,7 +173,7 @@ export interface SessionToolCollectRequest {
   readonly tags?: readonly string[]
   /** Optional set filter by projection status and/or plugin-mark intersection. */
   readonly filter?: {
-    readonly status?: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+    readonly status?: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked'
     readonly tags?: readonly string[]
   }
   /** Completion predicate. */
@@ -191,7 +191,7 @@ export interface SessionToolCollectSession {
   /** The member session id. */
   readonly sessionId: SessionId
   /** Terminal projection status, or `running` while a turn is open. */
-  readonly status: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+  readonly status: 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked'
   /** Text summary of the last assistant message, when one exists. */
   readonly result?: string
 }
@@ -225,7 +225,7 @@ export interface SessionToolListFilter {
    * (`running` / `completed` / `failed` / `aborted`) filters by the
    * log-derived delegation projection.
    */
-  readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted'
+  readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'forked'
   /**
    * Only child sessions: those whose plugin marks include `child`
    * (`kind:delegated` / bare `delegated` accepted as historical aliases).
@@ -254,7 +254,7 @@ export interface SessionToolListRow {
    * `running` while a turn is open, then the terminal mapping of its
    * `turn/end` reason. Absent when no projection support is composed.
    */
-  readonly delegationStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+  readonly delegationStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked'
   /** Creation timestamp from the session header. */
   readonly createdAt: number
   /** Whether the session is archived in the workspace registry. */

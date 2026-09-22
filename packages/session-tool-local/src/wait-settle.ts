@@ -9,7 +9,7 @@
 export type WaitUntil = 'idle' | 'turn-end'
 
 /** Terminal wait status (timeout is owned by the poll loop). */
-export type WaitSettleStatus = 'idle' | 'completed' | 'failed' | 'aborted'
+export type WaitSettleStatus = 'idle' | 'completed' | 'failed' | 'aborted' | 'forked'
 
 /** One settle cut; `undefined` means the wait should keep polling. */
 export interface WaitSettle {
@@ -59,6 +59,7 @@ export function settleWait(input: {
 export function statusFromTurnEnd(kind: string): Exclude<WaitSettleStatus, 'idle'> {
   if (kind === 'completed') return 'completed'
   if (kind === 'aborted' || kind === 'interrupted') return 'aborted'
+  if (kind === 'forked') return 'forked'
   return 'failed'
 }
 

@@ -8,8 +8,8 @@
  * agent tools use — `--format json` prints the tool-shaped value verbatim.
  *
  * The installation anchor is the official `@deepseek-ai/dsh` package.json
- * (override with `DSH_SESSION_ANCHOR`), so bundle resolution and the healed
- * profile module fallback behave like `dsh run` from that install.
+ * (override with `DSH_SESSION_ANCHOR`), so bundle resolution uses the same
+ * runtime package table as `dsh run` from that install.
  * @module session-tool-cli
  */
 
@@ -21,13 +21,15 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@cordisjs/plugin-include'
 import {
   boot,
-  healProfilesModuleFallback,
+  createRuntimeResolution,
   installFailLoud,
   loadLayeredEnv,
   loadOptionalPatches,
   loadOverlayPatches,
   loadProfile,
+  PluginPackages,
   PROFILE_PATCH_FILENAME,
+  readProfileManifest,
   type Profile,
 } from '@deepseek-ai/dsh-app-boot'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
@@ -131,8 +133,13 @@ interface ComposedProfile {
  * @returns the profile and its effective patch stack.
  */
 export async function composeProfile(name: string, patchFiles: readonly string[]): Promise<ComposedProfile> {
-  await healProfilesModuleFallback({ installAnchor: installAnchor() })
   const profile = loadProfile(NAME, name, installAnchor())
+  const selected = readProfileManifest(NAME, profile.dir).dsh?.profile?.bundles ?? []
+  const loaded = new Set(profile.layers.map(layer => layer.packageName))
+  const skipped = selected.filter(bundle => !loaded.has(bundle))
+  if (skipped.length > 0) {
+    throw new Error(`${NAME}: profile ${JSON.stringify(name)} skipped unreadable bundles: ${skipped.join(', ')}`)
+  }
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
   const overlays = patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file)))
@@ -169,7 +176,12 @@ export function stripOneShotRunner(patches: readonly PatchOptions[]): PatchOptio
 export async function bootProfile(profileName: string, patchFiles: readonly string[]): Promise<Context> {
   const composed = await composeProfile(profileName, patchFiles)
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
+  const resolution = await createRuntimeResolution({
+    installAnchor: installAnchor(),
+    profile: composed.profile,
+  })
   const ctx = await boot(NAME, rootConfig, structuredClone(stripOneShotRunner(composed.patches)), async (hostCtx) => {
+    hostCtx.plugin(PluginPackages, { resolution })
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(NAME))
   })
   liveCtx = ctx
@@ -443,16 +455,17 @@ function parseCollectOnFailure(value: string): SessionToolCollectOnFailure {
 /** Validate a collect `--filter-status` value. */
 function parseCollectFilterStatus(
   value: string,
-): 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' {
+): 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked' {
   if (
     value !== 'running'
     && value !== 'completed'
     && value !== 'failed'
     && value !== 'aborted'
     && value !== 'max-tokens'
+    && value !== 'forked'
   ) {
     throw new Error(
-      `expected --filter-status running|completed|failed|aborted|max-tokens, got ${JSON.stringify(value)}`,
+      `expected --filter-status running|completed|failed|aborted|max-tokens|forked, got ${JSON.stringify(value)}`,
     )
   }
   return value

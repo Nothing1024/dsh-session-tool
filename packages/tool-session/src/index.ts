@@ -205,7 +205,7 @@ export function apply(ctx: Context): void {
           status: {
             type: 'string',
             required: true,
-            enum: ['idle', 'completed', 'failed', 'aborted', 'timeout'],
+            enum: ['idle', 'completed', 'failed', 'aborted', 'forked', 'timeout'],
           },
           last_turn_end_reason: {
             type: 'string',
@@ -246,7 +246,7 @@ export function apply(ctx: Context): void {
       tags: { type: 'array', items: { type: 'string' }, description: 'Plugin-mark aggregation: every session carrying all listed marks (exactly one of root/tags).' },
       filter_status: {
         type: 'string',
-        enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens'],
+        enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens', 'forked'],
         description: 'Optional set filter by delegation status.',
       },
       filter_tags: { type: 'array', items: { type: 'string' }, description: 'Optional set filter by plugin-mark intersection.' },
@@ -282,7 +282,7 @@ export function apply(ctx: Context): void {
                 status: {
                   type: 'string',
                   required: true,
-                  enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens'],
+                  enum: ['running', 'completed', 'failed', 'aborted', 'max-tokens', 'forked'],
                 },
                 result: { type: 'string' },
               },
@@ -374,8 +374,8 @@ export function apply(ctx: Context): void {
       title: { type: 'string', description: 'Case-sensitive substring filter on the durable title.' },
       status: {
         type: 'string',
-        enum: ['live', 'idle', 'running', 'completed', 'failed', 'aborted'],
-        description: 'live/idle filter store presence; running/completed/failed/aborted filter the log-derived delegation status.',
+        enum: ['live', 'idle', 'running', 'completed', 'failed', 'aborted', 'forked'],
+        description: 'live/idle filter store presence; running/completed/failed/aborted/forked filter the log-derived delegation status.',
       },
       origin: { type: 'string', enum: ['delegated'], description: 'Only child sessions (child / kind:delegated / delegated).' },
       include_hidden: { type: 'boolean', description: 'Include hidden-prefix titles and hidden / kind:hidden rows (default false).' },
@@ -400,7 +400,7 @@ export function apply(ctx: Context): void {
                 status: { type: 'string', required: true, enum: ['live', 'idle'] },
                 delegation_status: {
                   type: 'string',
-                  enum: ['idle', 'running', 'completed', 'failed', 'aborted', 'max-tokens'],
+                  enum: ['idle', 'running', 'completed', 'failed', 'aborted', 'max-tokens', 'forked'],
                   description: 'Log-derived delegation status, when the log is resolvable.',
                 },
                 created_at: { type: 'integer', required: true },

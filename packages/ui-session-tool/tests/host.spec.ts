@@ -113,7 +113,7 @@ describe('dispatch validation', () => {
     for (const [method, payload] of [
       ['delete', { sessionId: 'x' }], ['write', { sessionId: 'x', content: ' ' }],
       ['write', { sessionId: 'x', content: 'ok', syncToArchived: true }],
-    ] as const) expect((await handler(`session-tool/${method}`, payload, signal)).ok).toBe(false)
+    ] as const) expect((await handler(`session-tool/${method}`, payload, signal, undefined as unknown as Parameters<typeof handler>[3])).ok).toBe(false)
     expect(service.write).not.toHaveBeenCalled()
   })
 })

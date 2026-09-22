@@ -16,12 +16,12 @@ export interface CollectMemberSnapshot {
   /** The member session id. */
   readonly sessionId: string
   /** Log-derived delegation status; `running` while a turn is open. */
-  readonly status: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens'
+  readonly status: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked'
 }
 
 /** Whether a status is terminal (the predicate counts only terminal members). */
 export function isTerminalStatus(status: CollectMemberSnapshot['status']): boolean {
-  return status === 'completed' || status === 'failed' || status === 'aborted' || status === 'max-tokens'
+  return status === 'completed' || status === 'failed' || status === 'aborted' || status === 'max-tokens' || status === 'forked'
 }
 
 /**

@@ -946,18 +946,6 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     return (await getMarks(id)) ?? []
   }
 
-  private async titleOf(sessionId: SessionId): Promise<string | undefined> {
-    const rows = await this.sessionClient.list()
-    return rows.find(row => row.sessionId === sessionId)?.title
-  }
-
-  private stripHiddenPrefix(title: string | undefined): string | undefined {
-    if (title === undefined) return undefined
-    const prefix = this.config.hiddenPrefixes.find(item => item !== '' && title.startsWith(item))
-    return prefix === undefined ? title : title.slice(prefix.length)
-  }
-
-
   /**
    * Read the delegation statuses of the collect member set (the projection
    * fold over live events or persisted log tails).

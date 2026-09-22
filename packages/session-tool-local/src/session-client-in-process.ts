@@ -206,7 +206,7 @@ export class InProcessSessionClient {
     until?: 'idle' | 'turn-end'
     timeoutMs?: number
   } = {}): Promise<{
-    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
+    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'forked' | 'timeout'
     lastTurnEndReason?: { kind: string }
   }> {
     return await invokeInProcess(async () => {
@@ -265,7 +265,7 @@ export class InProcessSessionClient {
 
   /** One list/event cut: undefined means the wait should keep polling. */
   private async settleFromController(sessionId: string, until: 'idle' | 'turn-end'): Promise<{
-    status: 'idle' | 'completed' | 'failed' | 'aborted'
+    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'forked'
     lastTurnEndReason?: { kind: string }
   } | undefined> {
     const { items } = await this.sessionController.list({}, new AbortController().signal)

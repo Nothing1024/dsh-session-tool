@@ -27,6 +27,7 @@ export type DelegationStatus =
   | 'failed'
   | 'aborted'
   | 'max-tokens'
+  | 'forked'
 
 /** The delegation projection's whole value (schema-validated wire payload). */
 export interface DelegationProjection {
@@ -62,7 +63,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
 const projectionSchema = z.object({
   status: z.union([
     z.literal('idle'), z.literal('running'), z.literal('completed'),
-    z.literal('failed'), z.literal('aborted'), z.literal('max-tokens'),
+    z.literal('failed'), z.literal('aborted'), z.literal('max-tokens'), z.literal('forked'),
   ]),
   lastTurnEnd: z.string().optional(),
   promptCount: z.number().int().nonnegative(),
@@ -91,6 +92,8 @@ function statusOfReason(kind: string): DelegationStatus {
       return 'aborted'
     case 'max-tokens':
       return 'max-tokens'
+    case 'forked':
+      return 'forked'
     default:
       // error, blocked, and unknown merge-extensible kinds: the turn did not
       // complete cleanly, so the delegation reports failure.

@@ -23,7 +23,8 @@ function string(value: unknown, max = 4096): string {
 }
 
 export function createHandler(service: SessionToolService): ConnectionRpcHandler {
-  return async (endpoint, payload, signal) => {
+  return async (endpoint, payload, signal, peer) => {
+    void peer
     if (!owned.has(endpoint)) return { ok: false, error: { code: 'not-found', message: 'Unknown endpoint', details: {} } }
     let execute: () => Promise<unknown>
     try {
@@ -34,7 +35,7 @@ export function createHandler(service: SessionToolService): ConnectionRpcHandler
         if (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 4096)) throw new Error('Invalid title')
         if (p.origin !== undefined && p.origin !== 'delegated') throw new Error('Invalid origin')
         if (p.includeHidden !== undefined && typeof p.includeHidden !== 'boolean') throw new Error('Invalid visibility')
-        if (p.status !== undefined && (typeof p.status !== 'string' || !['live', 'idle', 'running', 'completed', 'failed', 'aborted'].includes(p.status))) throw new Error('Invalid status')
+        if (p.status !== undefined && (typeof p.status !== 'string' || !['live', 'idle', 'running', 'completed', 'failed', 'aborted', 'forked'].includes(p.status))) throw new Error('Invalid status')
         const filter = {
           scope: 'all' as const, limit: 50,
           ...(p.title === undefined ? {} : { title: p.title as string }),
@@ -105,7 +106,7 @@ export function apply(ctx: Context): void {
         if (!parsed.success || parsed.data.method !== endpoint) return new Response('Invalid RPC envelope', { status: 400 })
         return Response.json({
           type: 'server-response', rpcId: parsed.data.rpcId,
-          result: await handler(endpoint, parsed.data.payload, request.signal),
+          result: await handler(endpoint, parsed.data.payload, request.signal, undefined as unknown as Parameters<ConnectionRpcHandler>[3]),
         })
       },
     })

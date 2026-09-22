@@ -155,7 +155,7 @@ export class SessionHttpClient {
     until?: 'idle' | 'turn-end'
     timeoutMs?: number
   } = {}): Promise<{
-    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'timeout'
+    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'forked' | 'timeout'
     lastTurnEndReason?: { kind: string }
   }> {
     return await this.invoke('session/list', async () => {
@@ -219,7 +219,7 @@ export class SessionHttpClient {
 
   /** One list cut: undefined means the wait should keep polling. */
   private async settleFromGateway(sessionId: string, until: 'idle' | 'turn-end'): Promise<{
-    status: 'idle' | 'completed' | 'failed' | 'aborted'
+    status: 'idle' | 'completed' | 'failed' | 'aborted' | 'forked'
     lastTurnEndReason?: { kind: string }
   } | undefined> {
     const items = await this.list()

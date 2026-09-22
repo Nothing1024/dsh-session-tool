@@ -53,4 +53,9 @@ if gateway_refuse_foreign; then
   echo "env/boot: already up pid=$GW_PID http://127.0.0.1:${GW_PORT}"
   exit 0
 fi
-exec npx --yes @deepseek-ai/dsh@0.1.6-alpha.2 --profile st --port "$GW_PORT" --no-open "$@"
+DSH_JS="$ROOT/profiles/st/node_modules/@deepseek-ai/dsh/lib/bin.js"
+if [ ! -f "$DSH_JS" ]; then
+  echo "env/boot: missing $DSH_JS; run env/setup.sh" >&2
+  exit 1
+fi
+exec node "$DSH_JS" --profile st --port "$GW_PORT" --no-open "$@"
