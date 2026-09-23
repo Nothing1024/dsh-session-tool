@@ -35,7 +35,7 @@ const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = realpathSync(resolve(SCRIPTS_DIR, '..'))
 
 /** 期望的宿主版本（BR-001）。可用 --expect 或 DSH_EXPECT_VERSION 覆盖，便于以后升版。 */
-const DEFAULT_EXPECT = '0.1.6-alpha.2'
+const DEFAULT_EXPECT = '0.1.7-alpha.1'
 
 /** 只对 `@deepseek-ai/dsh*` 判版本；cordis / cosmokit / schemastery 等不判。 */
 const VERSION_SCOPE_RE = /^dsh(-|$)/
