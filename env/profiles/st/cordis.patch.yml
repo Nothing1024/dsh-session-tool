@@ -58,8 +58,8 @@
               medium: medium
               high: high
               max: max
-          - id: grok-4.6
-            name: grok-4.6
+          - id: grok-4.7
+            name: grok-4.7
             contextWindow: 500000
             maxTokens: 64000
             input:
@@ -71,3 +71,13 @@
               medium: medium
               high: high
               xhigh: xhigh
+          - id: claude-opus-5
+            name: claude-opus-5
+            input:
+              - text
+          - id: claude-opus-4-6
+            name: claude-opus-4-6
+            input:
+              - text
+        defaultContextWindow: 200000
+        defaultMaxTokens: 32768
