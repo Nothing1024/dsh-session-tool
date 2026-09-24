@@ -2,9 +2,9 @@
   "name": "dsh-profile-st",
   "private": true,
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.7-alpha.1",
-    "@deepseek-ai/dsh-base": "0.1.7-alpha.1",
-    "@deepseek-ai/dsh-web-app": "0.1.7-alpha.1",
+    "@deepseek-ai/dsh": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-base": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-web-app": "0.1.7-rc.1",
     "dsh-web-lan-access": "1.3.2",
     "session-marks": "link:../../../packages/session-marks",
     "session-tool": "link:../../../packages/session-tool",

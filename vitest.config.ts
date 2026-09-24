@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('.', import.meta.url))
  * Test-lane resolution for the session-tool monorepo (npm-based).
  * This project's own packages resolve to their TypeScript sources so tests
  * run the code under test. Platform `@deepseek-ai/*` and `@deepseek-ai/cordis`
- * resolve from the hoisted node_modules (pinned 0.1.0-rc.7 / 4.0.1).
+ * resolve from the hoisted node_modules (pinned 0.1.7-rc.1 / 4.0.4).
  */
 export default defineConfig({
   root,
