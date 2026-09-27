@@ -138,7 +138,12 @@ export async function composeProfile(name: string, patchFiles: readonly string[]
   const loaded = new Set(profile.layers.map(layer => layer.packageName))
   const skipped = selected.filter(bundle => !loaded.has(bundle))
   if (skipped.length > 0) {
-    throw new Error(`${NAME}: profile ${JSON.stringify(name)} skipped unreadable bundles: ${skipped.join(', ')}`)
+    const reasons = new Map(profile.skippedBundles.map(item => [item.packageName, item.reason]))
+    const detail = skipped.map(bundle => {
+      const reason = reasons.get(bundle)
+      return reason === undefined || reason === '' ? bundle : `${bundle} (${reason})`
+    }).join(', ')
+    throw new Error(`${NAME}: profile ${JSON.stringify(name)} skipped unreadable bundles: ${detail}`)
   }
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
