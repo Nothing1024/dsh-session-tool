@@ -1,0 +1,84 @@
+$ pnpm vitest run packages/session-tool-local/tests/service.spec.ts -t "delegation projection status" --reporter verbose
+exit=0
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > admits authenticated web operators without widening agent or CLI scope policy
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > delegates to the gateway without tags, then puts marks after success
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > joins an agent caller tree by default and stays top-level for the CLI
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > auto-tags delegated creates and leaves a parentless CLI unmarked
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > rejects invalid tags before the gateway call
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > honours an explicit delegation depth and carries a deeper caller depth
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > passes the cwd through when no workspace binding is requested
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > inherits the caller cwd when create omits cwd and workspacePath
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > rejects a ghost caller, a missing parent, and a parent outside the lineage
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > create > propagates a gateway validation rejection and does not write marks
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > sends the prompt to the gateway and returns the session id
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > rejects empty content
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > reads a locally persisted transcript with incremental and capped reads
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > optionally reads the current turn status independently of the message page
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > maps assistant and tool events onto their roles
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > rejects missing and foreign sessions; the CLI bypasses the fence
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > lets a parent reach a child session but not a sibling
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > admits the creator to a child whose live header dropped parentSession (rc.7)
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > reloads remembered lineage so a creator can read after restart
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > picks up CLI-written lineage without a process restart
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > resolves caller depth from the overlay when the live header omitted it
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > writes a badged rc.7 child through subagent.prompt, not session.prompt
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > write and read > keeps the fence before the subagent door and rejects a missing parent
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > creator mode admits only the lineage for write and wait
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > workspace mode admits same-workspace callers and rejects foreign workspaces
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > anyone mode admits every caller
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > maxDelegationDepth rejects a creation deeper than the ceiling
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > continuation constraints (allowOthersToWrite / maxDelegationDepth / showDelegated) > showDelegated false hides delegated rows unless explicitly requested
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > rename > renames title on the gateway and replaces tags in the mark table
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > rename > replaces tags without calling the gateway when title is omitted
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > rename > requires at least one of title or tags and maps validation codes
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > rename > keeps structured marks when rename replaces free tags or hidden
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > mark > adds and removes with hidden/child aliases expanded
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > mark > requires add or remove and enforces the access fence
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > reports both flags false when neither marked nor archived
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > getVisibility composes the kind:hidden mark and the archive set
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > hide archives the official sidebar and unhide restores it
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > hide preserves any other marks already on the session
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > enforces the access fence before hiding, unhiding, or reading visibility
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > hide still succeeds when archiveSession throws
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > getVisibility / hide / unhide > skips archive when syncToArchived is false
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > readMarks > returns tags and hiddenPrefixes for an existing session
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > readMarks > returns empty tags when the session has no mark row
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > readMarks > rejects a missing session and fences agent callers
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > cancel > delegates to the gateway
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > cancel > enforces the access fence before delegating
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > wait > delegates to the gateway and maps the terminal status
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > wait > defaults the options and maps a timeout status through
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > wait > enforces the access fence before delegating
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > wait-all aggregates when every member is terminal
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > wait-n returns early and cancel-rest cancels the unfinished members
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > first-failed satisfies on the failed member
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > returns a timeout snapshot without error when the deadline passes
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > resolves a tag aggregation and reports an empty set as unsatisfied
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > collect > requires exactly one of root or tags, and a positive n for wait n
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > lists the caller tree for scope own, with hidden titles excluded by default
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > hides ~ titles and kind:hidden unless includeHidden is set
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > filters by tag intersection, title substring, and status
+ ✓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > derives and filters by the delegation projection status 55ms
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > filters origin=delegated by child / kind:delegated / delegated
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > paginates with cursor and limit
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > enforces the tree root fence and the all-scope gates
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > denies the own scope to the CLI
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > rejects a missing tree root for the CLI too (no silent empty listing)
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > list > rejects an unknown cursor
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > delegation status via the projection registry cache > reads through sessionProjections.stateOf when the registry is composed
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > on-demand delegation status (BR-001 / BR-002 / BR-006) > default list never cold-reads and rows carry no delegationStatus
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > on-demand delegation status (BR-001 / BR-002 / BR-006) > takes the host projection value before a cold read, and cold-reads only without one
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > on-demand delegation status (BR-001 / BR-002 / BR-006) > resolves only the returned page when delegation status is requested
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > on-demand delegation status (BR-001 / BR-002 / BR-006) > a delegation status filter resolves only rows that survive the other filters
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > restart recovery (BR-004 / EVD-008) > rebuilds delegation statuses from persisted logs after a process restart
+ ↓ packages/session-tool-local/tests/service.spec.ts > SessionToolLocalService (remote) > error codes > carries stable wire codes on the typed errors
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 71 skipped (72)
+   Start at  16:36:35
+   Duration  1.28s (transform 600ms, setup 0ms, import 906ms, tests 59ms, environment 0ms)
+
+

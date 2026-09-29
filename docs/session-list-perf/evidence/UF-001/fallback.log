@@ -1,0 +1,40 @@
+$ pnpm --dir ../../dsh-grok-bot/plugin exec vitest run packages/dsh-bot-host/tests/ask.spec.ts -t "falls back to platform.listSessions" --reporter verbose
+exit=0
+Scope: all 6 workspace projects
+✓ Lockfile passes supply-chain policies (verified 18h ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 2.2s using pnpm v11.7.0
+
+ RUN  v4.1.11 /Users/nothing/workspace/dsh/plugin/dsh-grok-bot/plugin
+
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > title helpers > prefixes hidden titles and strips ~ from visible titles
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > title helpers > treats empty model as follow-global
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > extractAssistantAnswer > aggregates the last assistant text blocks and rejects empty tails
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > runs create → marks merge → archive → write → wait idle → read
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > writes ownership tags on create and lets hide() dual-write hidden marks
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > applies override via selectModel and restores the global default
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > fails loud on an illegal override and never writes the prompt
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > surfaces web-unreachable from sessionTool.create
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > turns wait timeout into a loud error that keeps the session id
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > rejects an empty assistant tail instead of returning an empty string
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > mints a new session per ask (no reuse)
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > maps a generic SessionToolError without swallowing it
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > names MISSING_CREDENTIAL from the bot turn/end when wait fails
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.askBot > includes wait lastTurnEndReason when the session log is unavailable
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > applyModelOverride mutex > restores the original global after concurrent overrides
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > applyModelOverride mutex > pins follow-global sessions to the live snapshot (UF-005 default switch)
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > creates a Bot-visible chat hidden from Harness
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > passes workspacePath through to sessionTool.create
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > lists by kind intersection and drops marks whose session is gone
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > lists transition inventory as the union of app:dsh-bot and kind:dsh-bot
+ ✓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > falls back to platform.listSessions when sessionTool.list is web-unreachable 17ms
+ ↓ packages/dsh-bot-host/tests/ask.spec.ts > DshBotService.createSession / listSessions > reports override vs global-default as botModel source
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 21 skipped (22)
+   Start at  16:35:29
+   Duration  1.64s (transform 812ms, setup 0ms, import 1.17s, tests 19ms, environment 0ms)
+
+

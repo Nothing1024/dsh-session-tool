@@ -85,6 +85,7 @@
 | 日期 | 变更条目 | 原因 | 影响任务 |
 |---|---|---|---|
 | 2026-09-29 | 1.3 事实修正（消费方、CLI 输出）并补 CLI / 面板接口实跑命令；BR-004 改写；新增 BR-006、UF-003、INV-005、EVD-004；UF-002 / INV-001 / EVD-001 改写；ASM-002 实跑证实，转为 1.3 事实并删除；2.8 补两条非目标 | 原 1.3 漏掉 `ui-session-tool` 面板这个消费方，照原方案面板每行会变成「执行状态未知」；CLI 输出本就不含 `delegation_status`，原方案让 CLI 白算一遍；取值范围未限定到当页；响应原文含真实会话标题，不应进 evidence | Task 1（面板基线、证据脱敏）、Task 3（BR-006）、Task 4（改名，入口换成 tool-session + ui-session-tool，提前计时）、Task 5（5.2 矩阵）；均未开工，无需回退 |
+| 2026-09-29 | 5.1 / 5.2 命令修正（无 BR/UF/INV 变更） | 执行时发现：`pnpm -C <dir> vitest` 在 pnpm 11 下报 EACCES，改为 `pnpm --dir <dir> exec vitest`；`pnpm --filter ... run test -t` 不把 `-t` 传给 vitest，5.2 的测试行改为直接 `pnpm vitest run <file> -t ... --reporter verbose`；`browser.e2e.mts` 只认中文「内测声明 / 继续」，英文 locale 下被「Preview Notice / Continue」挡住，改为两种文案都认 | Task 5；不影响已完成任务 |
 
 ---
 
@@ -293,7 +294,7 @@ tool-session / ui-session-tool → list(..., { includeDelegationStatus: true })�
 | `packages/session-tool-local/src/index.ts` | `async list(caller: SessionToolCaller, filter: SessionToolListFilter)` | `rg "const delegationStatus = await this.delegationStatusOf" packages/session-tool-local/src/index.ts` | L419-529（逐行组装 L465-477） | 主改点 |
 | `packages/session-tool-local/src/index.ts` | `private async delegationStatusOf` | `rg "private async delegationStatusOf" packages/session-tool-local/src/index.ts` | L999-1011 | collect 也调用，签名改动须兼容 |
 | `packages/session-tool-local/src/session-client.ts` | `export interface SessionListRow` / `SessionHttpClient.list` | `rg "export interface SessionListRow" packages/session-tool-local/src/session-client.ts` | L29-42、L186-205 | HTTP 客户端 |
-| `packages/session-tool-local/src/session-client-in-process.ts` | `function listRowTitle` / `InProcessSessionClient.list` | `rg "function listRowTitle" packages/session-tool-local/src/session-client-in-process.ts` | L23-28、L235-250 | 3084 实际走这条（in-process） |
+| `packages/session-tool-local/src/session-client-in-process.ts` | `InProcessSessionClient.list`（Task 2 前为 `function listRowTitle`，已合入 `src/list-row.ts` 的 `listRowProjections`） | `rg "listRowProjections" packages/session-tool-local/src/session-client-in-process.ts` | L21、L228-242 | 3084 实际走这条（in-process） |
 | `packages/session-tool-local/src/delegation-projection.ts` | `export type DelegationStatus` | `rg "export type DelegationStatus" packages/session-tool-local/src/delegation-projection.ts` | L23-30 | 枚举来源，校验用 |
 | `packages/session-tool/src/index.ts` | `export interface SessionToolListFilter` | `rg "export interface SessionToolListFilter" packages/session-tool/src/index.ts` | L213-240 | 加字段 |
 | `packages/tool-session/src/index.ts` | `session_list` 的 `execute` | `rg "delegation_status: row.delegationStatus" packages/tool-session/src/index.ts` | L421-444 | 传开关 |
@@ -361,7 +362,7 @@ P0 基线 ──> P1 契约与实现 ──> P2 验收与收尾
 **涉及文件与定位**：
 
 - `packages/session-tool-local/src/session-client.ts`：`export interface SessionListRow`，`rg "export interface SessionListRow" packages/session-tool-local/src/session-client.ts`，L29-42、L186-205（hint）
-- `packages/session-tool-local/src/session-client-in-process.ts`：`function listRowTitle`，`rg "function listRowTitle" packages/session-tool-local/src/session-client-in-process.ts`，L23-28、L235-250（hint）
+- `packages/session-tool-local/src/session-client-in-process.ts`：`InProcessSessionClient.list`，`rg "listRowProjections" packages/session-tool-local/src/session-client-in-process.ts`，L21、L228-242（hint；Task 2 前为 `function listRowTitle`）
 - `packages/session-tool-local/src/delegation-projection.ts`：`export type DelegationStatus`
 
 **具体操作**：
@@ -499,7 +500,7 @@ P0 基线 ──> P1 契约与实现 ──> P2 验收与收尾
 | session-tool-local unit | `pnpm --filter session-tool-local run test` | 全部通过，数量 > 210 | EVD-003 |
 | tool-session unit | `pnpm --filter tool-session run test` | 17 passed | EVD-003 |
 | ui-session-tool unit | `pnpm vitest run packages/ui-session-tool/tests` | 19 passed | EVD-003 |
-| dsh-bot 回退路径 | `pnpm -C ../../dsh-grok-bot/plugin vitest run packages/dsh-bot-host/tests/ask.spec.ts` | 全部通过 | EVD-003 |
+| dsh-bot 回退路径 | `pnpm --dir ../../dsh-grok-bot/plugin exec vitest run packages/dsh-bot-host/tests/ask.spec.ts` | 全部通过 | EVD-003 |
 | build | `pnpm run build` | 成功 | EVD-003 |
 
 ### 5.2 真实场景全套测试（Real-Run，完成的唯一标准）
@@ -521,10 +522,10 @@ P0 基线 ──> P1 契约与实现 ──> P2 验收与收尾
 | UF-001 主路径 | curl | 2.3 节 UF-001 主路径；同 Task 1 第 2-3 步命令，文件名换 `after-*` | 3 次均 200 且 < 1000ms（ASM-001）；`comm -23 before-ids.txt after-ids.txt` 为空（没有行丢失）；`comm -13` 多出的行，`createdAt` 都晚于 before-timing.log 的基线时刻 | `evidence/UF-001/after-timing.log`、`evidence/UF-001/ids.diff`（写命令与两段 comm 结果） |
 | UF-001 宿主投影缺失 | curl + 日志 | 2.3 节 UF-001 分支「宿主投影缺失」 | 同一请求期间网关无新增 error；v3 行照常返回 | `evidence/UF-001/v3-rows.log` |
 | UF-001 连不上网关 | 命令 | 2.3 节 UF-001 分支「session-tool 连不上网关」；跑 5.1 dsh-bot 回退路径命令 | `falls back to platform.listSessions` 用例通过 | `evidence/UF-001/fallback.log` |
-| UF-002 主路径（工具） | 命令 | 2.3 节 UF-002 第 1-2 步；`pnpm --filter tool-session run test` | `session_list forwards the delegation status filter and projects delegation_status` 通过（含开关断言） | `evidence/UF-002/tool.log` |
+| UF-002 主路径（工具） | 命令 | 2.3 节 UF-002 第 1-2 步；`pnpm vitest run packages/tool-session/tests --reporter verbose` | `session_list forwards the delegation status filter and projects delegation_status` 通过（含开关断言） | `evidence/UF-002/tool.log` |
 | UF-002 主路径（CLI） | CLI | 2.3 节 UF-002 第 3 步；1.3 节 CLI 实跑命令，输出存 `after-cli.json` | `diff <(jq -S . before-cli.json) <(jq -S . after-cli.json)` 无差异 | `evidence/UF-002/after-cli.json`、`evidence/UF-002/cli-diff.log`（写命令与退出码） |
-| UF-002 按委派状态过滤 | 命令 | 2.3 节 UF-002 分支「按委派状态过滤」；`pnpm --filter session-tool-local run test -t "delegation projection status"` | 用例通过 | `evidence/UF-002/status-filter.log` |
-| UF-002 冷会话无宿主值 | 命令 | 2.3 节 UF-002 分支「冷会话无宿主值」；Task 3 新增的回落冷读用例 | 用例通过 | `evidence/UF-002/cold-fallback.log` |
+| UF-002 按委派状态过滤 | 命令 | 2.3 节 UF-002 分支「按委派状态过滤」；`pnpm vitest run packages/session-tool-local/tests/service.spec.ts -t "delegation projection status" --reporter verbose` | 用例通过 | `evidence/UF-002/status-filter.log` |
+| UF-002 冷会话无宿主值 | 命令 | 2.3 节 UF-002 分支「冷会话无宿主值」；Task 3 新增的回落冷读用例：`pnpm vitest run packages/session-tool-local/tests/service.spec.ts -t "on-demand delegation status" --reporter verbose` | 用例通过 | `evidence/UF-002/cold-fallback.log` |
 | UF-003 主路径 + 冷会话无宿主值 | curl | 2.3 节 UF-003 主路径与分支「冷会话无宿主值」；同 Task 1 第 5 步命令，文件名换 `after-*`，加 `-w '%{time_total}'` | `diff before-panel.tsv after-panel.tsv` 无差异（3081 的 7 个 v3 行都走冷读兜底） | `evidence/UF-003/after-panel.tsv`、`evidence/UF-003/panel.diff`（写命令、退出码、耗时） |
 | UF-003 按运行状态筛选 | curl | 2.3 节 UF-003 分支「按运行状态筛选」；同上命令，payload 改为 `{"includeHidden":true,"status":"failed"}` | 返回的 id 集合等于 `before-panel.tsv` 中 `failed` 行的 id 集合 | `evidence/UF-003/status-filter.tsv` |
 | UF-003 接口出错 | curl | 2.3 节 UF-003 分支「接口出错」；同上命令，payload 改为 `{"status":"weird"}` | `result.ok` 为 false，`error.code` 为 `invalid-input` | `evidence/UF-003/error.json` |

@@ -1,0 +1,5 @@
+$ DSH_E2E_URL=<launch-url> pnpm -C packages/ui-session-tool run test:browser
+exit=0
+PASS: official sidebar, real session list/read/rename/hide/unhide, native navigation, narrow viewport; no page errors
+$ tsx tests/browser.e2e.mts
+

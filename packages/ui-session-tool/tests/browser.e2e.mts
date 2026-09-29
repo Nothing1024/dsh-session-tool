@@ -34,9 +34,10 @@ try {
   assert.equal(authentication.status(), 303)
   await page.goto(target.origin)
   await page.getByRole('button', { name: '会话协作', exact: true }).waitFor()
-  const notice = page.getByRole('dialog').filter({ hasText: '内测声明' })
+  // The host notice follows the browser locale (zh: 内测声明 / 继续, en: Preview Notice / Continue).
+  const notice = page.getByRole('dialog').filter({ hasText: /内测声明|Preview Notice/ })
   const showNotice = await notice.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)
-  if (showNotice) await notice.getByRole('button', { name: '继续', exact: true }).click()
+  if (showNotice) await notice.getByRole('button', { name: /^(继续|Continue)$/ }).click()
   const modelSetup = page.getByRole('dialog').filter({ hasText: '添加一个 API Key 开始使用' })
   const showSetup = await modelSetup.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)
   if (showSetup) await modelSetup.getByRole('button', { name: '稍后配置', exact: true }).click()

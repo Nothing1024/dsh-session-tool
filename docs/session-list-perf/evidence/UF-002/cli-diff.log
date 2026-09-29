@@ -1,0 +1,4 @@
+$ diff <(jq -S . before-cli.json) <(jq -S . after-cli.json)
+exit=0
+(no differences)
+rows: 8

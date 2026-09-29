@@ -1,0 +1,7 @@
+$ hub logs gb-3084 (1000 lines) | error scan; find env/sessions -name session.v3* ∩ after-ids
+gateway output lines: 0
+error lines: 0
+
+v3 sessions on disk: 79
+v3 rows returned by listSessions: 68 / 71
+result: PASS

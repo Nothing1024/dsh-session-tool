@@ -1,0 +1,29 @@
+$ pnpm vitest run packages/tool-session/tests --reporter verbose
+exit=0
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > registers exactly the seven session tools with generic call views 16ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_create maps title, parent, and tags onto the service 20ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_create maps workspace_path onto the service and echoes the binding 8ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_create output schema accepts a binding-free result 4ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_write forwards content and returns the session id 4ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_read forwards since_seq and max_blocks and projects rows 6ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_wait forwards timeout and until and projects the terminal status 5ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_wait maps a timeout status and an absent reason 4ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_collect forwards the predicate and projects the aggregate 7ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_collect forwards a tag aggregation and wait n 6ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_list forwards filters and projects rows 6ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_list forwards the delegation status filter and projects delegation_status 7ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > session_rename forwards title and tags 8ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > propagates service errors unchanged for the registry to map 9ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > rejects a missing calling agent 5ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > renders readable text for each output shape 4ms
+ ✓ packages/tool-session/tests/tools.spec.ts > tool-session > carries typed error codes through the seam 0ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  16:36:31
+   Duration  923ms (transform 200ms, setup 0ms, import 328ms, tests 125ms, environment 0ms)
+
+

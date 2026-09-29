@@ -1,0 +1,4 @@
+$ POST /api/session-tool/list {"includeHidden":true}; diff before-panel.tsv after-panel.tsv
+http/time: 200 0.360758
+exit=0
+(no differences)
