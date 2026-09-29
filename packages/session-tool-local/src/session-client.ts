@@ -15,15 +15,9 @@ import {
   throwGatewayFailure,
   type GatewayHttpRpcOptions,
 } from './http-rpc.ts'
+import { listRowProjections } from './list-row.ts'
+import type { DelegationStatus } from './delegation-projection.ts'
 import { lastTurnEndReason, settleWait, type WaitEvent } from './wait-settle.ts'
-
-/** Title field on a list projection block. */
-function listRowTitle(values: unknown): string | undefined {
-  if (values === undefined || values === null || typeof values !== 'object') return undefined
-  if (!('title' in values)) return undefined
-  const title = values.title
-  return typeof title === 'string' ? title : undefined
-}
 
 /** One gateway session list row (wire SessionSummary + title projection). */
 export interface SessionListRow {
@@ -35,6 +29,8 @@ export interface SessionListRow {
   readonly cwd?: string
   /** Normalized title projection, when one has been accepted. */
   readonly title?: string
+  /** Host delegation projection status (`projections.values.delegation.status`); absent when missing or invalid. */
+  readonly delegationStatus?: DelegationStatus
   /** Whether the web process currently runs a turn for this session. */
   readonly running: boolean
   /** Last-activity instant (ms). */
@@ -189,14 +185,14 @@ export class SessionHttpClient {
         _request: {},
       })
       return items.map((item): SessionListRow => {
-        const title = listRowTitle(
+        const projections = listRowProjections(
           isRecord(item.projections) ? item.projections.values : undefined,
         )
         return {
           sessionId: String(item.sessionId),
           ...typeof item.parentSessionId === 'string' ? { parentSessionId: item.parentSessionId } : {},
           ...typeof item.cwd === 'string' ? { cwd: item.cwd } : {},
-          ...title === undefined ? {} : { title },
+          ...projections,
           running: item.running === true,
           updatedAt: typeof item.updatedAt === 'number' ? item.updatedAt : 0,
         }

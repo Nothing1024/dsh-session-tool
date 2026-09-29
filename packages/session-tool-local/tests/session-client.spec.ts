@@ -240,6 +240,29 @@ describe('SessionHttpClient', () => {
     expect(rows[0]).not.toHaveProperty('tags')
   })
 
+  it('list carries only a valid host delegation status (BR-005)', async () => {
+    stubFetch((_url, body) => okResponse(body.rpcId, {
+      items: [
+        summary({ sessionId: 'valid', projections: { values: { delegation: { status: 'failed', promptCount: 2 } } } }),
+        summary({ sessionId: 'unknown', projections: { values: { delegation: { status: 'weird', promptCount: 1 } } } }),
+        summary({ sessionId: 'not-string', projections: { values: { delegation: { status: 3 } } } }),
+        summary({ sessionId: 'not-object', projections: { values: { delegation: 'completed' } } }),
+        summary({ sessionId: 'null', projections: { values: { delegation: null } } }),
+        summary({ sessionId: 'inherited', projections: { values: { delegation: { status: 'toString' } } } }),
+      ],
+    }))
+    const rows = await new SessionHttpClient(BASE).list()
+    expect(rows.map(row => [row.sessionId, row.delegationStatus])).toEqual([
+      ['valid', 'failed'],
+      ['unknown', undefined],
+      ['not-string', undefined],
+      ['not-object', undefined],
+      ['null', undefined],
+      ['inherited', undefined],
+    ])
+    expect(rows[1]).not.toHaveProperty('delegationStatus')
+  })
+
   it('rename posts only the title and does not echo tags', async () => {
     const fetchMock = stubFetch((url, body) => {
       expect(url.pathname).toBe('/api/session/rename')
@@ -506,7 +529,7 @@ describe('InProcessSessionClient (mock controller)', () => {
           cwd: '/proj',
           running: false,
           updatedAt: 1_700_000_000_000,
-          projections: { values: { title: 'named', tags: ['a'] } },
+          projections: { values: { title: 'named', tags: ['a'], delegation: { status: 'completed', promptCount: 1 } } },
         }],
       })),
       ...overrides,
@@ -556,6 +579,7 @@ describe('InProcessSessionClient (mock controller)', () => {
       parentSessionId: 'caller',
       cwd: '/proj',
       title: 'named',
+      delegationStatus: 'completed',
       running: false,
       updatedAt: 1_700_000_000_000,
     }])

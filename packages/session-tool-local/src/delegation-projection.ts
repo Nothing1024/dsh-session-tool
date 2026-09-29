@@ -29,6 +29,16 @@ export type DelegationStatus =
   | 'max-tokens'
   | 'forked'
 
+/** Every {@link DelegationStatus} literal; `Record` keeps the table exhaustive against the union. */
+const DELEGATION_STATUSES: Record<DelegationStatus, true> = {
+  'idle': true, 'running': true, 'completed': true, 'failed': true, 'aborted': true, 'max-tokens': true, 'forked': true,
+}
+
+/** Whether an untrusted wire value is one of the {@link DelegationStatus} literals. */
+export function isDelegationStatus(value: unknown): value is DelegationStatus {
+  return typeof value === 'string' && Object.hasOwn(DELEGATION_STATUSES, value)
+}
+
 /** The delegation projection's whole value (schema-validated wire payload). */
 export interface DelegationProjection {
   /** Derived lifecycle status. */

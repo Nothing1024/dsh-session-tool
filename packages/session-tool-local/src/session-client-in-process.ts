@@ -18,14 +18,7 @@ import type { DurableCreateResult, SessionListRow } from './session-client.ts'
 import { lastTurnEndReason, settleWait } from './wait-settle.ts'
 import { eventsOfLive } from './live-events.ts'
 import { inspectPersistedSession } from './persistence-read.ts'
-
-/** Title field on a list projection block. */
-function listRowTitle(values: unknown): string | undefined {
-  if (values === undefined || values === null || typeof values !== 'object') return undefined
-  if (!('title' in values)) return undefined
-  const title = values.title
-  return typeof title === 'string' ? title : undefined
-}
+import { listRowProjections } from './list-row.ts'
 
 /** One controller list row (SessionSummary-shaped). */
 export interface InProcessSessionSummary {
@@ -236,12 +229,12 @@ export class InProcessSessionClient {
     return await invokeInProcess(async () => {
       const { items } = await this.sessionController.list({}, new AbortController().signal)
       return items.map((item): SessionListRow => {
-        const title = listRowTitle(item.projections?.values)
+        const projections = listRowProjections(item.projections?.values)
         return {
           sessionId: String(item.sessionId),
           ...item.parentSessionId === undefined ? {} : { parentSessionId: String(item.parentSessionId) },
           ...item.cwd === undefined ? {} : { cwd: item.cwd },
-          ...title === undefined ? {} : { title },
+          ...projections,
           running: item.running,
           updatedAt: item.updatedAt,
         }
