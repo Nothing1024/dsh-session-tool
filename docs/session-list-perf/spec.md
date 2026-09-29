@@ -1,6 +1,6 @@
 # session-list-perf Spec
 
-> Version: 0.2.0 | Date: 2026-09-29 | Status: Ready 可执行
+> Version: 0.2.0 | Date: 2026-09-29 | Status: InProgress 执行中
 >
 > Status 取值（校验脚本核对）：Skeleton 骨架（只有方案，第 4、5 章与 tasks.csv、handoff.md 未填）/ Ready 可执行 / InProgress 执行中 / Done 已验收 / Deferred 已搁置。
 >

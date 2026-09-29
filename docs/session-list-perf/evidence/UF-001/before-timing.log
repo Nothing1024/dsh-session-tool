@@ -1,0 +1,5 @@
+# curl -s -o /tmp/session-list-perf/before-body.json -w '%{http_code} %{time_total}\n' -X POST http://127.0.0.1:3084/dsh-bot/listSessions -H 'content-type: application/json' -d '{"args":{"includeHidden":true}}'
+1790669840631
+200 9.045577
+200 8.315391
+200 8.489381

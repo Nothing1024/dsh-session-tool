@@ -1,0 +1,51 @@
+$ pnpm --filter session-tool-local run test && pnpm --filter tool-session run test && pnpm vitest run packages/ui-session-tool/tests
+exit=0
+Scope: all 7 workspace projects
+✓ Lockfile passes supply-chain policies (verified 18h ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 1.4s using pnpm v11.7.0
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/Users/nothing/workspace/dsh/plugin/session-tool/plugin[39m
+
+ [32m✓[39m packages/session-tool-local/tests/collect.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/live-events.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/persistence-read.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/delegation-projection.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/http-auth.spec.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/wait.spec.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/workspace-client.spec.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/session-client.spec.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 127[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/workspace.spec.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 134[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/transport.spec.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m packages/session-tool-local/tests/service.spec.ts [2m([22m[2m68 tests[22m[2m)[22m[33m 1720[2mms[22m[39m
+       [33m[2m✓[22m[39m resolves a tag aggregation and reports an empty set as unsatisfied [33m 517[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m      Tests [22m [1m[32m210 passed[39m[22m[90m (210)[39m
+[2m   Start at [22m 16:18:18
+[2m   Duration [22m 2.68s[2m (transform 2.91s, setup 0ms, import 4.86s, tests 2.39s, environment 2ms)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/Users/nothing/workspace/dsh/plugin/session-tool/plugin[39m
+
+ [32m✓[39m packages/tool-session/tests/tools.spec.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m17 passed[39m[22m[90m (17)[39m
+[2m   Start at [22m 16:18:22
+[2m   Duration [22m 370ms[2m (transform 87ms, setup 0ms, import 135ms, tests 58ms, environment 0ms)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/Users/nothing/workspace/dsh/plugin/session-tool/plugin[39m
+
+ [32m✓[39m packages/ui-session-tool/tests/host.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 208[2mms[22m[39m
+ [32m✓[39m packages/ui-session-tool/tests/header-badge.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32m✓[39m packages/ui-session-tool/tests/panel.spec.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 337[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m19 passed[39m[22m[90m (19)[39m
+[2m   Start at [22m 16:18:24
+[2m   Duration [22m 1.43s[2m (transform 260ms, setup 0ms, import 621ms, tests 616ms, environment 1.37s)[22m
+
