@@ -4,4 +4,4 @@
 3,P1:契约与实现,列表按需计算委派状态,spec.md#task-3,2,pnpm --filter session-tool-local run test → 全部通过含 BR-001/002/005/006 新增用例,已完成,
 4,P1:契约与实现,工具与面板显式请求委派状态,spec.md#task-4,3,tool-session 17 / ui-session-tool 19 passed；3084 提前计时落盘；Phase 出口检查：typecheck + 三包测试 + build 全通过,已完成,v0.2 由「工具与命令行显式请求委派状态」改名；3084 现由 hub 进程 gb-3084 托管
 5,P2:验收与收尾,执行 spec 5.2 真实场景全套测试,spec.md#task-5,4,按 5.2 执行矩阵逐行回放 → 全部通过,已完成,3081 重启后由 hub 进程 st-3081 托管
-6,P2:验收与收尾,执行最终回归验证,spec.md#task-6,5,5.1 全部命令 → 通过；validate_package.py → 0 FAIL,待开始,
+6,P2:验收与收尾,执行最终回归验证,spec.md#task-6,5,5.1 全部命令 → 通过；validate_package.py → 0 FAIL,已完成,

@@ -1,6 +1,6 @@
 # session-list-perf Spec
 
-> Version: 0.2.0 | Date: 2026-09-29 | Status: InProgress 执行中
+> Version: 0.2.0 | Date: 2026-09-29 | Status: Done 已验收
 >
 > Status 取值（校验脚本核对）：Skeleton 骨架（只有方案，第 4、5 章与 tasks.csv、handoff.md 未填）/ Ready 可执行 / InProgress 执行中 / Done 已验收 / Deferred 已搁置。
 >
@@ -73,12 +73,14 @@
 | ui-session-tool 测试基线 19 passed；另有需要真实网关的浏览器验收脚本 | `pnpm vitest run packages/ui-session-tool/tests`；读 `packages/ui-session-tool/tests/browser.e2e.mts` | `Tests 19 passed`；脚本要 `DSH_E2E_URL`（带 token 的 launch URL）和本机 Chrome，只打印 PASS 行 |
 | CLI 连 3081 可用命令：`DSH_HOME=$PWD/env DSH_LAUNCH_TOKEN=<token> node packages/session-tool-cli/lib/bin.js session list --scope all --include-hidden --profile headless --patch env/cli.patch.yml --format json`；token 取自 `env/logs/boot-manual.log` 里 `dsh web:` URL 的 `token=`；不带 `--profile headless --patch` 会报 `web-unreachable` | 2026-09-29 实跑 | 8 行，字段 `created_at/session_id/status/tags/title` |
 | 3081 面板接口可用 curl 调：`curl -c /tmp/session-list-perf/st.jar "<dsh web: URL>"` → 303 拿 cookie；再 `curl -b /tmp/session-list-perf/st.jar -X POST http://127.0.0.1:3081/api/session-tool/list -H 'content-type: application/json' -d '{"type":"client-request","rpcId":"perf","method":"session-tool/list","payload":{"includeHidden":true}}'` | 2026-09-29 实跑 | `200 0.23s`，8 行：6 行 `idle`、2 行 `failed` |
+| ASM-001 证实：3084 `listSessions` 改后 3 次 200 / 0.41s、0.49s、0.51s（改前 8.3–10.1s），71 行无丢失 | Task 5 同款 curl；`evidence/UF-001/after-timing.log` | 未做分段剖析 |
 
 ### 1.4 假设清单
 
 | 假设 ID | 内容 | 风险 | 确认方式 |
 |---|---|---|---|
-| ASM-001 | 修复后 3084 上 `listSessions` < 1000ms（宿主 list 167ms + marks 读取） | `headerIndex()`（`persistence.list()` + 读 lineage）、`listWorkspaces()`、逐行 `tagsOf` 的耗时都没拆开测过，可能达不到目标 | Task 4 出口先在 3084 计时一次；不达标时临时分段计时（不提交）定位，结果写 `evidence/phase-1/profile.log`；仍不达标按 Task 6 处理，另开任务，不在本包内扩大范围 |
+| ASM-001 | 修复后 3084 上 `listSessions` < 1000ms | — | 已证实（2026-09-29，见 1.3 与 `evidence/UF-001/after-timing.log`）；保留 ID 供下文引用 |
+
 
 ### 1.5 变更记录
 

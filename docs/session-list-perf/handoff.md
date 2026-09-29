@@ -32,7 +32,7 @@
 
 缺失资料与假设：
 
-- ASM-001: 目标耗时 < 1000ms 是估计值（宿主 list 实测 167ms + marks 读取），Task 4 出口先在 3084 测一次；未达标时按 spec Task 4 第 5 步、Task 6 记录剖析结果，不在本包内扩大范围。
+- ASM-001: 目标耗时 < 1000ms，已于 2026-09-29 证实（3084 改后 0.41–0.51s）。
 - 3081 的 launch token、cookie 只在执行时从 `env/logs/boot-manual.log` 的 `dsh web:` 行取，不入 evidence；具体命令见 spec 1.3。
 
 ## 3. 开工上下文
