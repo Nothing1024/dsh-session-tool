@@ -1,0 +1,4 @@
+# curl -s -o /tmp/session-list-perf/early-body.json -w '%{http_code} %{time_total}\n' -X POST http://127.0.0.1:3084/dsh-bot/listSessions -H 'content-type: application/json' -d '{"args":{"includeHidden":true}}'
+# after pnpm run build + 3084 restart
+1790670725160
+200 0.332554

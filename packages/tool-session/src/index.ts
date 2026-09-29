@@ -429,6 +429,8 @@ export function apply(ctx: Context): void {
         ...args.include_hidden !== undefined ? { includeHidden: args.include_hidden } : {},
         ...args.cursor !== undefined ? { cursor: args.cursor } : {},
         ...args.limit !== undefined ? { limit: args.limit } : {},
+        // The output schema carries delegation_status (BR-004).
+        includeDelegationStatus: true,
       })
       return {
         sessions: result.sessions.map(row => ({

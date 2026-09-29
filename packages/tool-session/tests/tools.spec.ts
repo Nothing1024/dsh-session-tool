@@ -270,6 +270,7 @@ describe('tool-session', () => {
         status: 'idle',
         includeHidden: true,
         limit: 5,
+        includeDelegationStatus: true,
       },
     )
     expect(value).toEqual({
@@ -296,7 +297,7 @@ describe('tool-session', () => {
     }, sessionTool)
     expect(sessionTool.list).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'agent' }),
-      expect.objectContaining({ status: 'running', origin: 'delegated' }),
+      expect.objectContaining({ status: 'running', origin: 'delegated', includeDelegationStatus: true }),
     )
     expect(value).toEqual({
       sessions: [{

@@ -62,7 +62,7 @@ describe('official Connection integration', () => {
     expect(service.list).not.toHaveBeenCalled()
     expect(await (await rpc('official/list', {})).json()).toMatchObject({ result: { ok: true, value: 'official' } })
     expect(await (await rpc('session-tool/list', { origin: 'delegated' })).json()).toMatchObject({ result: { ok: true, value: { sessions: [] } } })
-    expect(service.list).toHaveBeenCalledWith({ kind: 'web' }, { scope: 'all', limit: 50, origin: 'delegated' })
+    expect(service.list).toHaveBeenCalledWith({ kind: 'web' }, { scope: 'all', limit: 50, includeDelegationStatus: true, origin: 'delegated' })
   })
 
   it('rejects identity injection and invalid payloads before service calls', async () => {

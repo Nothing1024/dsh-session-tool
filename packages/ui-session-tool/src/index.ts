@@ -37,7 +37,9 @@ export function createHandler(service: SessionToolService): ConnectionRpcHandler
         if (p.includeHidden !== undefined && typeof p.includeHidden !== 'boolean') throw new Error('Invalid visibility')
         if (p.status !== undefined && (typeof p.status !== 'string' || !['live', 'idle', 'running', 'completed', 'failed', 'aborted', 'forked'].includes(p.status))) throw new Error('Invalid status')
         const filter = {
-          scope: 'all' as const, limit: 50,
+          // The panel renders each row's delegation status; the flag is
+          // server-owned, not accepted from the browser (BR-004).
+          scope: 'all' as const, limit: 50, includeDelegationStatus: true,
           ...(p.title === undefined ? {} : { title: p.title as string }),
           ...(p.origin === undefined ? {} : { origin: 'delegated' as const }),
           ...(p.includeHidden === undefined ? {} : { includeHidden: p.includeHidden as boolean }),
