@@ -1,0 +1,29 @@
+$ pnpm run typecheck
+exit=0
+$ tsc -p tsconfig.json
+
+$ pnpm --filter session-tool-local run test
+exit=0
+$ vitest run --config ../../vitest.config.ts packages/session-tool-local/tests
+
+ RUN  v4.1.10 /Users/nothing/workspace/dsh/plugin/session-tool/plugin
+
+ ✓ packages/session-tool-local/tests/collect.spec.ts (6 tests) 10ms
+ ✓ packages/session-tool-local/tests/live-events.spec.ts (4 tests) 12ms
+ ✓ packages/session-tool-local/tests/persistence-read.spec.ts (8 tests) 13ms
+ ✓ packages/session-tool-local/tests/delegation-projection.spec.ts (9 tests) 16ms
+ ✓ packages/session-tool-local/tests/workspace-client.spec.ts (26 tests) 93ms
+ ✓ packages/session-tool-local/tests/http-auth.spec.ts (11 tests) 56ms
+ ✓ packages/session-tool-local/tests/wait.spec.ts (11 tests) 48ms
+ ✓ packages/session-tool-local/tests/session-client.spec.ts (38 tests) 116ms
+ ✓ packages/session-tool-local/tests/workspace.spec.ts (12 tests) 129ms
+ ✓ packages/session-tool-local/tests/transport.spec.ts (18 tests) 129ms
+ ✓ packages/session-tool-local/tests/service.spec.ts (72 tests) 1861ms
+       ✓ resolves a tag aggregation and reports an empty set as unsatisfied  522ms
+
+ Test Files  11 passed (11)
+      Tests  215 passed (215)
+   Start at  16:26:33
+   Duration  2.86s (transform 2.91s, setup 0ms, import 5.50s, tests 2.49s, environment 2ms)
+
+

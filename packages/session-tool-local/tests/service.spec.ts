@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
 import SessionStore, { SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import SessionPersistenceJsonl from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
@@ -90,6 +90,7 @@ function listRow(id: string, options: {
   tags?: readonly string[]
   running?: boolean
   updatedAt?: number
+  delegationStatus?: string
 } = {}): {
   sessionId: string
   parentSessionId?: string
@@ -97,12 +98,14 @@ function listRow(id: string, options: {
   tags?: readonly string[]
   running: boolean
   updatedAt: number
+  delegationStatus?: string
 } {
   return {
     sessionId: id,
     ...options.parentSessionId === undefined ? {} : { parentSessionId: options.parentSessionId },
     ...options.title === undefined ? {} : { title: options.title },
     ...options.tags === undefined ? {} : { tags: options.tags },
+    ...options.delegationStatus === undefined ? {} : { delegationStatus: options.delegationStatus },
     running: options.running ?? false,
     updatedAt: options.updatedAt ?? 1_700_000_000_000,
   }
@@ -1303,7 +1306,7 @@ describe('SessionToolLocalService (remote)', () => {
         await projCtx.plugin({
           inject: ['sessionTool'],
           async apply(callerCtx: Context) {
-            const result = await callerCtx.sessionTool.list(agent('root'), { scope: 'all' })
+            const result = await callerCtx.sessionTool.list(agent('root'), { scope: 'all', includeDelegationStatus: true })
             const row = result.sessions.find(r => r.sessionId === 'child')
             expect(row?.delegationStatus).toBe('completed')
           },
@@ -1312,6 +1315,91 @@ describe('SessionToolLocalService (remote)', () => {
         await projCtx.fiber.dispose()
         rmSync(projRoot, { recursive: true, force: true })
       }
+    })
+  })
+
+  describe('on-demand delegation status (BR-001 / BR-002 / BR-006)', () => {
+    /** Persist a cold session whose only turn ended `completed`; it never enters the live store. */
+    async function persistCompleted(id: string): Promise<void> {
+      const handle = await ctx.sessionPersistence.create({
+        version: SESSION_FORMAT_VERSION,
+        id: SessionId(id),
+        createdAt: Date.now(),
+        isSeeded: false,
+        cwd: '/proj',
+      })
+      await handle.append([
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+        { type: 'turn/end', seq: 1, time: 2, data: { turn: 1, reason: { kind: 'completed' } } },
+      ] as never)
+      await handle.flush()
+      await handle.close()
+      expect(ctx.sessions.get(SessionId(id))).toBeUndefined()
+    }
+
+    type ColdRead = (id: unknown, ...rest: unknown[]) => unknown
+
+    /** Spy on the persistence entry the service uses for a whole-log cold read. */
+    function coldReads(): MockInstance<ColdRead> {
+      const persistence = ctx.sessionPersistence as unknown as Record<'inspect' | 'open', ColdRead>
+      return vi.spyOn(persistence, typeof persistence.inspect === 'function' ? 'inspect' : 'open')
+    }
+
+    const readIds = (spy: MockInstance<ColdRead>) => spy.mock.calls.map(([id]) => String(id))
+
+    it('default list never cold-reads and rows carry no delegationStatus', async () => {
+      await persistCompleted('cold-a')
+      await persistCompleted('cold-b')
+      sessionClient().list.mockResolvedValue([listRow('cold-a'), listRow('cold-b', { delegationStatus: 'failed' })])
+      const spy = coldReads()
+      const result = await ctx.sessionTool.list(CLI, { scope: 'all' })
+      expect(result.sessions.map(row => row.sessionId)).toEqual(['cold-a', 'cold-b'])
+      expect(result.sessions.every(row => !('delegationStatus' in row))).toBe(true)
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('takes the host projection value before a cold read, and cold-reads only without one', async () => {
+      await persistCompleted('host-valued')
+      await persistCompleted('host-missing')
+      sessionClient().list.mockResolvedValue([
+        listRow('host-valued', { delegationStatus: 'failed' }),
+        listRow('host-missing'),
+      ])
+      const spy = coldReads()
+      const result = await ctx.sessionTool.list(CLI, { scope: 'all', includeDelegationStatus: true })
+      // The host value wins even though the log folds to `completed`.
+      expect(result.sessions.map(row => [row.sessionId, row.delegationStatus])).toEqual([
+        ['host-valued', 'failed'],
+        ['host-missing', 'completed'],
+      ])
+      expect(readIds(spy)).toEqual(['host-missing'])
+    })
+
+    it('resolves only the returned page when delegation status is requested', async () => {
+      for (const id of ['page-1', 'page-2', 'page-3']) await persistCompleted(id)
+      sessionClient().list.mockResolvedValue([
+        listRow('page-1', { updatedAt: 1 }),
+        listRow('page-2', { updatedAt: 2 }),
+        listRow('page-3', { updatedAt: 3 }),
+      ])
+      const spy = coldReads()
+      const first = await ctx.sessionTool.list(CLI, { scope: 'all', includeDelegationStatus: true, limit: 1 })
+      expect(first.sessions.map(row => [row.sessionId, row.delegationStatus])).toEqual([[first.sessions[0]?.sessionId, 'completed']])
+      expect(readIds(spy)).toEqual([first.sessions[0]?.sessionId])
+      expect(first.nextCursor).toBe(first.sessions[0]?.sessionId)
+    })
+
+    it('a delegation status filter resolves only rows that survive the other filters', async () => {
+      await persistCompleted('match-title')
+      await persistCompleted('other-title')
+      sessionClient().list.mockResolvedValue([
+        listRow('match-title', { title: 'plan notes' }),
+        listRow('other-title', { title: 'misc' }),
+      ])
+      const spy = coldReads()
+      const result = await ctx.sessionTool.list(CLI, { scope: 'all', status: 'completed', title: 'plan' })
+      expect(result.sessions.map(row => [row.sessionId, row.delegationStatus])).toEqual([['match-title', 'completed']])
+      expect(readIds(spy)).toEqual(['match-title'])
     })
   })
 

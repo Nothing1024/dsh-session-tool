@@ -462,19 +462,32 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     const scopeIds = candidates === undefined ? undefined : new Set(candidates)
     const gatewayRows = (await this.sessionClient.list())
       .filter(row => scopeIds === undefined || scopeIds.has(row.sessionId as SessionId))
+    const hostStatus = new Map<SessionId, DelegationStatus>()
     const rows: SessionToolListRow[] = await Promise.all(gatewayRows.map(async row => {
-      const header = index.get(row.sessionId as SessionId)
-      const delegationStatus = await this.delegationStatusOf(row.sessionId as SessionId)
+      const sessionId = row.sessionId as SessionId
+      if (row.delegationStatus !== undefined) hostStatus.set(sessionId, row.delegationStatus)
+      const header = index.get(sessionId)
       return {
-        sessionId: row.sessionId as SessionId,
+        sessionId,
         ...row.title === undefined ? {} : { title: row.title },
-        tags: await this.tagsOf(row.sessionId as SessionId),
+        tags: await this.tagsOf(sessionId),
         status: row.running ? 'live' : 'idle',
-        ...delegationStatus === undefined ? {} : { delegationStatus },
         createdAt: header?.createdAt ?? row.updatedAt,
-        ...archivedSet.has(row.sessionId as SessionId) ? { archived: true } : {},
+        ...archivedSet.has(sessionId) ? { archived: true } : {},
       }
     }))
+    // Delegation status is derived only when asked for (BR-001), and only for
+    // the rows that need it (BR-006): the delegation-vocabulary filter needs
+    // every remaining candidate, a plain request only the returned page.
+    const statusFilter = filter.status
+    const delegationFilter = statusFilter !== undefined && statusFilter !== 'live' && statusFilter !== 'idle'
+      ? statusFilter
+      : undefined
+    const withDelegationStatus = (targets: readonly SessionToolListRow[]): Promise<SessionToolListRow[]> =>
+      Promise.all(targets.map(async row => {
+        const delegationStatus = await this.delegationStatusOf(row.sessionId, hostStatus.get(row.sessionId))
+        return delegationStatus === undefined ? row : { ...row, delegationStatus }
+      }))
 
     let visible = rows
     if (filter.includeHidden !== true) {
@@ -487,16 +500,8 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (this.config.showDelegated === false && filter.origin !== 'delegated') {
       visible = visible.filter(row => !this.isDelegated(row))
     }
-    if (filter.status !== undefined) {
-      // The delegation vocabulary (running/completed/failed/aborted) filters
-      // by the log-derived projection; live/idle keep store-presence
-      // semantics. A delegation filter with no projection support degrades
-      // loudly: the row's delegationStatus is absent, so nothing matches.
-      if (filter.status === 'live' || filter.status === 'idle') {
-        visible = visible.filter(row => row.status === filter.status)
-      } else {
-        visible = visible.filter(row => row.delegationStatus === filter.status)
-      }
+    if (statusFilter === 'live' || statusFilter === 'idle') {
+      visible = visible.filter(row => row.status === statusFilter)
     }
     if (filter.origin === 'delegated') {
       visible = visible.filter(row => this.isDelegated(row))
@@ -509,6 +514,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
     if (titleFilter !== undefined && titleFilter.length > 0) {
       visible = visible.filter(row => row.title?.includes(titleFilter) ?? false)
     }
+    if (delegationFilter !== undefined) {
+      // The delegation vocabulary filters by the log-derived projection. A
+      // row whose status is unresolvable carries none and never matches.
+      visible = (await withDelegationStatus(visible)).filter(row => row.delegationStatus === delegationFilter)
+    }
     visible = [...visible].sort((a, b) => a.createdAt - b.createdAt || (a.sessionId < b.sessionId ? -1 : 1))
 
     const limit = Math.max(1, Math.min(filter.limit ?? this.config.listMaxRows, this.config.listMaxRows))
@@ -520,8 +530,11 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       }
       start = at + 1
     }
-    const page = visible.slice(start, start + limit)
+    let page = visible.slice(start, start + limit)
     const nextCursor = start + limit < visible.length ? page.at(-1)?.sessionId : undefined
+    if (filter.includeDelegationStatus === true && delegationFilter === undefined) {
+      page = await withDelegationStatus(page)
+    }
     return {
       sessions: page,
       ...nextCursor === undefined ? {} : { nextCursor },
@@ -988,15 +1001,20 @@ export class SessionToolLocalService extends Service implements SessionToolServi
   }
 
   /**
-   * Derive a session's delegation status from its log: the projection unit's
-   * pure fold over the live events when the session is attached, or the
-   * persisted log tail otherwise (the documented degradation when the
-   * projection registry is not composed). `undefined` when the session is
-   * neither live nor persisted (the row then carries no delegationStatus).
+   * Derive a session's delegation status (BR-002): the projection unit's
+   * cached cell or pure fold over the live events when the session is
+   * attached; else the host list row's projection value when the caller has
+   * one; else the persisted log tail (a full cold read). `undefined` when the
+   * session is neither live, host-projected, nor persisted.
    * @param sessionId - target session.
-   * @returns the log-derived status, when the log is resolvable.
+   * @param hostStatus - validated `projections.values.delegation.status` from
+   *   the host list row, when the caller listed it.
+   * @returns the log-derived status, when resolvable.
    */
-  private async delegationStatusOf(sessionId: SessionId): Promise<DelegationStatus | undefined> {
+  private async delegationStatusOf(
+    sessionId: SessionId,
+    hostStatus?: DelegationStatus,
+  ): Promise<DelegationStatus | undefined> {
     const live = this.ctx.sessions.get(sessionId)
     if (live !== undefined) {
       // Prefer the projection registry's cached cell (incrementally folded on
@@ -1006,6 +1024,7 @@ export class SessionToolLocalService extends Service implements SessionToolServi
       if (state !== undefined) return state.status
       return foldDelegationStatus(eventsOfLive(live))
     }
+    if (hostStatus !== undefined) return hostStatus
     const inspected = await this.inspectSession(sessionId)
     return inspected === undefined ? undefined : foldDelegationStatus(inspected.events)
   }

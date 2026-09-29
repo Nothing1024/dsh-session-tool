@@ -223,7 +223,8 @@ export interface SessionToolListFilter {
    * Only sessions in one lifecycle bucket: `live` / `idle` keep the
    * store-presence semantics, while the delegation vocabulary
    * (`running` / `completed` / `failed` / `aborted`) filters by the
-   * log-derived delegation projection.
+   * log-derived delegation projection (and implies
+   * {@link SessionToolListFilter.includeDelegationStatus}).
    */
   readonly status?: 'live' | 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'forked'
   /**
@@ -237,6 +238,13 @@ export interface SessionToolListFilter {
   readonly cursor?: string
   /** Row cap, clamped to the provider's configured maximum. */
   readonly limit?: number
+  /**
+   * Attach {@link SessionToolListRow.delegationStatus} to the returned rows.
+   * Default `false`: deriving it can read a cold session's whole log, so
+   * callers that do not render it leave it off. A delegation-vocabulary
+   * `status` filter turns it on implicitly.
+   */
+  readonly includeDelegationStatus?: boolean
 }
 
 /** One session list row. */
@@ -250,9 +258,10 @@ export interface SessionToolListRow {
   /** `live` while the session is in this process's store, `idle` otherwise. */
   readonly status: 'live' | 'idle'
   /**
-   * Log-derived delegation status, when the projection is resolvable:
-   * `running` while a turn is open, then the terminal mapping of its
-   * `turn/end` reason. Absent when no projection support is composed.
+   * Log-derived delegation status: `running` while a turn is open, then the
+   * terminal mapping of its `turn/end` reason. Present only when requested
+   * ({@link SessionToolListFilter.includeDelegationStatus} or a
+   * delegation-vocabulary `status` filter) and resolvable.
    */
   readonly delegationStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'aborted' | 'max-tokens' | 'forked'
   /** Creation timestamp from the session header. */
